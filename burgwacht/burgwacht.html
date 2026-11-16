@@ -15,13 +15,13 @@ body{background:var(--grass-deep);color:var(--ink);font-family:var(--body);overf
   -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 #game{position:relative;height:100%;width:100%;overflow:hidden;touch-action:none}
 #c{position:absolute;inset:0;width:100%;height:100%;display:block}
-#hud{position:absolute;top:8px;left:0;right:0;display:flex;justify-content:space-between;gap:8px;pointer-events:none;
+#hud{position:absolute;top:8px;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .pill{background:var(--panel);border:2px solid var(--ink);border-radius:999px;padding:4px 12px;
   font-family:var(--display);font-size:16px;box-shadow:0 3px 0 rgba(51,40,58,.35);white-space:nowrap}
-#hearts{letter-spacing:1px;color:var(--heart)}
+#hearts{font-size:13px;letter-spacing:0;padding:6px 10px;color:var(--heart)}
 #hearts .off{color:#d8cdbb}
-#toast{position:absolute;top:56px;left:50%;transform:translate(-50%,-12px);max-width:calc(100% - 32px);text-align:center;
+#toast{position:absolute;top:96px;left:50%;transform:translate(-50%,-12px);max-width:calc(100% - 32px);text-align:center;
   background:var(--ink);color:#fff6df;border:2px solid var(--gold);border-radius:14px;padding:8px 16px;
   font-family:var(--display);font-size:17px;line-height:1.25;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
 #toast.on{opacity:1;transform:translate(-50%,0)}
@@ -42,19 +42,58 @@ body{background:var(--grass-deep);color:var(--ink);font-family:var(--body);overf
 .wp .lv{display:block;font-family:var(--body);font-weight:800;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
 .wp .xp{width:100%;height:6px;margin-top:2px;border-radius:99px;background:#e6d9bb;overflow:hidden}
 .wp .xp i{display:block;height:100%;width:0;background:var(--xp);border-radius:99px}
+.wavectl{display:flex;align-items:center;gap:6px;padding:3px 4px;pointer-events:auto}
+.wavectl button{width:30px;height:30px;flex:none;border-radius:50%;border:2px solid var(--ink);background:var(--gold);color:var(--ink);
+  font-size:13px;line-height:1;cursor:pointer;padding:0;display:grid;place-items:center}
+.wavectl button:disabled{background:#e6d9bb;color:#b7a98c;border-color:#b7a98c;cursor:default}
+.wavectl button:focus-visible,.shopcard button:focus-visible{outline:3px solid var(--xp);outline-offset:2px}
+#wave{min-width:60px;text-align:center;font-size:15px}
+#hud .right{display:grid;justify-items:end;gap:6px;min-width:0}
+#gold{font-variant-numeric:tabular-nums}
+@media (max-width:350px){#hearts{font-size:11px;padding:6px 8px}#wave{min-width:54px;font-size:14px}}
+#gold::before{content:"";display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--gold);border:2px solid var(--ink);margin-right:6px;vertical-align:-2px}
+.wp.locked{opacity:.6;background:#e9e1cf}
+.wp.locked canvas{filter:grayscale(1);opacity:.55}
+#shop{position:absolute;inset:0;display:grid;place-items:center;background:rgba(40,30,45,.62);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px}
+.shopcard{width:min(340px,100%);max-height:100%;overflow:auto;background:var(--panel);border:3px solid var(--ink);border-radius:18px;
+  padding:16px;box-shadow:0 6px 0 rgba(51,40,58,.45);display:grid;gap:10px}
+.shopcard h2{margin:0;font-family:var(--display);font-weight:400;font-size:24px;text-align:center;text-wrap:balance}
+.shopcard p{margin:0;font-weight:600;font-size:13px;color:var(--muted);text-align:center}
+.shopcard .purse{justify-self:center}
+.item{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;border-top:2px dashed var(--panel-edge);padding-top:10px}
+.item b{display:block;font-family:var(--display);font-weight:400;font-size:16px}
+.item span{display:block;font-weight:600;font-size:12px;color:var(--muted);line-height:1.3}
+.item button,#shopgo{font-family:var(--display);font-size:15px;border:2px solid var(--ink);border-radius:12px;background:var(--gold);color:var(--ink);
+  padding:8px 12px;cursor:pointer;box-shadow:0 3px 0 rgba(51,40,58,.4);white-space:nowrap;min-width:84px}
+.item button:disabled{background:#e6d9bb;color:#9c8f79;box-shadow:none;cursor:default}
+.item button.own{background:#bfe3a8;color:#2f6b2f}
+#shopgo{background:#7ddc5a;padding:11px 12px;font-size:17px}
 .wp .cd{position:absolute;inset:0;background:rgba(51,40,58,.5);transform-origin:bottom;transform:scaleY(0);pointer-events:none}
 @media (prefers-reduced-motion:reduce){.wp,#toast{transition:none}}
 </style>
 
 <div id="game">
   <canvas id="c"></canvas>
-  <div id="hud"><div class="pill" id="wave">Welle 1</div><div class="pill" id="hearts"></div></div>
+  <div id="hud">
+    <div class="pill wavectl"><button id="wdown" type="button" aria-label="Eine Welle runter">▼</button><span id="wave">Welle 1</span><button id="wup" type="button" aria-label="Eine Welle hoch">▲</button></div>
+    <div class="right"><div class="pill" id="hearts"></div><div class="pill" id="gold">0</div></div>
+  </div>
   <div id="toast" role="status"></div>
   <div id="hint">Tippe aufs Feld, um anzugreifen</div>
   <div id="bar">
     <button class="wp" id="wp-sword" data-w="sword" aria-pressed="true"><canvas width="72" height="72"></canvas><span class="nm">Schwert<span class="lv"></span></span><span class="xp"><i></i></span><span class="cd"></span></button>
     <button class="wp" id="wp-dagger" data-w="dagger" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="nm">Dolche<span class="lv"></span></span><span class="xp"><i></i></span><span class="cd"></span></button>
     <button class="wp" id="wp-star" data-w="star" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="nm">Morgenstern<span class="lv"></span></span><span class="xp"><i></i></span><span class="cd"></span></button>
+  </div>
+  <div id="shop" hidden>
+    <div class="shopcard" role="dialog" aria-labelledby="shoptitle">
+      <h2 id="shoptitle">Die Burg ist gefallen</h2>
+      <p>Gib dein Gold aus. Danach geht es bei Welle 1 weiter.</p>
+      <div class="pill purse" id="shopgold">0</div>
+      <div id="items"></div>
+      <button id="shopgo" type="button">Weiter bei Welle 1</button>
+    </div>
   </div>
 </div>
 
@@ -67,7 +106,7 @@ const dist=(a,b,c,d)=>Math.hypot(a-c,b-d);
 const $=id=>document.getElementById(id);
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const game=$('game'), cv=$('c'), ctx=cv.getContext('2d');
-const MAXLV=100, MAXHP=10, SAVE='burgwacht-v1';
+const MAXLV=100, MAXHP=10, SAVE='burgwacht-v2';
 const NAMES={sword:'Schwert',dagger:'Dolche',star:'Morgenstern'};
 const MS={
  sword:{5:'Doppelschwert',10:'Dreier-Fächer',15:'Echo-Hieb',25:'Kreisende Schwerter',30:'Klingenwelle',40:'Geisterschwert',50:'Riesenschwert',60:'Schwertsplitter',70:'Zeitriss',80:'Spiegelhieb',90:'Kettenblitz',100:'Schwertregen'},
@@ -77,10 +116,15 @@ const MS={
 const BASE={sword:10,dagger:7,star:16};
 
 /* ---------- Zustand ---------- */
-const S={lv:{sword:1,dagger:1,star:1},xp:{sword:0,dagger:0,star:0},wave:1,active:'sword'};
+const S={lv:{sword:1,dagger:1,star:1},xp:{sword:0,dagger:0,star:0},wave:1,active:'sword',
+  gold:0,cleared:0,heal:1,own:{dagger:false,star:false,soldier:false}};
 try{const d=JSON.parse(localStorage.getItem(SAVE)||'null');
   if(d){for(const w in S.lv){S.lv[w]=Math.min(MAXLV,Math.max(1,d.lv?.[w]|0||1));S.xp[w]=+d.xp?.[w]||0}
-    S.wave=Math.max(1,d.wave|0||1);if(NAMES[d.active])S.active=d.active}}catch(e){}
+    S.gold=Math.max(0,d.gold|0);S.cleared=Math.max(0,d.cleared|0);S.heal=Math.min(3,Math.max(1,d.heal|0||1));
+    for(const k in S.own)S.own[k]=!!d.own?.[k];
+    S.wave=Math.min(S.cleared+1,Math.max(1,d.wave|0||1));
+    if(d.active==='sword'||S.own[d.active])S.active=d.active}}catch(e){}
+const owned=w=>w==='sword'||S.own[w];
 const save=()=>{try{localStorage.setItem(SAVE,JSON.stringify(S))}catch(e){}};
 const need=L=>Math.round(4+L*1.4+L*L*.035);
 const dmgOf=w=>BASE[w]*(1+.09*(S.lv[w]-1));
@@ -88,7 +132,7 @@ const cdOf=w=>3.5-2*(S.lv[w]-1)/99;
 
 let W=360,H=640,DPR=1,U=1,cx=180,cy=300,CR=24,ground=null;
 let hp=MAXHP,enemies=[],projs=[],zones=[],fx=[],parts=[],texts=[],timers=[];
-let cd=0,cdMax=1,atkCount=0,shake=0,castleFlash=0,time=0,fallen=false,started=false;
+let cd=0,cdMax=1,atkCount=0,shake=0,castleFlash=0,time=0,fallen=false,started=false,paused=false,soldiers=[],solT=2;
 let queue=[],spawnT=0,spawnGap=1,pause=1.5;
 const after=(t,fn)=>timers.push({t,fn});
 
@@ -99,14 +143,15 @@ function nextToast(){const t=toastQ.shift();if(!t){toastBusy=false;return}toastB
   toastEl.textContent=t[0];if(t[1]){const s=document.createElement('small');s.textContent=t[1];toastEl.appendChild(s)}
   toastEl.classList.add('on');setTimeout(()=>{toastEl.classList.remove('on');setTimeout(nextToast,280)},t[1]?2600:1500)}
 function hud(){
-  $('wave').textContent='Welle '+S.wave;
+  $('wave').textContent='Welle '+S.wave;$('wdown').disabled=S.wave<=1;$('wup').disabled=S.wave>S.cleared;
+  $('gold').textContent=S.gold;$('gold').setAttribute('aria-label',S.gold+' Gold');
   const h=$('hearts');h.textContent='';
   for(let i=0;i<MAXHP;i++){const s=document.createElement('span');s.textContent='♥';if(i>=hp)s.className='off';h.appendChild(s)}
   h.setAttribute('aria-label',hp+' von '+MAXHP+' Leben');
-  for(const w in NAMES){const b=$('wp-'+w),L=S.lv[w];
-    b.setAttribute('aria-pressed',String(S.active===w));
-    b.querySelector('.lv').textContent=L>=MAXLV?'Lvl 100 MAX':'Lvl '+L;
-    b.querySelector('.xp i').style.width=(L>=MAXLV?100:Math.min(100,S.xp[w]/need(L)*100))+'%'}
+  for(const w in NAMES){const b=$('wp-'+w),L=S.lv[w],ok=owned(w);
+    b.classList.toggle('locked',!ok);b.setAttribute('aria-pressed',String(S.active===w));
+    b.querySelector('.lv').textContent=!ok?'Gesperrt':L>=MAXLV?'Lvl 100 MAX':'Lvl '+L;
+    b.querySelector('.xp i').style.width=(!ok?0:L>=MAXLV?100:Math.min(100,S.xp[w]/need(L)*100))+'%'}
 }
 function gainXP(w,a){
   if(S.lv[w]>=MAXLV)return;
@@ -139,7 +184,7 @@ function spawn(type){
   const t=Math.min((W/2+30)/Math.abs(dx||1e-6),((dy<0?cy:H-cy)+30)/Math.abs(dy||1e-6));
   const f=1+.22*(w-1)+.015*(w-1)*(w-1);
   enemies.push({type,x:cx+dx*t,y:cy+dy*t,r:T.r*U,hp:T.hp*f,max:T.hp*f,sp:T.sp*(1+Math.min(.5,w*.02)),xp:T.xp*(1+.12*w),
-    col:T.col,boss:type==='boss',ph:rnd(TAU),kx:0,ky:0,stun:0,freeze:0,poison:0,pdps:0,pacc:0,flash:0,oc:0,dead:false});
+    col:T.col,boss:type==='boss',ph:rnd(TAU),kx:0,ky:0,stun:0,freeze:0,poison:0,pdps:0,pacc:0,flash:0,oc:0,atk:0,blocked:0,dead:false});
 }
 function nearest(x,y,maxD,excl){let b=null,bd=maxD||1e9;
   for(const e of enemies){if(e.dead||(excl&&excl.has(e)))continue;const d=dist(x,y,e.x,e.y);if(d<bd){bd=d;b=e}}return b}
@@ -404,8 +449,9 @@ function draw(){
   ctx.drawImage(ground,0,0,W,H);
   for(const z of zones)if(z.under)z.d(z);
   for(const f of fx)if(f.under)f.d(f.t/f.dur);
-  const list=enemies.filter(e=>!e.dead);list.push(null);list.sort((a,b)=>(a?a.y:cy)-(b?b.y:cy));
-  for(const e of list)e?drawEnemy(e):drawCastle();
+  const list=[[cy,0,null]];for(const e of enemies)if(!e.dead)list.push([e.y,1,e]);for(const o of soldiers)list.push([o.y,2,o]);
+  list.sort((a,b)=>a[0]-b[0]);
+  for(const l of list)l[1]===1?drawEnemy(l[2]):l[1]===2?drawSoldier(l[2]):drawCastle();
   // Abklingzeit-Ring um die Burg
   const k=cdMax?1-Math.max(0,cd)/cdMax:1;ctx.lineWidth=5*U;ctx.lineCap='round';
   ctx.strokeStyle='rgba(51,40,58,.35)';ctx.beginPath();ctx.ellipse(cx,cy+18*U,58*U,26*U,0,0,TAU);ctx.stroke();
@@ -428,37 +474,100 @@ function update(dt){
   timers=timers.filter(t=>!t.done);
   if(pause>0)pause-=dt;
   else if(queue.length){spawnT-=dt;if(spawnT<=0){spawn(queue.shift());spawnT=spawnGap}}
-  else if(!enemies.length){S.wave++;save();hp=Math.min(MAXHP,hp+1);pause=2.5;buildWave();hud();toast('Welle '+S.wave)}
-  for(const e of enemies){if(e.dead)continue;e.flash-=dt;e.oc-=dt;
+  else if(!enemies.length){const w=S.wave;let g=0;if(w>S.cleared){S.cleared=w;g=w;S.gold+=g}
+    hp=Math.min(MAXHP,hp+S.heal);S.wave++;save();pause=2.5;buildWave();hud();toast('Welle '+w+' geschafft',g?'+'+g+' Gold':'')}
+  for(const e of enemies){if(e.dead)continue;e.flash-=dt;e.oc-=dt;e.atk-=dt;e.blocked-=dt;
     if(e.poison>0){e.poison-=dt;e.pacc+=dt;if(e.pacc>=.5){e.pacc=0;hurt(e,e.pdps*.5,{w:'dagger',dot:true})}}
     if(e.dead)continue;
     e.x+=e.kx*dt;e.y+=e.ky*dt;const dec=Math.exp(-5*dt);e.kx*=dec;e.ky*=dec;
-    if(e.freeze>0)e.freeze-=dt;else if(e.stun>0)e.stun-=dt;
+    if(e.freeze>0)e.freeze-=dt;else if(e.stun>0)e.stun-=dt;else if(e.blocked>0){}
     else{const a=atan2(cy-e.y,cx-e.x),sp=e.sp*U,wb=e.type==='bat'?sin(time*4+e.ph)*.7:0;e.x+=(cos(a)-sin(a)*wb)*sp*dt;e.y+=(sin(a)+cos(a)*wb)*sp*dt}
     e.x=Math.max(-60,Math.min(W+60,e.x));e.y=Math.max(-60,Math.min(H+60,e.y));
     if(dist(e.x,e.y,cx,cy)<CR+e.r){e.dead=true;puff(e.x,e.y,e.col,6);castleHit()}}
-  updProjs(dt);
+  updSoldiers(dt);updProjs(dt);
   for(const z of zones){z.t+=dt;if(z.t<z.dur)z.u(z,dt)}
   zones=zones.filter(z=>z.t<z.dur);
   for(const f of fx)f.t+=dt;fx=fx.filter(f=>f.t<f.dur);
   for(const p of parts){p.l-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=260*U*dt}parts=parts.filter(p=>p.l>0);
   for(const t of texts){t.t+=dt;t.y-=28*U*dt}texts=texts.filter(t=>t.t<(t.big?1.4:.7));
   enemies=enemies.filter(e=>!e.dead);projs=projs.filter(p=>!p.dead);
-  if(fallen){fallen=false;enemies=[];projs=[];zones=[];timers=[];hp=MAXHP;pause=3;buildWave();hud();toast('Die Burg ist gefallen!','Welle '+S.wave+' startet neu')}
+  if(fallen){fallen=false;resetField(true);openShop()}
   const b=$('wp-'+S.active).querySelector('.cd');b.style.transform=`scaleY(${Math.max(0,cd)/cdMax})`;
 }
 function attack(x,y){
+  if(paused)return;
   if(cd>0){ring(cx,cy+18*U,60*U,'233,82,79',.25);return}
   if(!started){started=true;$('hint').style.opacity=0}
   atkCount++;cdMax=cdOf(S.active);cd=cdMax;ATK[S.active](x,y);
 }
 
+/* ---------- Wellenwahl, Shop, Soldaten ---------- */
+function resetField(all){enemies=[];projs=[];zones=[];timers=[];if(all){soldiers=[];solT=2}pause=1.5;buildWave()}
+function setWave(n){
+  n=Math.max(1,Math.min(S.cleared+1,n));if(n===S.wave||paused)return;
+  S.wave=n;resetField(false);hud();save();toast('Welle '+n);
+}
+const SHOP=[
+ {n:'Soldat',d:'Alle 5 Sekunden kommt ein kleiner Soldat aus der Burg. Er hält 3 Schläge aus und bremst Gegner.',c:2,has:()=>S.own.soldier,buy:()=>{S.own.soldier=true}},
+ {n:'Dolche',d:'Schaltet die Dolche als Waffe frei.',c:5,has:()=>S.own.dagger,buy:()=>{S.own.dagger=true}},
+ {n:'Morgenstern',d:'Schaltet den Morgenstern als Waffe frei.',c:10,has:()=>S.own.star,buy:()=>{S.own.star=true}},
+ {n:'Heilung +2',d:'Nach jeder geschafften Welle 2 statt 1 Leben zurück.',c:20,has:()=>S.heal>=2,buy:()=>{S.heal=2}},
+ {n:'Heilung +3',d:'Nach jeder geschafften Welle 3 Leben zurück.',c:32,has:()=>S.heal>=3,need:()=>S.heal>=2,nt:'Erst Heilung +2',buy:()=>{S.heal=3}}
+];
+function renderShop(){
+  $('shopgold').textContent=S.gold+' Gold';const box=$('items');box.textContent='';
+  SHOP.forEach((it,i)=>{const row=document.createElement('div');row.className='item';
+    const tx=document.createElement('div'),b=document.createElement('b'),sp=document.createElement('span');b.textContent=it.n;sp.textContent=it.d;tx.append(b,sp);
+    const bt=document.createElement('button');bt.type='button';bt.id='buy-'+i;
+    if(it.has()){bt.textContent='Gekauft';bt.disabled=true;bt.className='own'}
+    else if(it.need&&!it.need()){bt.textContent=it.nt;bt.disabled=true}
+    else{bt.textContent=it.c+' Gold';bt.disabled=S.gold<it.c;
+      bt.addEventListener('click',()=>{if(S.gold<it.c||it.has())return;S.gold-=it.c;it.buy();save();hud();renderShop()})}
+    row.append(tx,bt);box.appendChild(row)});
+}
+function openShop(){paused=true;save();renderShop();$('shop').hidden=false}
+function closeShop(){$('shop').hidden=true;S.wave=1;hp=MAXHP;cd=0;resetField(true);paused=false;hud();save();toast('Welle 1')}
+function updSoldiers(dt){
+  if(S.own.soldier){solT-=dt;if(solT<=0){solT=5;if(soldiers.length<4)soldiers.push({x:cx,y:cy+24*U,hp:3,atk:0,flash:0,swing:0,walk:0,face:1,ph:rnd(TAU),ga:rnd(.25,PI-.25)})}}
+  const SR=7*U;
+  for(const o of soldiers){o.flash-=dt;o.atk-=dt;o.swing-=dt;o.walk=0;
+    const e=nearest(o.x,o.y,260*U);
+    if(e){const q=dist(o.x,o.y,e.x,e.y);o.face=e.x<o.x?-1:1;
+      if(q>e.r+SR+2*U){const a=atan2(e.y-o.y,e.x-o.x);o.x+=cos(a)*48*U*dt;o.y+=sin(a)*48*U*dt;o.walk=1}
+      else{
+        if(e.freeze<=0&&e.stun<=0){e.blocked=.15;if(e.atk<=0){e.atk=1.2;o.hp--;o.flash=.15;puff(o.x,o.y-6*U,'#cfe3ff',4)}}
+        if(o.atk<=0){o.atk=.8;o.swing=.2;hurt(e,2*(1+.15*(S.wave-1)),{w:'soldier',c:'#cfe3ff'})}}
+    }else{const gx=cx+cos(o.ga)*64*U,gy=cy+20*U+sin(o.ga)*34*U,q=dist(o.x,o.y,gx,gy);
+      if(q>3*U){o.x+=(gx-o.x)/q*40*U*dt;o.y+=(gy-o.y)/q*40*U*dt;o.walk=1;o.face=gx<o.x?-1:1}}
+  }
+  soldiers=soldiers.filter(o=>o.hp>0);
+}
+function drawSoldier(o){
+  const u=U,b=o.walk?Math.abs(sin(time*12+o.ph))*2*u:0,x=o.x,y=o.y-b;
+  ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(o.x,o.y+7*u,7*u,3*u,0,0,TAU);ctx.fill();
+  ctx.save();ctx.translate(x,y);ctx.scale(o.face,1);ctx.lineWidth=1.5*u;ctx.strokeStyle='#33283a';ctx.lineJoin='round';
+  ctx.fillStyle='#4a3b42';ctx.fillRect(-3.5*u,3*u,2.5*u,4*u);ctx.fillRect(1*u,3*u,2.5*u,4*u);
+  ctx.fillStyle=o.flash>0?'#fff':'#4f7fd6';ctx.beginPath();ctx.roundRect(-5*u,-4*u,10*u,8.5*u,2.5*u);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#ffd9b3';ctx.beginPath();ctx.arc(0,-8*u,4.2*u,0,TAU);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#b9c2cf';ctx.beginPath();ctx.arc(0,-8.6*u,4.6*u,PI,0);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.fillStyle='#33283a';ctx.beginPath();ctx.arc(1.8*u,-7.2*u,.8*u,0,TAU);ctx.fill();
+  drawSword(ctx,5*u,1*u,o.swing>0?.3:-1.1,13*u);
+  ctx.fillStyle='#e2574c';ctx.beginPath();ctx.arc(-4.5*u,1*u,3.2*u,0,TAU);ctx.fill();ctx.stroke();
+  ctx.restore();
+  for(let i=0;i<3;i++){ctx.fillStyle=i<o.hp?'#7ddc5a':'rgba(51,40,58,.45)';ctx.beginPath();ctx.arc(x-4*u+i*4*u,y-17*u,1.6*u,0,TAU);ctx.fill()}
+}
+
 /* ---------- Eingabe, Größe, Start ---------- */
 cv.addEventListener('pointerdown',ev=>{ev.preventDefault();const r=cv.getBoundingClientRect();attack(ev.clientX-r.left,ev.clientY-r.top)});
 for(const b of document.querySelectorAll('.wp'))b.addEventListener('click',()=>{
-  if(S.active===b.dataset.w)return;
+  const w=b.dataset.w;
+  if(!owned(w)){toast(NAMES[w]+' ist gesperrt','Im Shop nach einer Niederlage');return}
+  if(S.active===w)return;
   document.querySelectorAll('.wp .cd').forEach(c=>c.style.transform='scaleY(0)');
-  S.active=b.dataset.w;cdMax=Math.max(cdMax,cd,.01);hud();save()});
+  S.active=w;cdMax=Math.max(cdMax,cd,.01);hud();save()});
+$('wdown').addEventListener('click',()=>setWave(S.wave-1));
+$('wup').addEventListener('click',()=>setWave(S.wave+1));
+$('shopgo').addEventListener('click',closeShop);
 function icons(){
   for(const w in NAMES){const c=$('wp-'+w).querySelector('canvas'),g=c.getContext('2d');g.clearRect(0,0,72,72);
     if(w==='sword')drawSword(g,16,56,-PI/4,58);
@@ -473,10 +582,12 @@ function resize(){
 }
 addEventListener('resize',resize);
 let last=0;
-function frame(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;update(dt);draw();requestAnimationFrame(frame)}
+function frame(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;if(!paused)update(dt);draw();requestAnimationFrame(frame)}
 resize();icons();buildWave();hud();toast('Welle '+S.wave);
 setInterval(save,5000);
-window.__bw={S,hud,save,state:()=>({hp,enemies:enemies.length,projs:projs.length,zones:zones.length,cd})};
+window.__bw={S,hud,save,need,cdOf,state:()=>({hp,enemies:enemies.length,projs:projs.length,zones:zones.length,fx:fx.length,cd,atkCount,paused,queue:queue.length,soldiers:soldiers.length,pause}),
+  step(t){for(let i=0;i<t*60&&!paused;i++)update(1/60)},ready(){cd=0},spawn,setHp(n){hp=n;hud()},ens:()=>enemies,sols:()=>soldiers,prj:()=>projs,
+  clear(){for(const e of enemies.slice())hurt(e,1e9,{w:'sword'});queue.length=0},attack,pos:()=>({cx,cy,W,H,U})};
 requestAnimationFrame(frame);
 })();
 </script>
