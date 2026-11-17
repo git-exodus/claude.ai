@@ -55,7 +55,7 @@ function update(dt) {
   updateEnemies(dt);
   updateCombo(dt);
   updateSoldiers(dt);
-  updateTowerArcher(dt);
+  updateArchers(dt);
   updateProjectiles(dt);
   updateZones(dt);
   updateVisuals(dt);
@@ -153,6 +153,10 @@ function drawActors() {
   const actors = [{ y: cy, draw() { drawWall(false); drawCastle(); drawWall(true); } }];
   for (const e of world.enemies) if (!e.dead) actors.push({ y: e.y, draw: () => drawEnemy(e) });
   for (const soldier of world.soldiers) actors.push({ y: soldier.y, draw: () => drawSoldier(soldier) });
+  for (let i = 0; i < S.archers; i++) {
+    const post = archerPost(i, S.archers);
+    actors.push({ y: post.y + 6 * U, draw: () => drawArcher(post) });
+  }
   actors.sort((a, b) => a.y - b.y);
   for (const actor of actors) actor.draw();
 }

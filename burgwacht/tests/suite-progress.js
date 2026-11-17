@@ -53,14 +53,14 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
       const share = { ogre: w >= 3 ? Math.min(0.25, 0.04 * w) : 0, bat: w >= 2 ? Math.min(0.3, 0.06 * w) : 0, shield: w >= 8 ? Math.min(0.1, 0.01 * w) : 0, archer: w >= 12 ? Math.min(0.05, 0.004 * w) : 0 };
       share.slime = 1 - share.ogre - share.bat - share.shield - share.archer;
       let per = 0; for (const t in share) per += share[t] * xpOf[t];
-      xp += __bw.waveCount(w) * per + (w % 5 === 0 ? 20 : 0);
+      xp += 1.3 * (__bw.waveCount(w) * per + (w % 5 === 0 ? 20 : 0));   // XP_GAIN
       while (xp >= need(level)) { xp -= need(level); level++; }
       if ([5, 10, 20, 30, 50, 100].includes(w)) out[w] = level;
     }
     return out;
   });
-  const target = { 5: 4, 10: 8, 20: 15, 30: 22, 50: 40, 100: 80 };
-  ok(Object.keys(target).every(w => Math.abs(r[w] - target[w]) <= Math.max(2, target[w] * 0.15)), 'XP-Tempo trifft die Zielkurve (Soll 4/8/15/22/40/80)', Object.keys(r).map(w => 'Welle ' + w + ': Lvl ' + r[w]).join(' · '));
+  const target = { 5: 5, 10: 9, 20: 16, 30: 25, 50: 43, 100: 91 };
+  ok(Object.keys(target).every(w => Math.abs(r[w] - target[w]) <= Math.max(2, target[w] * 0.15)), 'XP-Tempo mit +30 % XP (Soll 5/9/16/25/43/91, ohne Wiederholungen)', Object.keys(r).map(w => 'Welle ' + w + ': Lvl ' + r[w]).join(' · '));
   r = await E(() => { const g = __bw; g.S.lv.sword = 1000; const o = [g.cdOf('sword'), Math.round(g.dmgOf('sword')), g.need(999)]; g.S.lv.sword = 1; return o; });
   ok(r[0] === 0.5 && r[1] === 909 && r[2] > 0 && Number.isFinite(r[2]), 'Formeln rechnen auch mit Level 1000 (Tempo bleibt auf Level-100-Wert)', r.join(' / '));
 
@@ -77,24 +77,47 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   await p.screenshot({ path: 'shop-tabs.png' });
   await p.click('#tab-castle');
   r = await E(() => ({ h: document.querySelector('#shop .shopcard').getBoundingClientRect().height, go: document.getElementById('shopgo').getBoundingClientRect().bottom, scroll: document.getElementById('items').scrollHeight <= document.getElementById('items').clientHeight + 1, pips: document.querySelectorAll('#items .pips u').length }));
-  ok(r.h === h0 && r.scroll && r.pips === 8, 'Reiterwechsel ändert die Fenstergröße nicht, nichts muss gescrollt werden, Stufen als Punkte', r.pips + ' Punkte');
-  await buy('castle', 'hp'); await p.click('#buy-hp'); await buy('castle', 'tower');
-  await buy('troops', 'soldier'); await p.click('#buy-armor'); await p.click('#buy-squad');
+  ok(r.h === h0 && r.scroll && r.pips === 18, 'Reiterwechsel ändert die Fenstergröße nicht, nichts muss gescrollt werden, Stufen als Punkte', r.pips + ' Punkte');
+  await buy('castle', 'hp'); await p.click('#buy-hp'); await buy('castle', 'archers');
+  await buy('troops', 'soldier'); await p.click('#buy-armor'); await p.click('#buy-soldierCap');
   await buy('boni', 'goldBonus'); await p.click('#buy-xpBonus');
-  r = await E(() => { const S = __bw.S; return [S.hpLv, S.own.tower, S.own.armor, S.own.squad, S.goldLv, S.xpLv, S.gold].join(); });
-  ok(r === '2,true,true,true,1,1,' + (2000 - 60 - 150 - 120 - 2 - 50 - 90 - 80 - 60), 'Burg-Leben, Turmschütze, Rüstung, Verstärkung, Gold- und XP-Bonus gekauft', r);
+  r = await E(() => { const S = __bw.S; return [S.hpLv, S.archers, S.own.armor, S.solCapLv, S.goldLv, S.xpLv, S.gold].join(); });
+  ok(r === '2,1,true,1,1,1,' + (2000 - 60 - 150 - 60 - 2 - 50 - 30 - 80 - 60), 'Burg-Leben, Bogenschütze, Rüstung, mehr Soldaten, Gold- und XP-Bonus gekauft', r);
   await p.click('#shopgo'); await dismiss();
   r = await E(() => { const h = document.getElementById('hearts'), hud = document.getElementById('hud').getBoundingClientRect(), g = document.getElementById('gold').getBoundingClientRect(); return { n: h.children.length, hp: __bw.state().hp, many: h.classList.contains('many'), fits: g.right <= hud.right && h.getBoundingClientRect().left >= document.querySelector('.wavectl').getBoundingClientRect().right }; });
   ok(r.n === 15 && r.hp === 15 && r.many && r.fits, '15 Burg-Leben: Herzen in zwei Reihen, Leiste läuft nicht über', JSON.stringify(r));
   r = await E(() => { const g = __bw; g.step(2.5); const s = g.sols()[0]; const a = s && s.hp; for (let i = 0; i < 400; i++) { g.ens().forEach(e => e.dead = true); g.step(0.1); } return [a, g.state().soldiers]; });
   ok(r[0] === 5 && r[1] === 6, 'Soldaten halten 5 Schläge aus, bis zu 6 gleichzeitig', r);
-  r = await E(() => { const g = __bw; g.S.own.soldier = false; g.sols().length = 0; g.clear(); g.step(2); const e = g.spawn('ogre'); e.hp = e.max = 1e6; e.sp = 0; e.x = g.pos().cx + 80; e.y = g.pos().cy; let seen = false; for (let i = 0; i < 240; i++) { g.ens().forEach(x => { if (x !== e) x.dead = true; }); g.step(1 / 60); if (g.prj().some(q => q.k === 'towerBolt')) seen = true; } return [seen, e.max - e.hp > 0, +(e.max - e.hp).toFixed(1)]; });
-  ok(r[0] && r[1], 'Turmschütze schießt von selbst und trifft', r[2] + ' Schaden in 4 s');
-  r = await E(() => { const g = __bw; g.S.own.tower = false; g.clear(); g.S.cleared = 2; g.S.wave = 3; g.hud(); return 0; });
+  r = await E(() => { const g = __bw; g.S.own.soldier = false; g.sols().length = 0; g.clear(); g.step(2); const e = g.spawn('ogre'); e.hp = e.max = 1e6; e.sp = 0; e.x = g.pos().cx + 80; e.y = g.pos().cy; let seen = false; for (let i = 0; i < 240; i++) { g.ens().forEach(x => { if (x !== e) x.dead = true; }); g.step(1 / 60); if (g.prj().some(q => q.k === 'archerArrow')) seen = true; } return [seen, e.max - e.hp > 0, +(e.max - e.hp).toFixed(1)]; });
+  ok(r[0] && r[1], 'Bogenschütze auf der Mauer schießt von selbst und trifft', r[2] + ' Schaden in 4 s');
+  r = await E(() => { const g = __bw; g.S.archers = 0; g.clear(); g.S.cleared = 2; g.S.wave = 3; g.hud(); return 0; });
   await E(() => __bw.startGame(0, false));
-  r = await E(() => { const g = __bw; g.S.own.tower = false; g.S.cleared = 2; g.S.wave = 3; const gold0 = g.S.gold; g.step(3); g.clear(); g.step(0.1); g.step(3); g.S.xp.sword = 0; const x0 = 0, l0 = g.S.lv.sword; g.S.lv.sword = Math.max(l0, 5); const l1 = g.S.lv.sword; const e = g.spawn('slime'); e.hp = 1; e.xp = 4; g.ens().forEach(x => { if (x !== e) x.dead = true; }); g.ready(); g.attack(e.x, e.y); g.step(0.2); return [g.S.gold - gold0, +(g.S.xp.sword - x0).toFixed(2), g.S.lv.sword - l1]; });
-  ok(r[0] === 4, 'Goldbonus +25 %: Welle 3 gibt 4 statt 3 Gold', r[0]);
-  ok(r[2] === 0 && r[1] === 5, 'XP-Bonus +25 %: 4 XP werden zu 5', r[1]);
+  r = await E(() => { const g = __bw; g.S.archers = 0; g.S.cleared = 2; g.S.wave = 3; const gold0 = g.S.gold; g.step(3); g.clear(); g.step(0.1); g.step(3); g.S.xp.sword = 0; const x0 = 0, l0 = g.S.lv.sword; g.S.lv.sword = Math.max(l0, 5); const l1 = g.S.lv.sword; const e = g.spawn('slime'); e.hp = 1; e.xp = 4; g.ens().forEach(x => { if (x !== e) x.dead = true; }); g.ready(); g.attack(e.x, e.y); g.step(0.2); return [g.S.gold - gold0, +(g.S.xp.sword - x0).toFixed(2), g.S.lv.sword - l1]; });
+  ok(r[0] === 3, 'Goldbonus +25 %: Welle 3 gibt 2,5 statt 2 Gold (gerundet 3)', r[0]);
+  ok(r[2] === 0 && r[1] === 6.5, 'XP: 4 XP werden mit +30 % und dem Bonus +25 % zu 6,5', r[1]);
+
+  // ---- 20 Soldaten und 10 Bogenschützen ----
+  await E(() => { const S = __bw.S; S.gold = 5000; S.own.soldier = true; });
+  await lose();
+  // keep tapping until the button is disabled; DOM clicks on a disabled button do nothing
+  const buyAll = async (tab, id) => { await p.click('#tab-' + tab); for (let i = 0; i < 12; i++) await E(() => document.querySelector('#items button[id^="buy-' + '"]') && null) || await p.evaluate(id => document.getElementById('buy-' + id).click(), id); };
+  await buyAll('troops', 'soldierCap'); await p.click('#tab-troops');
+  const capBtn = await E(() => document.getElementById('buy-soldierCap').textContent);
+  await buyAll('castle', 'archers'); await p.click('#tab-castle');
+  r = await E(() => ({ cap: __bw.S.solCapLv, archers: __bw.S.archers, archerBtn: document.getElementById('buy-archers').textContent, prices: __bw.SHOP.filter(o => o.id === 'soldierCap' || o.id === 'archers').map(o => o.id + ' ' + o.t.reduce((a, c) => a + c, 0)).join(', ') }));
+  ok(r.cap === 8 && r.archers === 10 && capBtn === 'Maximal' && r.archerBtn === 'Maximal', 'Mehr Soldaten bis Stufe 8 (20 Soldaten) und 10 Bogenschützen kaufbar, dann Schluss', JSON.stringify(r));
+  ok(r.prices === 'archers 3160, soldierCap 1380', 'Preise: 1.380 Gold für alle Soldaten-Stufen, 3.160 für alle Schützen', r.prices);
+  await p.click('#shopgo'); await dismiss();
+  r = await E(() => { const g = __bw; g.sols().length = 0; let mx = 0; for (let i = 0; i < 1200; i++) { g.ens().forEach(e => e.dead = true); g.step(0.1); mx = Math.max(mx, g.state().soldiers); } return mx; });
+  ok(r === 20, 'Bis zu 20 Soldaten gleichzeitig auf dem Feld', r);
+  r = await E(() => { const g = __bw, c = g.pos(); g.sols().length = 0; g.S.own.soldier = false; g.clear(); g.step(2);
+    const targets = []; for (let i = 0; i < 10; i++) { const a = i * Math.PI * 2 / 10, e = g.spawn('ogre'); e.hp = e.max = 1e6; e.sp = 0; e.x = c.cx + Math.cos(a) * 110; e.y = c.cy + Math.sin(a) * 90; targets.push(e); }
+    let shots = 0; for (let i = 0; i < 120; i++) { g.ens().forEach(x => { if (!targets.includes(x)) x.dead = true; }); g.step(1 / 60); shots = Math.max(shots, g.prj().filter(q => q.k === 'archerArrow').length); }
+    const hit = targets.filter(e => e.hp < e.max).length; targets.forEach(e => e.dead = true); g.S.own.soldier = true; return { shots, hit }; });
+  ok(r.shots >= 8 && r.hit >= 8, '10 Bogenschützen schießen rundum auf Gegner in ihrer Nähe', JSON.stringify(r));
+  await E(() => { const g = __bw; g.step(3); for (let i = 0; i < 8; i++) g.spawn('slime'); g.step(5); }); await p.waitForTimeout(250);
+  await p.screenshot({ path: 'archers.png' });
+  await E(() => { const S = __bw.S; S.solCapLv = 0; S.archers = 0; S.own.soldier = false; __bw.sols().length = 0; __bw.clear(); });
 
   // ---- Besondere Gegner ----
   r = await E(() => { const g = __bw; g.S.own.dagger = g.S.own.star = true; g.clear(); g.step(2);
@@ -111,24 +134,29 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   ok(r.d <= 105 && r.d >= 95 && r.gaps.every(x => Math.abs(x - 4) <= 0.15) && r.hp === 14, 'Armbrustschütze bleibt auf Abstand stehen und trifft alle 4 s Mauer oder Burg', JSON.stringify(r));
 
   // ---- Truhe ----
-  await E(() => { const g = __bw; g.flags.chests = true; g.clear(); g.S.cleared = 9; g.S.wave = 10; g.save(); });
+  await E(() => { const g = __bw; g.flags.chests = true; g.clear(); g.S.cleared = 8; g.S.wave = 9; g.save(); });
   await E(() => __bw.startGame(0, false));
   await E(() => { __bw.flags.chests = true; });
   r = await win();
   r = await E(() => ({ open: !document.getElementById('dialog').hidden, title: document.getElementById('dlg-title').textContent, n: document.querySelectorAll('#dlg-buttons button').length, paused: __bw.state().paused, labels: [...document.querySelectorAll('#dlg-buttons button')].map(x => x.firstChild.textContent) }));
-  ok(r.open && r.title === 'Schatztruhe' && r.n === 3 && r.paused && new Set(r.labels).size === 3, 'Nach Welle 10 erscheint die Truhe mit drei verschiedenen Boni', r.labels.join(' | '));
+  ok(r.open && r.title === 'Schatztruhe' && r.n === 3 && r.paused && new Set(r.labels).size === 3, 'Nach Welle 9 erscheint die Truhe mit drei verschiedenen Boni', r.labels.join(' | '));
   await p.screenshot({ path: 'chest.png' });
+  r = await E(() => { const box = document.querySelector('#dlg-body .infobox'); return box ? box.textContent : ''; });
+  ok(r.startsWith('ⓘ Gilt bis zur nächsten Niederlage') && r.includes('verfallen alle'), 'Truhe zeigt ein Info-Feld: Boni gelten bis zur nächsten Niederlage', r.slice(0, 60));
   await E(() => __back()); ok(await dialogOpen(), 'Truhe lässt sich nicht wegdrücken, man muss wählen');
   const d0 = await E(() => __bw.dmgOf('sword'));
   await p.click('#dlg-0');
   r = await E(() => ({ boons: JSON.stringify(__bw.S.run.boons), chests: __bw.S.run.chests.join(), paused: __bw.state().paused }));
-  ok(!r.paused && r.chests === 'meadow:10', 'Wahl schließt die Truhe, das Spiel läuft weiter', r.boons);
+  ok(!r.paused && r.chests === 'meadow:9', 'Wahl schließt die Truhe, das Spiel läuft weiter', r.boons);
   r = await E(() => { const g = __bw, S = g.S; S.run.boons = {}; const d = g.dmgOf('sword'), c = g.cdOf('sword'); S.run.boons = { damage: 1, speed: 1 }; return [+(g.dmgOf('sword') / d).toFixed(3), +(g.cdOf('sword') / c).toFixed(3)]; });
   ok(r.join() === '1.25,0.8', 'Boni wirken: +25 % Schaden, 20 % schnellere Angriffe', r.join(' / '));
-  await E(() => { const g = __bw; g.S.wave = 10; g.save(); }); await E(() => __bw.startGame(0, false)); await E(() => { __bw.flags.chests = true; __bw.S.wave = 10; __bw.S.run.boons = { damage: 1 }; });
+  await E(() => { const g = __bw; g.S.wave = 9; g.save(); }); await E(() => __bw.startGame(0, false)); await E(() => { __bw.flags.chests = true; __bw.S.wave = 9; __bw.S.run.boons = { damage: 1 }; });
   await win(); ok(!(await dialogOpen()), 'Dieselbe Welle gibt im selben Lauf keine zweite Truhe');
   await lose(); await p.click('#shopgo'); await dismiss();
   r = await E(() => JSON.stringify(__bw.S.run)); ok(r === '{"boons":{},"chests":[]}', 'Nach einer Niederlage sind die Truhen-Boni weg', r);
+  r = await E(() => { const g = __bw; g.flags.chests = true; const seen = []; for (const w of [1, 2, 3, 4, 5, 6, 7, 8, 9, 12]) { g.S.cleared = 50; g.S.wave = w; g.S.hold = true; g.step(3); g.clear(); g.step(0.1); if (!document.getElementById('dialog').hidden) { seen.push(w); document.getElementById('dlg-0').click(); } } g.S.hold = false; return seen.join(); });
+  ok(r === '3,6,9,12', 'Truhe kommt alle 3 Wellen', r);
+  await lose(); await p.click('#shopgo'); await dismiss();
   await E(() => { __bw.flags.chests = false; });
 
   // ---- Erfolge und Statistik ----
@@ -150,7 +178,7 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   ok(await E(() => document.getElementById('b-world').hidden && !__bw.lavaUnlocked()), 'Welt-Knopf vor Welle 100 verborgen');
   await E(() => { const g = __bw; g.clear(); g.S.cleared = 99; g.S.wave = 100; g.S.gold = 0; g.S.goldLv = 0; g.S.xpLv = 0; g.save(); }); await E(() => __bw.startGame(0, false));
   r = await win();
-  ok(r.c === 100 && r.gold === 100 && await E(() => !document.getElementById('b-world').hidden && __bw.lavaUnlocked()), 'Welle 100 geschafft: Lava-Welt freigeschaltet, Welt-Knopf erscheint', JSON.stringify(r));
+  ok(r.c === 100 && r.gold === 29 && await E(() => !document.getElementById('b-world').hidden && __bw.lavaUnlocked()), 'Welle 100 geschafft: Lava-Welt freigeschaltet, Welt-Knopf erscheint', JSON.stringify(r));
   const meadowPixel = await E(() => __bw.groundSample());
   await p.click('#b-world');
   r = await E(() => [...document.querySelectorAll('#dlg-buttons button')].map(x => x.textContent).join(' | '));
@@ -169,12 +197,15 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   ok(r === 0, 'Kleine Schleime teilen sich nicht noch einmal', r);
   // in the lava world the first clear() leaves the split halves behind, so clear twice
   await E(() => { const g = __bw; g.S.gold = 0; g.step(3); g.clear(); g.step(0.05); }); r = await win();
-  ok(r.c === 1 && r.gold === 3, 'Lava-Welle 1 gibt dreifaches Gold', JSON.stringify(r));
+  ok(r.c === 1 && r.gold === 6, 'Lava-Welle 1 gibt dreifaches Gold (6 statt 2)', JSON.stringify(r));
   await E(() => { const g = __bw; g.step(4); for (let i = 0; i < 12; i++) g.spawn(['slime', 'bat', 'ogre', 'shield', 'archer', 'boss'][i % 6]); g.step(5); }); await p.waitForTimeout(300);
   await p.screenshot({ path: 'lava.png' });
   // Schmiede
   await E(() => { __bw.S.gold = 1000; __bw.S.own.dagger = true; __bw.S.own.star = false; });
+  const lavaWaveLost = await E(() => __bw.S.wave);
   await lose();
+  r = await E(() => [document.getElementById('shopgo').textContent, document.getElementById('shoptext').textContent]);
+  ok(r[0] === 'Weiter bei Welle ' + lavaWaveLost && r[1].endsWith('bei Welle ' + lavaWaveLost + ' weiter.'), 'Shop nennt die Welle, auf der es weitergeht', r.join(' / '));
   r = await E(() => [...document.querySelectorAll('#shoptabs button')].map(x => x.textContent).join('|'));
   ok(r === 'Waffen|Burg|Truppen|Boni|Schmiede', 'In der Lava-Welt gibt es den Reiter Schmiede', r);
   await p.click('#tab-forge');
@@ -186,11 +217,11 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   ok(r.gold === 765 && r.stage === 2 && r.ratio === 1.2 && r.next === '182 Gold' && r.pip === 'Stufe 2', 'Schmieden: 100, dann 135 Gold, je +10 % Schaden, ohne Obergrenze', JSON.stringify(r));
   await p.screenshot({ path: 'forge.png' });
   await p.click('#shopgo'); await dismiss();
-  ok(await E(() => __bw.S.world === 'lava' && __bw.S.wave === 1), 'Nach einer Niederlage geht es in derselben Welt bei Welle 1 weiter');
+  ok(await E(() => __bw.S.world) === 'lava' && await E(() => __bw.S.wave) === lavaWaveLost, 'Nach einer Niederlage geht es in derselben Welt auf derselben Welle weiter');
   // zurück und speichern
   await p.click('#b-world'); await p.click('#dlg-0');
   r = await E(() => { const S = __bw.S; return [S.world, S.wave, S.cleared, JSON.stringify(S.parked)].join(' '); });
-  ok(r === 'meadow 101 100 {"wave":1,"cleared":1}', 'Zurück auf die Wiese: Fortschritt beider Welten erhalten', r);
+  ok(r === 'meadow 101 100 {"wave":' + lavaWaveLost + ',"cleared":1}', 'Zurück auf die Wiese: Fortschritt beider Welten erhalten', r);
   await p.click('#b-world'); await p.click('#dlg-1'); await p.click('#b-pause');   // paused, so nothing changes between saving and reloading
   const saved = await E(() => { __bw.save(); return JSON.stringify(__bw.S); });
   await p.goto(url); await p.waitForTimeout(200); await p.click('#m-load');
@@ -200,12 +231,12 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   ok(await E(() => JSON.stringify(__bw.S)) === saved && lavaAgain === lavaPixel, 'Speichern und Laden erhält Welt, Schmiede, Statistik und Erfolge', r);
 
   // ---- Belastung in der Lava-Welt ----
-  r = await E(() => { const g = __bw, S = g.S; Object.assign(S.own, { dagger: true, star: true, bow: true, wand: true, soldier: true, tower: true, armor: true, squad: true });
+  r = await E(() => { const g = __bw, S = g.S; Object.assign(S.own, { dagger: true, star: true, bow: true, wand: true, soldier: true, armor: true }); S.solCapLv = 8; S.archers = 10;
     for (const w in S.lv) S.lv[w] = 100; S.cleared = 40; S.wave = 30; S.wall = 4; g.save(); g.showMenu(); g.startGame(0, false);
     let mx = 0, n = 0, t0 = performance.now(); const ids = ['sword', 'dagger', 'star', 'bow', 'wand'];
     for (let i = 0; i < 60 * 50; i++) { if (g.state().paused) break; if (i % 300 === 0) { S.active = ids[(i / 300) % 5]; } const en = g.ens(); const t = en[(i * 13) % Math.max(1, en.length)]; g.hold(t ? { x: t.x, y: t.y } : null); g.setHp(15); S.wallHp = 25; g.step(1 / 60); n++; mx = Math.max(mx, g.state().enemies); }
     g.hold(null); return { n, mx, ms: (performance.now() - t0) / n, kinds: [...new Set(g.ens().map(e => e.type))].sort().join() }; });
-  ok(r.n === 3000 && r.ms < 6, 'Lava-Welle 30 mit allen Waffen, Soldaten und Turmschütze: 50 s stabil', `bis zu ${r.mx} Gegner, ${r.ms.toFixed(2)} ms pro Bild, Typen: ${r.kinds}`);
+  ok(r.n === 3000 && r.ms < 6, 'Lava-Welle 30 mit allen Waffen, 20 Soldaten und 10 Bogenschützen: 50 s stabil', `bis zu ${r.mx} Gegner, ${r.ms.toFixed(2)} ms pro Bild, Typen: ${r.kinds}`);
 
   ok(errs.length === 0, 'Keine Laufzeitfehler im gesamten Lauf', errs.slice(0, 3));
   console.log(fails ? ('FEHLER: ' + fails) : 'ALLE TESTS BESTANDEN');

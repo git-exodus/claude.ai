@@ -45,7 +45,7 @@ const session = {
   started: false,     // false until the first attack; hides the hint and gates vibration
   holdPoint: null,    // {x, y} while a finger rests on the field (auto-fire)
   soldierTimer: 2,
-  towerTimer: 1,      // tower archer, see 20-defenders.js
+  archerTimers: [],   // seconds until each wall archer's next shot, see 20-defenders.js
   achievementTimer: 0,
   lastKillSound: 0,
   lastProgress: -1,   // last wave progress written to the DOM, to avoid redundant writes

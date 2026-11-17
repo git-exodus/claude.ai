@@ -95,31 +95,72 @@ function updateSoldiers(dt) {
   world.soldiers = world.soldiers.filter(soldier => soldier.hp > 0);
 }
 
-/* ---------- Tower archer ---------- */
+/* ---------- Archers on the wall ---------- */
 
-const TOWER_INTERVAL = 1.5;          // seconds between shots
-const TOWER_RANGE = () => 300 * U;
+const ARCHER_INTERVAL_S = 1.5;       // seconds between two shots of one archer
+const ARCHER_DAMAGE_SHARE = 0.35;    // each shot: this share of a hit of the weapon in hand
+const ARCHER_REACH = () => 300 * U;
 
-/** Shop upgrade: an archer on the keep shoots the nearest enemy on his own. */
-function updateTowerArcher(dt) {
-  if (!S.own.tower) return;
-  session.towerTimer -= dt;
-  if (session.towerTimer > 0) return;
-  const target = nearestEnemy(cx, cy, TOWER_RANGE());
-  if (!target) return;                       // stay ready and shoot as soon as someone comes close
-  session.towerTimer = TOWER_INTERVAL;
-  const fromY = cy - 50 * U * CASTLE_SCALE;
-  addProjectile({
-    kind: 'towerBolt', x: cx, y: fromY, angle: atan2(target.y - fromY, target.x - cx), speed: 520 * U, r: 6 * U,
-    dmg: damageOf(S.active) * 0.5,           // half a hit of the weapon in hand, so he scales with the player
-    life: 1.2, source: { weapon: 'tower', color: '#e8e0ff' },
-  });
+/** Where archer `i` of `n` stands: spread evenly on the wall ring, the first one in front of the gate. */
+function archerPost(i, n) {
+  const angle = PI / 2 + i * TAU / n;
+  return { x: cx + cos(angle) * wallRadiusX() * 0.92, y: wallCenterY() + sin(angle) * wallRadiusY() * 0.92 - 6 * U, angle };
 }
 
-PROJECTILE_KINDS.towerBolt = {
+/** Archers bought in the shop shoot the enemy nearest to them on their own. */
+function updateArchers(dt) {
+  const n = S.archers, timers = session.archerTimers;
+  // new archers start staggered so they do not all fire at once
+  while (timers.length < n) timers.push(0.3 + (timers.length * ARCHER_INTERVAL_S) / Math.max(1, n));
+  timers.length = n;
+  for (let i = 0; i < n; i++) {
+    timers[i] -= dt;
+    if (timers[i] > 0) continue;
+    const post = archerPost(i, n);
+    const target = nearestEnemy(post.x, post.y, ARCHER_REACH());
+    if (!target) continue;             // stay ready and shoot as soon as someone comes close
+    timers[i] = ARCHER_INTERVAL_S;
+    addProjectile({
+      kind: 'archerArrow', x: post.x, y: post.y - 4 * U, angle: atan2(target.y - post.y, target.x - post.x), speed: 520 * U, r: 6 * U,
+      dmg: damageOf(S.active) * ARCHER_DAMAGE_SHARE,   // scales with the player's weapon
+      life: 1.2, source: { weapon: 'archer', color: '#e8e0ff' },
+    });
+  }
+}
+
+PROJECTILE_KINDS.archerArrow = {
   onHit(p) { p.dead = true; },
   draw(p, angle) { drawArrow(ctx, p.x, p.y, angle, 16 * U, '#d9ccff', '#eef4ff'); },
 };
+
+/** Small archer figure in green with a bow, facing outwards. */
+function drawArcher(post) {
+  const u = U * 0.75, side = cos(post.angle) >= 0 ? 1 : -1;
+  ctx.save();
+  ctx.translate(post.x, post.y);
+  ctx.scale(side, 1);
+  ctx.lineWidth = 1.5 * u;
+  ctx.strokeStyle = INK;
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = '#3f8f52';          // tunic
+  ctx.beginPath();
+  ctx.roundRect(-4.5 * u, -3 * u, 9 * u, 8 * u, 2.5 * u);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#ffd9b3';          // head
+  fillCircle(ctx, 0, -7 * u, 3.8 * u);
+  ctx.beginPath();
+  ctx.arc(0, -7 * u, 3.8 * u, 0, TAU);
+  ctx.stroke();
+  ctx.fillStyle = '#2f6f3f';          // hood
+  ctx.beginPath();
+  ctx.arc(0, -7.6 * u, 4.2 * u, PI, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+  drawBow(ctx, post.x + side * 5 * u, post.y - 2 * u, side > 0 ? 0 : PI, 6 * u);
+}
 
 function walkToGuardPost(soldier, dt) {
   const postX = cx + cos(soldier.guardAngle) * 64 * U;

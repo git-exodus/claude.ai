@@ -41,20 +41,20 @@ function updateWave(dt) {
 
 function completeWave() {
   const waveNo = S.wave;
-  let gold = 0;
-  if (waveNo > S.cleared) {     // gold only for waves cleared for the first time
+  // gold for every clear, repeated waves included
+  const gold = Math.round(goldForWave(waveNo) * currentWorld().goldMult * goldFactor());
+  earnGold(gold);
+  sound(1200, 0.07, 'triangle', 0.05);
+  if (waveNo > S.cleared) {
     const wasLocked = !lavaUnlocked();
     S.cleared = waveNo;
-    gold = Math.round(waveNo * currentWorld().goldMult * goldFactor());
-    earnGold(gold);
-    sound(1200, 0.07, 'triangle', 0.05);
     if (wasLocked && lavaUnlocked()) toast('Die Lava-Welt ist offen!', 'Wechsle die Welt mit dem Knopf oben');
   }
   castle.hp = Math.min(maxHp(), castle.hp + S.heal);
   if (!S.hold) S.wave++;
   wave.pause = 2.5;
   buildWave();
-  toast('Welle ' + waveNo + ' geschafft', gold ? '+' + gold + ' Gold' : '');
+  toast('Welle ' + waveNo + ' geschafft', '+' + gold + ' Gold');
   checkAchievements();
   save();
   renderHud();
@@ -85,9 +85,8 @@ function handleDefeat() {
   openShop();
 }
 
-/** Leaving the shop after a defeat: back to wave 1 with full lives and a repaired wall; chest boons end. */
+/** Leaving the shop after a defeat: the same wave again, with full lives and a repaired wall; chest boons end. */
 function continueAfterDefeat() {
-  S.wave = 1;
   S.wallHp = wallMax();
   S.run = { boons: {}, chests: [] };
   castle.hp = maxHp();

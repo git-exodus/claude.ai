@@ -182,7 +182,7 @@ function showWaveHintOnce() {
   save();
   showDialog({
     title: 'Tipp',
-    text: 'Oben links wählst du mit den Pfeilen die Welle selbst – bis zur höchsten, die du schon erreicht hast. So musst du nicht jedes Mal bei Welle 1 anfangen.',
+    text: 'Oben links wählst du mit den Pfeilen die Welle selbst. Ist eine Welle zu schwer, geh ein paar Wellen zurück: Dort gibt es auch Gold, und deine Waffen leveln weiter.',
     buttons: [{ label: 'Verstanden' }],
   });
 }

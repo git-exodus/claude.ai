@@ -103,6 +103,10 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
 .stat b{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
 .stat.wide{flex-direction:column;gap:2px}.stat.wide b{white-space:normal;color:var(--gold)}
 .stat.open{color:var(--dim)}.stat.done b{color:var(--ok)}
+/* info panel in the chest window */
+.infobox{display:grid;gap:4px;padding:10px 12px;border-radius:12px;background:rgba(90,180,255,.12);border:1px solid rgba(90,180,255,.45);font-size:12.5px;line-height:1.35;font-weight:700;color:var(--dim)}
+.infobox b{color:var(--xp);font-size:13.5px}
+.infobox .active{color:var(--gold)}
 #dlg-body h3{margin:8px 0 0;font-size:14px;font-weight:800;color:var(--gold)}
 #menu{grid-template-rows:auto 1fr auto;justify-items:center;
   background:linear-gradient(rgba(6,8,12,.72),rgba(6,8,12,.1) 36%,rgba(6,8,12,.1) 50%,rgba(6,8,12,.8))}

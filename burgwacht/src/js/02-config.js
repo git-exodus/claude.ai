@@ -3,7 +3,7 @@
  * the place to tune the game.
  */
 
-const VERSION = '0.6.3';
+const VERSION = '0.7';
 const SAVE_KEY = 'burgwacht-v3';
 const LEGACY_SAVE_KEY = 'burgwacht-v2';   // single-save format from before the start menu
 
@@ -20,7 +20,10 @@ const BONUS_TIERS = [1, 1.25, 1.5];      // gold and XP multiplier per shop tier
 const CASTLE_SCALE = 0.6;          // castle and enemies are drawn at 60 % of their design size
 const WALL_TIERS = [0, 3, 5, 10, 25];   // wall hit points per shop tier (index = tier)
 const SOLDIER_INTERVALS = [5, 4, 3];    // seconds between soldiers per shop tier
-const SOLDIER_CAP = [4, 6];              // soldiers on the field without / with the "squad" upgrade
+const SOLDIER_CAP_BASE = 4, SOLDIER_CAP_STEP = 2;   // soldiers on the field: 4, +2 per "more soldiers" tier
+const SOLDIER_CAP_PRICES = [30, 50, 80, 120, 170, 230, 300, 400];   // 8 tiers -> at most 20 soldiers
+const ARCHER_PRICES = [60, 90, 130, 180, 240, 310, 390, 480, 580, 700];   // archers on the wall, at most 10
+const XP_GAIN = 1.3;                     // global XP multiplier (levelling was too slow without it)
 const SOLDIER_HP = [3, 5];               // hits a soldier survives without / with armour
 const MAX_ENEMIES_ALIVE = 260;     // further enemies wait off-screen until there is room
 
@@ -100,6 +103,12 @@ function meadowHp(type, waveNo) {
   return waveNo <= RAMP_UNTIL ? rampEnd : rampEnd * enemyHpFactor(waveNo - RAMP_UNTIL + 1);
 }
 
+/**
+ * Gold for clearing a wave, every time (also repeated waves): 2 gold in waves
+ * 1-10, and 3 more for every further ten waves (11-20: 5, 21-30: 8, ...).
+ */
+const goldForWave = waveNo => 2 + 3 * Math.floor((waveNo - 1) / 10);
+
 /** Number of regular enemies in a wave: +3 per wave up to 5, +5 to 15, +10 to 30, +15 to 50, +20 after. */
 function waveCount(waveNo) {
   let n = 8;
@@ -116,7 +125,7 @@ const spawnGapFor = count => clamp(Math.min(80, 10 + count * 0.6) / count, 0.04,
  *   count(w)        regular enemies in wave w
  *   enemyHp(t, w)   hit points of an enemy of type t in wave w
  *   speedFactor(w)  multiplier on enemy speed
- *   goldMult        gold per newly cleared wave = wave number * goldMult
+ *   goldMult        multiplier on the gold for every cleared wave, see goldForWave()
  *   xpMult          multiplier on enemy XP
  *   colors          enemy colours that differ from ENEMY_TYPES
  *   splitSlimes     slimes break into two small ones when they die

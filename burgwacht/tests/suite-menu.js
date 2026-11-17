@@ -45,8 +45,8 @@ const win=()=>E(()=>{const g=__bw;g.step(3);g.clear();g.step(.1);return {w:g.S.w
 r=await E(()=>{const g=__bw;g.step(3);const el=document.getElementById('wprog');g.ens().forEach(e=>e.sp=0);const a=parseFloat(el.style.width);const e=g.ens()[0];e.hp=1;g.ready();g.attack(e.x,e.y);g.step(.3);return [a,parseFloat(el.style.width)]});
 ok(r[1]>r[0],'Wellen-Fortschritt steigt mit besiegten Gegnern',r.join(' → ')+' %');
 await p.click('#b-hold');ok(await E(()=>__bw.S.hold&&document.getElementById('b-hold').getAttribute('aria-pressed')==='true'),'Welle halten eingeschaltet');
-r=await win();ok(r.w===1&&r.gold===1&&r.c===1,'Welle halten: Welle bleibt, Gold beim ersten Mal',JSON.stringify(r));
-r=await win();ok(r.w===1&&r.gold===1,'Welle halten: Wiederholung gibt kein Gold',JSON.stringify(r));
+r=await win();ok(r.w===1&&r.gold===2&&r.c===1,'Welle halten: Welle bleibt, +2 Gold',JSON.stringify(r));
+r=await win();ok(r.w===1&&r.gold===4,'Welle halten: Wiederholung gibt wieder Gold',JSON.stringify(r));
 ok(await E(()=>!document.getElementById('wup').disabled),'Pfeil hoch nach gehaltener Welle frei');
 await p.click('#b-hold');r=await win();ok(r.w===2,'Welle halten aus: es geht wieder weiter',r.w);
 // Fähigkeiten-Übersicht

@@ -23,11 +23,13 @@ function blankSave() {
     wall: 0,                   // wall tier, index into WALL_TIERS
     wallHp: 0,                 // current wall hit points; only refilled after a defeat
     solLv: 0,                  // soldier speed tier, index into SOLDIER_INTERVALS
+    solCapLv: 0,               // "more soldiers" tiers bought, see SOLDIER_CAP_PRICES
+    archers: 0,                // archers on the wall, see ARCHER_PRICES
     hpLv: 0,                   // castle lives tier, index into CASTLE_HP_TIERS
     goldLv: 0,                 // gold bonus tier, index into BONUS_TIERS
     xpLv: 0,                   // XP bonus tier, index into BONUS_TIERS
     // one-time purchases
-    own: { dagger: false, star: false, bow: false, wand: false, soldier: false, armor: false, squad: false, tower: false },
+    own: { dagger: false, star: false, bow: false, wand: false, soldier: false, armor: false },
     // things that last until the next defeat: chest boons (id -> times taken) and chests already opened ("world:wave")
     run: { boons: {}, chests: [] },
     hints: { waves: false },   // one-time hint windows already shown
@@ -57,6 +59,9 @@ function sanitizeSave(data) {
   save.goldLv = toCount(data.goldLv, BONUS_TIERS.length - 1);
   save.xpLv = toCount(data.xpLv, BONUS_TIERS.length - 1);
   for (const key in save.own) save.own[key] = !!data.own?.[key];
+  // 0.7 replaced the single "squad" upgrade by tiers and the tower archer by up to ten archers
+  save.solCapLv = toCount(data.solCapLv ?? (data.own?.squad ? 1 : 0), SOLDIER_CAP_PRICES.length);
+  save.archers = toCount(data.archers ?? (data.own?.tower ? 1 : 0), ARCHER_PRICES.length);
 
   save.world = WORLDS[data.world] ? data.world : 'meadow';
   save.cleared = toCount(data.cleared);
@@ -137,7 +142,7 @@ const nextMilestone = id => Object.keys(WEAPONS[id].milestones).map(Number).find
 
 const wallMax = () => WALL_TIERS[S.wall];
 const maxHp = () => CASTLE_HP_TIERS[S.hpLv];
-const soldierCap = () => SOLDIER_CAP[+S.own.squad];
+const soldierCap = () => SOLDIER_CAP_BASE + SOLDIER_CAP_STEP * S.solCapLv;
 const soldierHp = () => SOLDIER_HP[+S.own.armor];
 const goldFactor = () => BONUS_TIERS[S.goldLv] * boonFactor('gold', 1.5);
-const xpFactor = () => BONUS_TIERS[S.xpLv] * boonFactor('xp', 1.5);
+const xpFactor = () => XP_GAIN * BONUS_TIERS[S.xpLv] * boonFactor('xp', 1.5);

@@ -22,8 +22,8 @@ const lose=()=>E(()=>{const g=__bw;g.setHp(1);g.S.wallHp=0;g.step(2);g.spawn('sl
 r=await lose();ok(r.paused&&r.shake===0&&r.castleFlash===0,'Im Shop wackelt die Burg nicht mehr',`shake ${r.shake}, flash ${r.castleFlash}`);
 const px=()=>p.screenshot({clip:{x:120,y:250,width:120,height:120}});const a1=await px();await p.waitForTimeout(250);const a2=await px();ok(a1.equals(a2),'Burg-Bild im Shop bleibt über 250 ms identisch');
 // Shop: Soldaten-Tempo und Mauer
-r=await E(()=>({cost:__bw.SHOP.map(i=>i.t.reduce((a,c)=>a+c,0)),sum:__bw.SHOP.reduce((a,i)=>a+i.t.reduce((x,c)=>x+c,0),0),inc:Array.from({length:100},(_,i)=>i+1).reduce((a,c)=>a+c,0)}));
-ok(r.sum===1724&&r.inc-r.sum===3326,'Gold-Rechnung: alle festen Käufe 1.724, Rest nach Welle 100 = 3.326',r.cost.join('+')+' = '+r.sum);
+r=await E(()=>({cost:__bw.SHOP.map(i=>i.t.reduce((a,c)=>a+c,0)),sum:__bw.SHOP.reduce((a,i)=>a+i.t.reduce((x,c)=>x+c,0),0),inc:Array.from({length:100},(_,i)=>2+3*Math.floor(i/10)).reduce((a,c)=>a+c,0)}));
+ok(r.sum===6054&&r.inc===1550,'Gold-Rechnung: alle festen Käufe 6.054, Welle 1–100 einmal geschafft bringt 1.550',r.cost.join('+')+' = '+r.sum);
 await E(()=>{__bw.S.gold=1000;__bw.save()});await E(()=>{document.getElementById('shopgo').click()});await dismiss();await lose();
 r=await shopList();
 ok(r.includes('troops: Soldat → 2 Gold | Soldaten-Tempo: alle 4 s → Erst Soldat(aus)')&&r.includes('castle: Heilung: +2 → 20 Gold | Mauer: 3 HP → 15 Gold'),'Shop-Liste mit Stufen',r.replace(/\n/g,' // '));

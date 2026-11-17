@@ -107,6 +107,10 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
 .stat b{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
 .stat.wide{flex-direction:column;gap:2px}.stat.wide b{white-space:normal;color:var(--gold)}
 .stat.open{color:var(--dim)}.stat.done b{color:var(--ok)}
+/* info panel in the chest window */
+.infobox{display:grid;gap:4px;padding:10px 12px;border-radius:12px;background:rgba(90,180,255,.12);border:1px solid rgba(90,180,255,.45);font-size:12.5px;line-height:1.35;font-weight:700;color:var(--dim)}
+.infobox b{color:var(--xp);font-size:13.5px}
+.infobox .active{color:var(--gold)}
 #dlg-body h3{margin:8px 0 0;font-size:14px;font-weight:800;color:var(--gold)}
 #menu{grid-template-rows:auto 1fr auto;justify-items:center;
   background:linear-gradient(rgba(6,8,12,.72),rgba(6,8,12,.1) 36%,rgba(6,8,12,.1) 50%,rgba(6,8,12,.8))}
@@ -152,7 +156,7 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
   <div id="shop" class="ov" hidden>
     <div class="shopcard" role="dialog" aria-labelledby="shoptitle">
       <h2 id="shoptitle">Die Burg ist gefallen</h2>
-      <p>Gib dein Gold aus. Danach geht es bei Welle 1 weiter.</p>
+      <p id="shoptext">Gib dein Gold aus.</p>
       <div class="purse" id="shopgold">0</div>
       <div id="shoptabs"></div>
       <div id="items"></div>
@@ -197,7 +201,7 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
       <div id="slotlist" class="mcol" style="margin:0;width:100%"></div>
       <button class="big alt" id="m-back" type="button">Zurück</button>
     </div>
-    <div id="credit">@made by Brownii (Claude.ai) · v0.6.3</div>
+    <div id="credit">@made by Brownii (Claude.ai) · v0.7</div>
   </div>
 </div>
 
@@ -265,7 +269,7 @@ function fillEllipse(c, x, y, rx, ry) {
  * the place to tune the game.
  */
 
-const VERSION = '0.6.3';
+const VERSION = '0.7';
 const SAVE_KEY = 'burgwacht-v3';
 const LEGACY_SAVE_KEY = 'burgwacht-v2';   // single-save format from before the start menu
 
@@ -282,7 +286,10 @@ const BONUS_TIERS = [1, 1.25, 1.5];      // gold and XP multiplier per shop tier
 const CASTLE_SCALE = 0.6;          // castle and enemies are drawn at 60 % of their design size
 const WALL_TIERS = [0, 3, 5, 10, 25];   // wall hit points per shop tier (index = tier)
 const SOLDIER_INTERVALS = [5, 4, 3];    // seconds between soldiers per shop tier
-const SOLDIER_CAP = [4, 6];              // soldiers on the field without / with the "squad" upgrade
+const SOLDIER_CAP_BASE = 4, SOLDIER_CAP_STEP = 2;   // soldiers on the field: 4, +2 per "more soldiers" tier
+const SOLDIER_CAP_PRICES = [30, 50, 80, 120, 170, 230, 300, 400];   // 8 tiers -> at most 20 soldiers
+const ARCHER_PRICES = [60, 90, 130, 180, 240, 310, 390, 480, 580, 700];   // archers on the wall, at most 10
+const XP_GAIN = 1.3;                     // global XP multiplier (levelling was too slow without it)
 const SOLDIER_HP = [3, 5];               // hits a soldier survives without / with armour
 const MAX_ENEMIES_ALIVE = 260;     // further enemies wait off-screen until there is room
 
@@ -362,6 +369,12 @@ function meadowHp(type, waveNo) {
   return waveNo <= RAMP_UNTIL ? rampEnd : rampEnd * enemyHpFactor(waveNo - RAMP_UNTIL + 1);
 }
 
+/**
+ * Gold for clearing a wave, every time (also repeated waves): 2 gold in waves
+ * 1-10, and 3 more for every further ten waves (11-20: 5, 21-30: 8, ...).
+ */
+const goldForWave = waveNo => 2 + 3 * Math.floor((waveNo - 1) / 10);
+
 /** Number of regular enemies in a wave: +3 per wave up to 5, +5 to 15, +10 to 30, +15 to 50, +20 after. */
 function waveCount(waveNo) {
   let n = 8;
@@ -378,7 +391,7 @@ const spawnGapFor = count => clamp(Math.min(80, 10 + count * 0.6) / count, 0.04,
  *   count(w)        regular enemies in wave w
  *   enemyHp(t, w)   hit points of an enemy of type t in wave w
  *   speedFactor(w)  multiplier on enemy speed
- *   goldMult        gold per newly cleared wave = wave number * goldMult
+ *   goldMult        multiplier on the gold for every cleared wave, see goldForWave()
  *   xpMult          multiplier on enemy XP
  *   colors          enemy colours that differ from ENEMY_TYPES
  *   splitSlimes     slimes break into two small ones when they die
@@ -449,11 +462,13 @@ function blankSave() {
     wall: 0,                   // wall tier, index into WALL_TIERS
     wallHp: 0,                 // current wall hit points; only refilled after a defeat
     solLv: 0,                  // soldier speed tier, index into SOLDIER_INTERVALS
+    solCapLv: 0,               // "more soldiers" tiers bought, see SOLDIER_CAP_PRICES
+    archers: 0,                // archers on the wall, see ARCHER_PRICES
     hpLv: 0,                   // castle lives tier, index into CASTLE_HP_TIERS
     goldLv: 0,                 // gold bonus tier, index into BONUS_TIERS
     xpLv: 0,                   // XP bonus tier, index into BONUS_TIERS
     // one-time purchases
-    own: { dagger: false, star: false, bow: false, wand: false, soldier: false, armor: false, squad: false, tower: false },
+    own: { dagger: false, star: false, bow: false, wand: false, soldier: false, armor: false },
     // things that last until the next defeat: chest boons (id -> times taken) and chests already opened ("world:wave")
     run: { boons: {}, chests: [] },
     hints: { waves: false },   // one-time hint windows already shown
@@ -483,6 +498,9 @@ function sanitizeSave(data) {
   save.goldLv = toCount(data.goldLv, BONUS_TIERS.length - 1);
   save.xpLv = toCount(data.xpLv, BONUS_TIERS.length - 1);
   for (const key in save.own) save.own[key] = !!data.own?.[key];
+  // 0.7 replaced the single "squad" upgrade by tiers and the tower archer by up to ten archers
+  save.solCapLv = toCount(data.solCapLv ?? (data.own?.squad ? 1 : 0), SOLDIER_CAP_PRICES.length);
+  save.archers = toCount(data.archers ?? (data.own?.tower ? 1 : 0), ARCHER_PRICES.length);
 
   save.world = WORLDS[data.world] ? data.world : 'meadow';
   save.cleared = toCount(data.cleared);
@@ -563,10 +581,10 @@ const nextMilestone = id => Object.keys(WEAPONS[id].milestones).map(Number).find
 
 const wallMax = () => WALL_TIERS[S.wall];
 const maxHp = () => CASTLE_HP_TIERS[S.hpLv];
-const soldierCap = () => SOLDIER_CAP[+S.own.squad];
+const soldierCap = () => SOLDIER_CAP_BASE + SOLDIER_CAP_STEP * S.solCapLv;
 const soldierHp = () => SOLDIER_HP[+S.own.armor];
 const goldFactor = () => BONUS_TIERS[S.goldLv] * boonFactor('gold', 1.5);
-const xpFactor = () => BONUS_TIERS[S.xpLv] * boonFactor('xp', 1.5);
+const xpFactor = () => XP_GAIN * BONUS_TIERS[S.xpLv] * boonFactor('xp', 1.5);
 
 /* ===== 04-world.js ===== */
 /*
@@ -616,7 +634,7 @@ const session = {
   started: false,     // false until the first attack; hides the hint and gates vibration
   holdPoint: null,    // {x, y} while a finger rests on the field (auto-fire)
   soldierTimer: 2,
-  towerTimer: 1,      // tower archer, see 20-defenders.js
+  archerTimers: [],   // seconds until each wall archer's next shot, see 20-defenders.js
   achievementTimer: 0,
   lastKillSound: 0,
   lastProgress: -1,   // last wave progress written to the DOM, to avoid redundant writes
@@ -3192,31 +3210,72 @@ function updateSoldiers(dt) {
   world.soldiers = world.soldiers.filter(soldier => soldier.hp > 0);
 }
 
-/* ---------- Tower archer ---------- */
+/* ---------- Archers on the wall ---------- */
 
-const TOWER_INTERVAL = 1.5;          // seconds between shots
-const TOWER_RANGE = () => 300 * U;
+const ARCHER_INTERVAL_S = 1.5;       // seconds between two shots of one archer
+const ARCHER_DAMAGE_SHARE = 0.35;    // each shot: this share of a hit of the weapon in hand
+const ARCHER_REACH = () => 300 * U;
 
-/** Shop upgrade: an archer on the keep shoots the nearest enemy on his own. */
-function updateTowerArcher(dt) {
-  if (!S.own.tower) return;
-  session.towerTimer -= dt;
-  if (session.towerTimer > 0) return;
-  const target = nearestEnemy(cx, cy, TOWER_RANGE());
-  if (!target) return;                       // stay ready and shoot as soon as someone comes close
-  session.towerTimer = TOWER_INTERVAL;
-  const fromY = cy - 50 * U * CASTLE_SCALE;
-  addProjectile({
-    kind: 'towerBolt', x: cx, y: fromY, angle: atan2(target.y - fromY, target.x - cx), speed: 520 * U, r: 6 * U,
-    dmg: damageOf(S.active) * 0.5,           // half a hit of the weapon in hand, so he scales with the player
-    life: 1.2, source: { weapon: 'tower', color: '#e8e0ff' },
-  });
+/** Where archer `i` of `n` stands: spread evenly on the wall ring, the first one in front of the gate. */
+function archerPost(i, n) {
+  const angle = PI / 2 + i * TAU / n;
+  return { x: cx + cos(angle) * wallRadiusX() * 0.92, y: wallCenterY() + sin(angle) * wallRadiusY() * 0.92 - 6 * U, angle };
 }
 
-PROJECTILE_KINDS.towerBolt = {
+/** Archers bought in the shop shoot the enemy nearest to them on their own. */
+function updateArchers(dt) {
+  const n = S.archers, timers = session.archerTimers;
+  // new archers start staggered so they do not all fire at once
+  while (timers.length < n) timers.push(0.3 + (timers.length * ARCHER_INTERVAL_S) / Math.max(1, n));
+  timers.length = n;
+  for (let i = 0; i < n; i++) {
+    timers[i] -= dt;
+    if (timers[i] > 0) continue;
+    const post = archerPost(i, n);
+    const target = nearestEnemy(post.x, post.y, ARCHER_REACH());
+    if (!target) continue;             // stay ready and shoot as soon as someone comes close
+    timers[i] = ARCHER_INTERVAL_S;
+    addProjectile({
+      kind: 'archerArrow', x: post.x, y: post.y - 4 * U, angle: atan2(target.y - post.y, target.x - post.x), speed: 520 * U, r: 6 * U,
+      dmg: damageOf(S.active) * ARCHER_DAMAGE_SHARE,   // scales with the player's weapon
+      life: 1.2, source: { weapon: 'archer', color: '#e8e0ff' },
+    });
+  }
+}
+
+PROJECTILE_KINDS.archerArrow = {
   onHit(p) { p.dead = true; },
   draw(p, angle) { drawArrow(ctx, p.x, p.y, angle, 16 * U, '#d9ccff', '#eef4ff'); },
 };
+
+/** Small archer figure in green with a bow, facing outwards. */
+function drawArcher(post) {
+  const u = U * 0.75, side = cos(post.angle) >= 0 ? 1 : -1;
+  ctx.save();
+  ctx.translate(post.x, post.y);
+  ctx.scale(side, 1);
+  ctx.lineWidth = 1.5 * u;
+  ctx.strokeStyle = INK;
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = '#3f8f52';          // tunic
+  ctx.beginPath();
+  ctx.roundRect(-4.5 * u, -3 * u, 9 * u, 8 * u, 2.5 * u);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#ffd9b3';          // head
+  fillCircle(ctx, 0, -7 * u, 3.8 * u);
+  ctx.beginPath();
+  ctx.arc(0, -7 * u, 3.8 * u, 0, TAU);
+  ctx.stroke();
+  ctx.fillStyle = '#2f6f3f';          // hood
+  ctx.beginPath();
+  ctx.arc(0, -7.6 * u, 4.2 * u, PI, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+  drawBow(ctx, post.x + side * 5 * u, post.y - 2 * u, side > 0 ? 0 : PI, 6 * u);
+}
 
 function walkToGuardPost(soldier, dt) {
   const postX = cx + cos(soldier.guardAngle) * 64 * U;
@@ -3277,20 +3336,20 @@ function updateWave(dt) {
 
 function completeWave() {
   const waveNo = S.wave;
-  let gold = 0;
-  if (waveNo > S.cleared) {     // gold only for waves cleared for the first time
+  // gold for every clear, repeated waves included
+  const gold = Math.round(goldForWave(waveNo) * currentWorld().goldMult * goldFactor());
+  earnGold(gold);
+  sound(1200, 0.07, 'triangle', 0.05);
+  if (waveNo > S.cleared) {
     const wasLocked = !lavaUnlocked();
     S.cleared = waveNo;
-    gold = Math.round(waveNo * currentWorld().goldMult * goldFactor());
-    earnGold(gold);
-    sound(1200, 0.07, 'triangle', 0.05);
     if (wasLocked && lavaUnlocked()) toast('Die Lava-Welt ist offen!', 'Wechsle die Welt mit dem Knopf oben');
   }
   castle.hp = Math.min(maxHp(), castle.hp + S.heal);
   if (!S.hold) S.wave++;
   wave.pause = 2.5;
   buildWave();
-  toast('Welle ' + waveNo + ' geschafft', gold ? '+' + gold + ' Gold' : '');
+  toast('Welle ' + waveNo + ' geschafft', '+' + gold + ' Gold');
   checkAchievements();
   save();
   renderHud();
@@ -3321,9 +3380,8 @@ function handleDefeat() {
   openShop();
 }
 
-/** Leaving the shop after a defeat: back to wave 1 with full lives and a repaired wall; chest boons end. */
+/** Leaving the shop after a defeat: the same wave again, with full lives and a repaired wall; chest boons end. */
 function continueAfterDefeat() {
-  S.wave = 1;
   S.wallHp = wallMax();
   S.run = { boons: {}, chests: [] };
   castle.hp = maxHp();
@@ -3441,9 +3499,9 @@ function showStats() {
   showDialog({ title: 'Statistik', body, buttons: [{ label: 'Schließen' }] });
 }
 
-/* ---------- Chest every tenth wave ---------- */
+/* ---------- Chest every third wave ---------- */
 
-const CHEST_EVERY = 10;
+const CHEST_EVERY = 3;
 
 /*
  * Boons from the chest. Lasting boons are counted in S.run.boons and read via
@@ -3454,12 +3512,31 @@ const BOONS = [
   { id: 'damage', name: 'Scharfe Klingen', text: '+25 % Schaden für alle Waffen' },
   { id: 'speed', name: 'Flinke Hände', text: 'Alle Waffen greifen 20 % schneller an' },
   { id: 'xp', name: 'Lehrmeister', text: '+50 % XP' },
-  { id: 'gold', name: 'Schatzkarte', text: '+50 % Gold für neue Wellen' },
+  { id: 'gold', name: 'Schatzkarte', text: '+50 % Gold pro Welle' },
   { id: 'feast', name: 'Festmahl', text: 'Die Burg wird sofort voll geheilt', instant: () => { castle.hp = maxHp(); }, available: () => castle.hp < maxHp() },
   { id: 'mason', name: 'Maurer', text: 'Die Mauer wird sofort repariert', instant: () => { S.wallHp = wallMax(); }, available: () => S.wallHp < wallMax() },
 ];
 
 const activeBoonNames = () => BOONS.filter(boon => S.run.boons[boon.id]).map(boon => boon.name + (S.run.boons[boon.id] > 1 ? ' ×' + S.run.boons[boon.id] : ''));
+
+/** Info panel in the chest window: how long boons last and which ones are already active. */
+function chestInfoBox() {
+  const box = document.createElement('div');
+  box.className = 'infobox';
+  const title = document.createElement('b');
+  title.textContent = 'ⓘ Gilt bis zur nächsten Niederlage';
+  const text = document.createElement('span');
+  text.textContent = 'Boni wie Schaden, Tempo, XP und Gold stapeln sich mit jeder Truhe. Verliert die Burg, verfallen alle. Heilung und Reparatur wirken sofort.';
+  box.append(title, text);
+  const active = activeBoonNames();
+  if (active.length) {
+    const now = document.createElement('span');
+    now.className = 'active';
+    now.textContent = 'Aktiv: ' + active.join(', ');
+    box.appendChild(now);
+  }
+  return box;
+}
 
 function takeBoon(boon) {
   if (boon.instant) boon.instant();
@@ -3469,7 +3546,7 @@ function takeBoon(boon) {
   renderHud();
 }
 
-/** After clearing wave 10, 20, ...: pick one of three random boons. Once per wave number and run. */
+/** After clearing wave 3, 6, 9, ...: pick one of three random boons. Once per wave number and run. */
 function offerChest(waveNo) {
   const key = S.world + ':' + waveNo;
   if (!debugFlags.chests || S.run.chests.includes(key)) return;
@@ -3479,7 +3556,8 @@ function offerChest(waveNo) {
   while (choices.length < 3 && pool.length) choices.push(pool.splice(Math.floor(rnd(pool.length)), 1)[0]);
   showDialog({
     title: 'Schatztruhe',
-    text: 'Wähle einen Bonus. Dauerhafte Boni gelten bis zur nächsten Niederlage.',
+    text: 'Wähle einen Bonus.',
+    body: [chestInfoBox()],
     dismissable: false,
     buttons: choices.map(boon => ({ label: boon.name, detail: boon.text, action: () => takeBoon(boon) })),
   });
@@ -3722,7 +3800,13 @@ const SHOP_ITEMS = [
     level: () => S.hpLv,
     buy: () => { S.hpLv++; },
   },
-  unlockOffer('tower', 'castle', 'Turmschütze', 120, 'Schießt von selbst auf den nächsten Gegner.'),
+  {
+    id: 'archers', tab: 'castle', name: 'Bogenschützen', prices: ARCHER_PRICES,
+    text: 'Stehen auf der Mauer und schießen von selbst auf nahe Gegner. Bis zu 10.',
+    tierNames: ARCHER_PRICES.map((_, i) => (i + 1) + ' von 10'),
+    level: () => S.archers,
+    buy: () => { S.archers++; },
+  },
 
   unlockOffer('soldier', 'troops', 'Soldat', 2, 'Alle 5 Sekunden kommt ein kleiner Soldat aus der Burg und hält Gegner auf.'),
   {
@@ -3733,7 +3817,14 @@ const SHOP_ITEMS = [
     requires: needsSoldier,
   },
   unlockOffer('armor', 'troops', 'Rüstung', 50, 'Soldaten halten 5 statt 3 Schläge aus.', needsSoldier),
-  unlockOffer('squad', 'troops', 'Verstärkung', 90, 'Bis zu 6 statt 4 Soldaten gleichzeitig.', needsSoldier),
+  {
+    id: 'soldierCap', tab: 'troops', name: 'Mehr Soldaten', prices: SOLDIER_CAP_PRICES,
+    text: 'Je Stufe 2 Soldaten mehr gleichzeitig auf dem Feld. Bis zu 20.',
+    tierNames: SOLDIER_CAP_PRICES.map((_, i) => 'bis ' + (SOLDIER_CAP_BASE + SOLDIER_CAP_STEP * (i + 1))),
+    level: () => S.solCapLv,
+    buy: () => { S.solCapLv++; },
+    requires: needsSoldier,
+  },
 
   {
     id: 'goldBonus', tab: 'boni', name: 'Goldbonus', tierNames: ['+25 %', '+50 %'], prices: [80, 200],
@@ -3856,6 +3947,8 @@ function openShop() {
   shopTab = 'weapons';
   save();
   renderShop();
+  $('shoptext').textContent = 'Gib dein Gold aus. Danach geht es bei Welle ' + S.wave + ' weiter.';
+  $('shopgo').textContent = 'Weiter bei Welle ' + S.wave;
   $('shop').hidden = false;
   refreshPause();
 }
@@ -3866,7 +3959,7 @@ function closeShop() {
   refreshPause();
   renderHud();
   save();
-  toast('Welle 1');
+  toast('Welle ' + S.wave);
   showWaveHintOnce();
 }
 
@@ -4055,7 +4148,7 @@ function showWaveHintOnce() {
   save();
   showDialog({
     title: 'Tipp',
-    text: 'Oben links wählst du mit den Pfeilen die Welle selbst – bis zur höchsten, die du schon erreicht hast. So musst du nicht jedes Mal bei Welle 1 anfangen.',
+    text: 'Oben links wählst du mit den Pfeilen die Welle selbst. Ist eine Welle zu schwer, geh ein paar Wellen zurück: Dort gibt es auch Gold, und deine Waffen leveln weiter.',
     buttons: [{ label: 'Verstanden' }],
   });
 }
@@ -4216,7 +4309,7 @@ function update(dt) {
   updateEnemies(dt);
   updateCombo(dt);
   updateSoldiers(dt);
-  updateTowerArcher(dt);
+  updateArchers(dt);
   updateProjectiles(dt);
   updateZones(dt);
   updateVisuals(dt);
@@ -4314,6 +4407,10 @@ function drawActors() {
   const actors = [{ y: cy, draw() { drawWall(false); drawCastle(); drawWall(true); } }];
   for (const e of world.enemies) if (!e.dead) actors.push({ y: e.y, draw: () => drawEnemy(e) });
   for (const soldier of world.soldiers) actors.push({ y: soldier.y, draw: () => drawSoldier(soldier) });
+  for (let i = 0; i < S.archers; i++) {
+    const post = archerPost(i, S.archers);
+    actors.push({ y: post.y + 6 * U, draw: () => drawArcher(post) });
+  }
   actors.sort((a, b) => a.y - b.y);
   for (const actor of actors) actor.draw();
 }

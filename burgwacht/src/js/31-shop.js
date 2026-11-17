@@ -71,7 +71,13 @@ const SHOP_ITEMS = [
     level: () => S.hpLv,
     buy: () => { S.hpLv++; },
   },
-  unlockOffer('tower', 'castle', 'Turmschütze', 120, 'Schießt von selbst auf den nächsten Gegner.'),
+  {
+    id: 'archers', tab: 'castle', name: 'Bogenschützen', prices: ARCHER_PRICES,
+    text: 'Stehen auf der Mauer und schießen von selbst auf nahe Gegner. Bis zu 10.',
+    tierNames: ARCHER_PRICES.map((_, i) => (i + 1) + ' von 10'),
+    level: () => S.archers,
+    buy: () => { S.archers++; },
+  },
 
   unlockOffer('soldier', 'troops', 'Soldat', 2, 'Alle 5 Sekunden kommt ein kleiner Soldat aus der Burg und hält Gegner auf.'),
   {
@@ -82,7 +88,14 @@ const SHOP_ITEMS = [
     requires: needsSoldier,
   },
   unlockOffer('armor', 'troops', 'Rüstung', 50, 'Soldaten halten 5 statt 3 Schläge aus.', needsSoldier),
-  unlockOffer('squad', 'troops', 'Verstärkung', 90, 'Bis zu 6 statt 4 Soldaten gleichzeitig.', needsSoldier),
+  {
+    id: 'soldierCap', tab: 'troops', name: 'Mehr Soldaten', prices: SOLDIER_CAP_PRICES,
+    text: 'Je Stufe 2 Soldaten mehr gleichzeitig auf dem Feld. Bis zu 20.',
+    tierNames: SOLDIER_CAP_PRICES.map((_, i) => 'bis ' + (SOLDIER_CAP_BASE + SOLDIER_CAP_STEP * (i + 1))),
+    level: () => S.solCapLv,
+    buy: () => { S.solCapLv++; },
+    requires: needsSoldier,
+  },
 
   {
     id: 'goldBonus', tab: 'boni', name: 'Goldbonus', tierNames: ['+25 %', '+50 %'], prices: [80, 200],
@@ -205,6 +218,8 @@ function openShop() {
   shopTab = 'weapons';
   save();
   renderShop();
+  $('shoptext').textContent = 'Gib dein Gold aus. Danach geht es bei Welle ' + S.wave + ' weiter.';
+  $('shopgo').textContent = 'Weiter bei Welle ' + S.wave;
   $('shop').hidden = false;
   refreshPause();
 }
@@ -215,6 +230,6 @@ function closeShop() {
   refreshPause();
   renderHud();
   save();
-  toast('Welle 1');
+  toast('Welle ' + S.wave);
   showWaveHintOnce();
 }

@@ -49,23 +49,27 @@ ok(r.x1>r.x0,'XP pro besiegtem Gegner',[r.x0,r.x1.toFixed(2)]);ok(r.lv===2,'Leve
 // T5 waves & gold
 await fresh();
 const win=()=>E(()=>{const g=__bw;g.step(3);g.clear();g.step(.1);return {w:g.S.wave,gold:g.S.gold,c:g.S.cleared,hp:g.state().hp}});
-await E(()=>__bw.setHp(5));r=await win();ok(r.w===2&&r.gold===1&&r.c===1,'Welle 1 geschafft: +1 Gold, weiter zu Welle 2',JSON.stringify(r));ok(r.hp===6,'Heilung +1 nach Welle',r.hp);
+await E(()=>__bw.setHp(5));r=await win();ok(r.w===2&&r.gold===2&&r.c===1,'Welle 1 geschafft: +2 Gold, weiter zu Welle 2',JSON.stringify(r));ok(r.hp===6,'Heilung +1 nach Welle',r.hp);
 ok(await E(()=>!document.getElementById('wdown').disabled&&document.getElementById('wup').disabled),'Pfeil runter aktiv, hoch gesperrt (höchste Welle)');
 await E(()=>__bw.step(4));let e0=await E(()=>__bw.state().enemies);await p.click('#wdown');r=await E(()=>({w:__bw.S.wave,e:__bw.state().enemies}));
 ok(e0>0&&r.w===1&&r.e===0,'Pfeil runter: Welle 1, Gegner zurückgesetzt',[e0,r.w,r.e]);
-r=await win();ok(r.w===2&&r.gold===1,'Alte Welle erneut geschafft: kein Gold',JSON.stringify(r));
-r=await win();ok(r.w===3&&r.gold===3&&r.c===2,'Neue Welle 2 geschafft: +2 Gold',JSON.stringify(r));
+r=await win();ok(r.w===2&&r.gold===4,'Wiederholte Welle gibt auch Gold (+2)',JSON.stringify(r));
+r=await win();ok(r.w===3&&r.gold===6&&r.c===2,'Welle 2 geschafft: +2 Gold',JSON.stringify(r));
+r=await E(()=>[1,10,11,20,21,50,91,100].map(w=>w+':'+(2+3*Math.floor((w-1)/10))).join(' '));
+r=await E(()=>{const g=__bw,o=[];for(const w of [1,10,11,20,21,50,91,100]){const a=g.S.gold;g.S.cleared=200;g.S.wave=w;g.S.hold=true;g.step(3);g.clear();g.step(.1);o.push(g.S.gold-a)}g.S.hold=false;g.S.cleared=2;g.S.wave=3;g.S.gold=6;g.hud();return o.join()});
+ok(r==='2,2,5,5,8,14,29,29','Gold pro Welle: 2 in Welle 1–10, je 10 Wellen +3 mehr',r);
 await p.click('#wdown');await p.click('#wup');ok(await E(()=>__bw.S.wave===3&&document.getElementById('wup').disabled),'Pfeil hoch geht nur bis zur höchsten erreichten Welle');
 // T6 defeat & shop
 const lose=()=>E(()=>{const g=__bw;g.setHp(1);g.step(2);g.spawn('slime');for(let i=0;i<60&&!g.state().paused;i++){g.ens().forEach(e=>{e.hp=1e6;e.sp=200});g.step(.5)}return g.state().paused});
-ok(await lose(),'Niederlage pausiert das Spiel');ok(await E(()=>!document.getElementById('shop').hidden),'Shop öffnet sich nach Niederlage');
+ok(await lose(),'Niederlage pausiert das Spiel');await E(()=>{__bw.S.gold=3});   // the tabs below re-render the shop with this amount
+ok(await E(()=>!document.getElementById('shop').hidden),'Shop öffnet sich nach Niederlage');
 r=await shopList();
-ok(r==='weapons: Dolche → 5 Gold(aus) | Morgenstern → 10 Gold(aus) | Bogen → 40 Gold(aus) | Feuerstab → 75 Gold(aus)\ncastle: Heilung: +2 → 20 Gold(aus) | Mauer: 3 HP → 15 Gold(aus) | Burg-Leben: 12 Leben → 60 Gold(aus) | Turmschütze → 120 Gold(aus)\ntroops: Soldat → 2 Gold | Soldaten-Tempo: alle 4 s → Erst Soldat(aus) | Rüstung → Erst Soldat(aus) | Verstärkung → Erst Soldat(aus)\nboni: Goldbonus: +25 % → 80 Gold(aus) | XP-Bonus: +25 % → 60 Gold(aus)','Shop-Preise und Sperren bei 3 Gold in allen vier Reitern',r.replace(/\n/g,' // '));
+ok(r==='weapons: Dolche → 5 Gold(aus) | Morgenstern → 10 Gold(aus) | Bogen → 40 Gold(aus) | Feuerstab → 75 Gold(aus)\ncastle: Heilung: +2 → 20 Gold(aus) | Mauer: 3 HP → 15 Gold(aus) | Burg-Leben: 12 Leben → 60 Gold(aus) | Bogenschützen: 1 von 10 → 60 Gold(aus)\ntroops: Soldat → 2 Gold | Soldaten-Tempo: alle 4 s → Erst Soldat(aus) | Rüstung → Erst Soldat(aus) | Mehr Soldaten: bis 6 → Erst Soldat(aus)\nboni: Goldbonus: +25 % → 80 Gold(aus) | XP-Bonus: +25 % → 60 Gold(aus)','Shop-Preise und Sperren bei 3 Gold in allen vier Reitern',r.replace(/\n/g,' // '));
 await p.screenshot({path:'shop.png'});
 await buy('troops','soldier');r=await E(()=>({g:__bw.S.gold,s:__bw.S.own.soldier,t:document.getElementById('buy-soldier').textContent}));ok(r.g===1&&r.s&&r.t==='Gekauft','Soldat gekauft für 2 Gold',JSON.stringify(r));
 let ac=await E(()=>__bw.state().atkCount);await E(()=>{__bw.ready();__bw.attack(100,300)});ok(await E(()=>__bw.state().atkCount)===ac,'Kein Angriff, solange der Shop offen ist');
 await p.click('#shopgo');ok(await E(()=>!document.getElementById('dialog').hidden&&document.getElementById('dlg-text').textContent.includes('Oben links')),'Nach der ersten Niederlage erscheint der Hinweis auf die Wellen-Pfeile');await dismiss();r=await E(()=>({w:__bw.S.wave,st:__bw.state(),h:document.getElementById('shop').hidden,c:__bw.S.cleared}));
-ok(r.w===1&&r.st.hp===10&&!r.st.paused&&r.h&&r.st.enemies===0,'Nach dem Shop: Welle 1, volle Leben, Feld leer',r.w);ok(r.c===2,'Höchste Welle bleibt erhalten (Pfeile)',r.c);
+ok(r.w===3&&r.st.hp===10&&!r.st.paused&&r.h&&r.st.enemies===0,'Nach dem Shop geht es auf derselben Welle weiter, volle Leben, Feld leer',r.w);ok(r.c===2,'Höchste Welle bleibt erhalten (Pfeile)',r.c);
 // T7 soldiers
 r=await E(()=>{const g=__bw;const st=t=>{for(let i=0;i<t*10;i++){g.ens().forEach(e=>e.dead=true);g.step(.1)}};st(2.2);const a=g.state().soldiers;st(5);const b2=g.state().soldiers;let mx=0;for(let i=0;i<60;i++){g.clear();g.S.wave=1;g.step(1);mx=Math.max(mx,g.state().soldiers)}return {a,b:b2,mx}});
 ok(r.a===1&&r.b===2,'Soldat erscheint alle 5 Sekunden',[r.a,r.b]);ok(r.mx===4,'Höchstens 4 Soldaten gleichzeitig',r.mx);
@@ -80,7 +84,7 @@ ok(r.dmg>0&&r.dmg<30,'Soldat macht nur minimalen Schaden',r.dmg.toFixed(1));ok(r
 await E(()=>{__bw.S.gold=70;__bw.clear()});ok(await lose(),'Zweite Niederlage');
 await buy('weapons','dagger');await buy('weapons','star');await p.click('#tab-castle');r=await E(()=>document.querySelectorAll('#items .item b')[0].textContent);ok(r==='Heilung: +2','Heilung zeigt zuerst Stufe +2',r);
 await p.click('#buy-heal');await p.click('#buy-heal');ok(await E(()=>document.getElementById('buy-heal').textContent)==='Maximal','Heilung nach +3 ausgereizt');r=await E(()=>({g:__bw.S.gold,o:__bw.S.own,h:__bw.S.heal}));
-ok(r.g===3&&r.o.dagger&&r.o.star&&r.h===3,'Dolche 5, Morgenstern 10, Heilung 20 und 32 abgezogen',JSON.stringify(r));
+ok(r.g===5&&r.o.dagger&&r.o.star&&r.h===3,'Dolche 5, Morgenstern 10, Heilung 20 und 32 abgezogen (+2 Gold für die Welle davor)',JSON.stringify(r));
 await p.click('#shopgo');ok(await E(()=>document.getElementById('dialog').hidden),'Der Hinweis erscheint nur einmal');ok(await E(()=>[...document.querySelectorAll('.wp.locked')].map(x=>x.dataset.w).join())==='bow,wand','Gekaufte Waffen entsperrt, Bogen und Feuerstab noch nicht');
 await p.click('#wp-dagger');ok(await E(()=>__bw.S.active)==='dagger','Dolche wählbar');await p.click('#wp-star');ok(await E(()=>__bw.S.active)==='star','Morgenstern wählbar');
 await E(()=>__bw.setHp(4));r=await win();ok(r.hp===7,'Heilung +3 nach Welle',r.hp);
