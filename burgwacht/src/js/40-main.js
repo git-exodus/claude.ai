@@ -137,6 +137,7 @@ function draw() {
 
   drawActors();
   drawCooldownRing();
+  drawAimLine();
 
   // air layer
   for (const p of world.projectiles) if (!p.dead) drawProjectile(p);
@@ -171,6 +172,46 @@ function drawCooldownRing() {
   ctx.strokeStyle = ready >= 1 ? '#f5b93a' : '#fff6df';
   ringPath(-PI / 2, -PI / 2 + TAU * ready);
   ctx.lineCap = 'butt';
+}
+
+/**
+ * Dashed line from the castle through the finger to the screen edge, for
+ * weapons that are thrown from the castle (WEAPONS[id].aimLine). Only while a
+ * finger rests on the field.
+ */
+function aimLine() {
+  const point = session.holdPoint;
+  if (!point || !WEAPONS[S.active].aimLine) return null;
+  const angle = atan2(point.y - cy, point.x - cx), reach = Math.max(W, H) * 1.5;
+  return {
+    x1: cx + cos(angle) * 16 * U, y1: cy + sin(angle) * 16 * U,
+    x2: cx + cos(angle) * reach, y2: cy + sin(angle) * reach,
+    fingerX: point.x, fingerY: point.y,
+  };
+}
+
+function drawAimLine() {
+  const line = aimLine();
+  if (!line) return;
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.setLineDash([7 * U, 7 * U]);
+  ctx.lineDashOffset = -session.time * 40 * U;   // the dashes run away from the castle
+  for (const [color, width] of [['rgba(20,24,33,.45)', 4.5], ['rgba(255,255,255,.85)', 2]]) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width * U;
+    ctx.beginPath();
+    ctx.moveTo(line.x1, line.y1);
+    ctx.lineTo(line.x2, line.y2);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(255,255,255,.85)';   // small ring under the finger
+  ctx.lineWidth = 2 * U;
+  ctx.beginPath();
+  ctx.arc(line.fingerX, line.fingerY, 9 * U, 0, TAU);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawParticles() {

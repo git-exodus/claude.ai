@@ -3,7 +3,7 @@
  * the place to tune the game.
  */
 
-const VERSION = '0.6';
+const VERSION = '0.6.1';
 const SAVE_KEY = 'burgwacht-v3';
 const LEGACY_SAVE_KEY = 'burgwacht-v2';   // single-save format from before the start menu
 
@@ -30,6 +30,7 @@ const MAX_ENEMIES_ALIVE = 260;     // further enemies wait off-screen until ther
  *   baseDamage   damage of one basic hit at level 1
  *   cooldown     [seconds at level 1, seconds at ABILITY_CAP], linear in between
  *   milestones   level -> name of the ability unlocked there; abilities stack
+ *   aimLine      weapons thrown from the castle: show a dashed aiming line while the finger is down
  * The attack code lives in 10-weapon-*.js and is attached as WEAPONS[id].attack.
  */
 const WEAPONS = {
@@ -38,7 +39,7 @@ const WEAPONS = {
     milestones: { 5: 'Doppelschwert', 10: 'Dreier-Fächer', 15: 'Echo-Hieb', 25: 'Kreisende Schwerter', 30: 'Klingenwelle', 40: 'Geisterschwert', 50: 'Riesenschwert', 60: 'Schwertsplitter', 70: 'Zeitriss', 80: 'Spiegelhieb', 90: 'Kettenblitz', 100: 'Schwertregen' },
   },
   dagger: {
-    name: 'Dolche', price: 5, baseDamage: 9, cooldown: [2, 0.3], baseAbility: 'Wurfdolch',
+    name: 'Dolche', price: 5, baseDamage: 9, cooldown: [2, 0.3], baseAbility: 'Wurfdolch', aimLine: true,
     milestones: { 5: 'Dolchfächer', 10: 'Abpraller', 15: 'Durchbohren', 25: 'Ansteckendes Gift', 30: 'Schattenklon', 40: 'Splitterdolche', 50: 'Bumerang', 60: 'Giftwolke', 70: 'Dolchfallen', 80: 'Zielsuchend', 90: 'Dolchwirbel', 100: 'Kettenreaktion' },
   },
   star: {
@@ -46,7 +47,7 @@ const WEAPONS = {
     milestones: { 5: 'Schockwelle', 10: 'Rollende Kugel', 15: 'Betäubung', 25: 'Stachelhagel', 30: 'Nachbeben', 40: 'Brennender Boden', 50: 'Kettenschwung', 60: 'Schwarzes Loch', 70: 'Kugelsplitter', 80: 'Erdspalte', 90: 'Zwillingsstern', 100: 'Meteor' },
   },
   bow: {
-    name: 'Bogen', price: 40, baseDamage: 14, cooldown: [2.5, 0.4], baseAbility: 'Pfeilschuss',
+    name: 'Bogen', price: 40, baseDamage: 14, cooldown: [2.5, 0.4], baseAbility: 'Pfeilschuss', aimLine: true,
     milestones: { 5: 'Doppelpfeil', 10: 'Durchschuss', 15: 'Kritischer Treffer', 25: 'Brandpfeil', 30: 'Pfeilfächer', 40: 'Explosivpfeil', 50: 'Pfeilhagel', 60: 'Querschläger', 70: 'Frostpfeil', 80: 'Geisterschütze', 90: 'Riesenpfeil', 100: 'Pfeilsturm' },
   },
   wand: {
@@ -85,6 +86,13 @@ const ARCHER_RANGE = 105;    // distance from the castle (in U) at which archers
 const ARCHER_INTERVAL = 4;   // seconds between an archer's shots
 const EASY_WAVES = 3;        // the first waves of the meadow get EASY_HP_CUT less hit points
 const EASY_HP_CUT = 2;
+/*
+ * On top of that, meadow enemies start with EARLY_HP_DISCOUNT less hit points
+ * in wave 1; the discount shrinks linearly and is gone from EARLY_HP_UNTIL on.
+ */
+const EARLY_HP_DISCOUNT = 0.3;
+const EARLY_HP_UNTIL = 10;
+const earlyHpFactor = waveNo => 1 - EARLY_HP_DISCOUNT * Math.max(0, EARLY_HP_UNTIL - waveNo) / (EARLY_HP_UNTIL - 1);
 
 /** Number of regular enemies in a wave: +3 per wave up to 5, +5 to 15, +10 to 30, +15 to 50, +20 after. */
 function waveCount(waveNo) {

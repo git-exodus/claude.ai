@@ -29,7 +29,13 @@ window.__bw = {
   },
   ready() { combat.cooldown = 0; },
   hold(point) { session.holdPoint = point; },
-  attack,
+  attack, aimLine,
+  /** Colours of the pre-rendered ground at a few fixed points, to tell worlds apart without screenshots. */
+  groundSample() {
+    const g = ground.getContext('2d');
+    return [[0.1, 0.3], [0.5, 0.2], [0.8, 0.6], [0.3, 0.85]]
+      .map(([fx, fy]) => Array.from(g.getImageData(Math.round(fx * ground.width), Math.round(fy * ground.height), 1, 1).data).join(',')).join(' ');
+  },
   spawn: spawnEnemy,
   setHp(n) { castle.hp = n; renderHud(); },
   ens: () => world.enemies,

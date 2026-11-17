@@ -32,7 +32,13 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
 
   // ---- Leichtere erste Wellen ----
   r = await E(() => { const g = __bw, o = []; for (const w of [1, 2, 3, 4]) { g.S.cleared = 9; g.S.wave = w; const e = g.spawn('slime'); o.push(+e.max.toFixed(2)); e.dead = true; } g.S.cleared = 0; g.S.wave = 1; return o; });
-  ok(r.join() === '8,10.35,13,17.95', 'Welle 1 bis 3: 2 HP weniger, ab Welle 4 unverändert', r.join(' / '));
+  ok(r.join() === '5.6,7.59,9.97,14.36', 'Frühe Wellen: 30 % weniger Leben in Welle 1, dazu weiter 2 HP weniger bis Welle 3', r.join(' / '));
+  r = await E(() => { const g = __bw, o = []; for (const w of [1, 4, 7, 10, 11, 30]) { g.S.cleared = 40; g.S.wave = w; const e = g.spawn('ogre'); const full = 42 * (1 + 0.22 * (w - 1) + 0.015 * (w - 1) * (w - 1)) - (w <= 3 ? 2 : 0); o.push(+(1 - e.max / full).toFixed(3)); e.dead = true; } g.S.cleared = 0; g.S.wave = 1; return o; });
+  ok(r.join() === '0.3,0.2,0.1,0,0,0', 'Der Nachlass sinkt linear von 30 % in Welle 1 auf 0 % ab Welle 10', r.map(x => Math.round(x * 100) + ' %').join(' / '));
+  r = await E(() => { const g = __bw, c = g.pos(), S = g.S, o = {}; S.own.dagger = S.own.bow = true;
+    for (const w of ['sword', 'dagger', 'bow']) { S.active = w; g.hold({ x: c.cx + 60, y: c.cy - 80 }); const l = g.aimLine(); o[w] = l ? [Math.round(Math.atan2(l.y2 - l.y1, l.x2 - l.x1) * 100), Math.round(Math.atan2(-80, 60) * 100), l.x2 < 0 || l.x2 > c.W || l.y2 < 0 || l.y2 > c.H] : null; }
+    g.hold(null); o.none = g.aimLine(); S.active = 'sword'; S.own.dagger = S.own.bow = false; return o; });
+  ok(r.sword === null && r.none === null && r.dagger && r.bow && r.dagger[0] === r.dagger[1] && r.dagger[2] && r.bow[0] === r.bow[1], 'Ziellinie bei Dolchen und Bogen: von der Burg durch den Finger bis zum Rand, sonst keine', JSON.stringify(r));
 
   // ---- XP-Tempo ----
   r = await E(() => {
@@ -82,7 +88,7 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   ok(r[0] && r[1], 'Turmschütze schießt von selbst und trifft', r[2] + ' Schaden in 4 s');
   r = await E(() => { const g = __bw; g.S.own.tower = false; g.clear(); g.S.cleared = 2; g.S.wave = 3; g.hud(); return 0; });
   await E(() => __bw.startGame(0, false));
-  r = await E(() => { const g = __bw; g.S.own.tower = false; g.S.cleared = 2; g.S.wave = 3; const gold0 = g.S.gold; g.step(3); g.clear(); g.step(0.1); const x0 = g.S.xp.sword, l0 = g.S.lv.sword; g.step(3); const e = g.spawn('slime'); e.hp = 1; e.xp = 4; g.ens().forEach(x => { if (x !== e) x.dead = true; }); g.ready(); g.attack(e.x, e.y); g.step(0.2); return [g.S.gold - gold0, +(g.S.xp.sword - x0).toFixed(2), g.S.lv.sword - l0]; });
+  r = await E(() => { const g = __bw; g.S.own.tower = false; g.S.cleared = 2; g.S.wave = 3; const gold0 = g.S.gold; g.step(3); g.clear(); g.step(0.1); g.step(3); g.S.xp.sword = 0; const x0 = 0, l0 = g.S.lv.sword; g.S.lv.sword = Math.max(l0, 5); const l1 = g.S.lv.sword; const e = g.spawn('slime'); e.hp = 1; e.xp = 4; g.ens().forEach(x => { if (x !== e) x.dead = true; }); g.ready(); g.attack(e.x, e.y); g.step(0.2); return [g.S.gold - gold0, +(g.S.xp.sword - x0).toFixed(2), g.S.lv.sword - l1]; });
   ok(r[0] === 4, 'Goldbonus +25 %: Welle 3 gibt 4 statt 3 Gold', r[0]);
   ok(r[2] === 0 && r[1] === 5, 'XP-Bonus +25 %: 4 XP werden zu 5', r[1]);
 
@@ -141,7 +147,7 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   await E(() => { const g = __bw; g.clear(); g.S.cleared = 99; g.S.wave = 100; g.S.gold = 0; g.S.goldLv = 0; g.S.xpLv = 0; g.save(); }); await E(() => __bw.startGame(0, false));
   r = await win();
   ok(r.c === 100 && r.gold === 100 && await E(() => !document.getElementById('b-world').hidden && __bw.lavaUnlocked()), 'Welle 100 geschafft: Lava-Welt freigeschaltet, Welt-Knopf erscheint', JSON.stringify(r));
-  const meadowPixel = await p.screenshot({ clip: { x: 20, y: 300, width: 60, height: 60 } });
+  const meadowPixel = await E(() => __bw.groundSample());
   await p.click('#b-world');
   r = await E(() => [...document.querySelectorAll('#dlg-buttons button')].map(x => x.textContent).join(' | '));
   ok(r === 'WieseHier bist du · Welle 101 | Lava-WeltWelle 1', 'Weltauswahl zeigt beide Welten mit ihrer Welle', r);
@@ -149,9 +155,8 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   r = await E(() => { const g = __bw, S = g.S; return { world: S.world, wave: S.wave, cleared: S.cleared, parked: JSON.stringify(S.parked), queue: g.state().queue, lava: document.getElementById('wave').classList.contains('lava') }; });
   ok(r.world === 'lava' && r.wave === 1 && r.cleared === 0 && r.parked === '{"wave":101,"cleared":100}' && r.lava, 'Wechsel in die Lava-Welt: eigene Wellen ab 1, Wiese bleibt gemerkt', JSON.stringify(r));
   ok(r.queue === 130, 'Lava-Welle 1 hat 130 Gegner', r.queue);
-  await p.waitForTimeout(150);
-  const lavaPixel = await p.screenshot({ clip: { x: 20, y: 300, width: 60, height: 60 } });
-  ok(!meadowPixel.equals(lavaPixel), 'Der Boden sieht in der Lava-Welt anders aus');
+  const lavaPixel = await E(() => __bw.groundSample());
+  ok(meadowPixel !== lavaPixel, 'Der Boden sieht in der Lava-Welt anders aus');
   r = await E(() => { const g = __bw; const e = g.spawn('slime'); const o = { hp: Math.round(e.max), lava: e.lava, color: e.color, sp: e.sp }; e.dead = true; return o; });
   ok(r.hp === 1698 && r.lava && r.color === '#f0702a' && r.sp === 30, 'Lava-Gegner: Welle 1 so zäh wie Wiesen-Welle 100, eigenes Aussehen, schneller', JSON.stringify(r));
   r = await E(() => { const g = __bw; g.step(2); const e = g.spawn('slime'); e.hp = 1; e.sp = 0; e.x = g.pos().cx + 100; e.y = g.pos().cy; g.ens().forEach(x => { if (x !== e) x.dead = true; }); g.step(1 / 60); const before = g.state().enemies; g.ready(); g.attack(e.x, e.y); g.step(1 / 60); const minis = g.ens().filter(x => x.mini); return { before, n: minis.length, r: +(minis[0].r / e.r).toFixed(2), again: 0 }; });
@@ -182,13 +187,13 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   await p.click('#b-world'); await p.click('#dlg-0');
   r = await E(() => { const S = __bw.S; return [S.world, S.wave, S.cleared, JSON.stringify(S.parked)].join(' '); });
   ok(r === 'meadow 101 100 {"wave":1,"cleared":1}', 'Zurück auf die Wiese: Fortschritt beider Welten erhalten', r);
-  await p.click('#b-world'); await p.click('#dlg-1'); await E(() => __bw.save());
-  const saved = await E(() => JSON.stringify(__bw.S));
+  await p.click('#b-world'); await p.click('#dlg-1'); await p.click('#b-pause');   // paused, so nothing changes between saving and reloading
+  const saved = await E(() => { __bw.save(); return JSON.stringify(__bw.S); });
   await p.goto(url); await p.waitForTimeout(200); await p.click('#m-load');
   r = await E(() => document.querySelector('#slot-0 span').textContent);
-  await p.click('#slot-0'); await p.waitForTimeout(150);
-  const lavaAgain = await p.screenshot({ clip: { x: 20, y: 300, width: 60, height: 60 } });
-  ok(await E(() => JSON.stringify(__bw.S)) === saved && lavaAgain.equals(lavaPixel), 'Speichern und Laden erhält Welt, Schmiede, Statistik und Erfolge', r);
+  await p.click('#slot-0');
+  const lavaAgain = await E(() => __bw.groundSample());
+  ok(await E(() => JSON.stringify(__bw.S)) === saved && lavaAgain === lavaPixel, 'Speichern und Laden erhält Welt, Schmiede, Statistik und Erfolge', r);
 
   // ---- Belastung in der Lava-Welt ----
   r = await E(() => { const g = __bw, S = g.S; Object.assign(S.own, { dagger: true, star: true, bow: true, wand: true, soldier: true, tower: true, armor: true, squad: true });
