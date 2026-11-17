@@ -126,6 +126,7 @@ burgwacht/
     └── bench-weapons.js       Waffenvergleich auf Level 100 (kein Test, nur Tabelle)
 
 Backup/                        (im Repo-Wurzelordner) Kopien früherer Versionen, siehe 4.5
+CLAUDE.md                      (im Repo-Wurzelordner) Kurzfassung der Regeln, wird von Claude Code automatisch geladen
 ```
 
 **Niemals** die erzeugten Dateien (`burgwacht.html`, `android/app/src/main/assets/index.html`) von
