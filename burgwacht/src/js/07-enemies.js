@@ -26,8 +26,7 @@ function spawnPoint() {
 function spawnEnemy(type, { at = spawnPoint(), mini = false } = {}) {
   const base = ENEMY_TYPES[type];
   const worldDef = currentWorld(), waveNo = S.wave;
-  let hp = base.hp * worldDef.hpFactor(waveNo);
-  if (S.world === 'meadow') hp = meadowStartHp(type, hp, waveNo);
+  let hp = worldDef.enemyHp(type, waveNo);
   if (mini) hp *= 0.3;
 
   const enemy = {

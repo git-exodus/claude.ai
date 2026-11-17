@@ -3,7 +3,7 @@
  * the place to tune the game.
  */
 
-const VERSION = '0.6.2';
+const VERSION = '0.6.3';
 const SAVE_KEY = 'burgwacht-v3';
 const LEGACY_SAVE_KEY = 'burgwacht-v2';   // single-save format from before the start menu
 
@@ -67,18 +67,20 @@ const WEAPON_IDS = Object.keys(WEAPONS);
 const xpNeeded = level => Math.round(4 + 6.4 * Math.pow(level, 1.4));
 
 /*
- * Enemy types. r/hp/sp/xp are the base values (radius in U before CASTLE_SCALE,
+ * Enemy types. r/sp/xp are the base values (radius in U before CASTLE_SCALE,
  * speed in U per second); worlds and waves scale them, see WORLDS below.
- *   shielded  projectile hits only deal SHIELD_BLOCK of their damage; area damage is unaffected
- *   ranged    stops at ARCHER_RANGE and shoots the castle instead of walking into it
+ *   hp, hpStep  hit points in meadow wave 1 and how many are added per wave
+ *               until RAMP_UNTIL (see meadowHp below); big enemies grow faster
+ *   shielded    projectile hits only deal SHIELD_BLOCK of their damage; area damage is unaffected
+ *   ranged      stops at ARCHER_RANGE and shoots the castle instead of walking into it
  */
 const ENEMY_TYPES = {
-  slime:  { r: 13, hp: 10, sp: 20, xp: 1, color: '#59c36a' },
-  bat:    { r: 10, hp: 6, sp: 38, xp: 1, color: '#9a6bd6' },
-  ogre:   { r: 19, hp: 42, sp: 13, xp: 3, color: '#4f9aa8' },
-  shield: { r: 14, hp: 26, sp: 16, xp: 2, color: '#8793b8', shielded: true },
-  archer: { r: 11, hp: 12, sp: 22, xp: 2, color: '#c9787f', ranged: true },
-  boss:   { r: 30, hp: 260, sp: 9, xp: 20, color: '#e07a3f' },
+  slime:  { r: 13, hp: 3, hpStep: 1, sp: 20, xp: 1, color: '#59c36a' },
+  bat:    { r: 10, hp: 1, hpStep: 1, sp: 38, xp: 1, color: '#9a6bd6' },
+  ogre:   { r: 19, hp: 14, hpStep: 3, sp: 13, xp: 3, color: '#4f9aa8' },
+  shield: { r: 14, hp: 14, hpStep: 1, sp: 16, xp: 2, color: '#8793b8', shielded: true },
+  archer: { r: 11, hp: 4, hpStep: 1, sp: 22, xp: 2, color: '#c9787f', ranged: true },
+  boss:   { r: 30, hp: 90, hpStep: 15, sp: 9, xp: 20, color: '#e07a3f' },
 };
 const BOSS_EVERY = 5;        // a boss joins every 5th wave
 const SHIELD_BLOCK = 0.25;   // share of projectile damage that gets through a shield
@@ -86,29 +88,16 @@ const ARCHER_RANGE = 105;    // distance from the castle (in U) at which archers
 const ARCHER_INTERVAL = 4;   // seconds between an archer's shots
 
 /*
- * Gentle start in the meadow. Three rules stack, in this order:
- *   1. waves 1..EASY_WAVES: EASY_HP_CUT hit points less
- *   2. EARLY_HP_DISCOUNT less in wave 1, shrinking linearly to nothing at EARLY_HP_UNTIL
- *   3. waves 1..SOFT_WAVES: small enemies lose SOFT_HP_CUT more hit points, big ones
- *      (BIG_ENEMIES) lose SOFT_BIG_SHARE of theirs; this fades out linearly until
- *      SOFT_FADE_UNTIL so there is no sudden jump afterwards
+ * Enemy hit points in the meadow.
+ *   waves 1..RAMP_UNTIL  gentle linear start: hp + hpStep per wave (small enemies +1)
+ *   after that           the value of wave RAMP_UNTIL grows with enemyHpFactor, which
+ *                        starts at 1, so there is no jump between the two parts
  */
-const EASY_WAVES = 3, EASY_HP_CUT = 2;
-const EARLY_HP_DISCOUNT = 0.3, EARLY_HP_UNTIL = 10;
-const SOFT_WAVES = 8, SOFT_FADE_UNTIL = 13, SOFT_HP_CUT = 3, SOFT_BIG_SHARE = 0.5;
-const BIG_ENEMIES = ['ogre', 'boss'];
-
-const earlyHpFactor = waveNo => 1 - EARLY_HP_DISCOUNT * Math.max(0, EARLY_HP_UNTIL - waveNo) / (EARLY_HP_UNTIL - 1);
-/** How much of rule 3 applies: 1 up to SOFT_WAVES, then linearly down to 0 at SOFT_FADE_UNTIL. */
-const softShare = waveNo => clamp((SOFT_FADE_UNTIL - waveNo) / (SOFT_FADE_UNTIL - SOFT_WAVES), 0, 1);
-
-/** Hit points of a meadow enemy after the gentle-start rules. */
-function meadowStartHp(type, hp, waveNo) {
-  if (waveNo <= EASY_WAVES) hp -= EASY_HP_CUT;
-  hp *= earlyHpFactor(waveNo);
-  const share = softShare(waveNo);
-  hp = BIG_ENEMIES.includes(type) ? hp * (1 - SOFT_BIG_SHARE * share) : hp - SOFT_HP_CUT * share;
-  return Math.max(1, hp);
+const RAMP_UNTIL = 17;
+function meadowHp(type, waveNo) {
+  const { hp, hpStep } = ENEMY_TYPES[type];
+  const rampEnd = hp + hpStep * (Math.min(waveNo, RAMP_UNTIL) - 1);
+  return waveNo <= RAMP_UNTIL ? rampEnd : rampEnd * enemyHpFactor(waveNo - RAMP_UNTIL + 1);
 }
 
 /** Number of regular enemies in a wave: +3 per wave up to 5, +5 to 15, +10 to 30, +15 to 50, +20 after. */
@@ -125,7 +114,7 @@ const spawnGapFor = count => clamp(Math.min(80, 10 + count * 0.6) / count, 0.04,
 /*
  * Worlds. Each world has its own wave counter and progress (see 03-state.js).
  *   count(w)        regular enemies in wave w
- *   hpFactor(w)     multiplier on enemy hit points
+ *   enemyHp(t, w)   hit points of an enemy of type t in wave w
  *   speedFactor(w)  multiplier on enemy speed
  *   goldMult        gold per newly cleared wave = wave number * goldMult
  *   xpMult          multiplier on enemy XP
@@ -139,14 +128,14 @@ const WORLDS = {
   meadow: {
     name: 'Wiese',
     count: waveCount,
-    hpFactor: enemyHpFactor,
+    enemyHp: meadowHp,
     speedFactor: enemySpeedFactor,
     goldMult: 1, xpMult: 1, colors: {}, splitSlimes: false,
   },
   lava: {
     name: 'Lava-Welt',
     count: w => waveCount(w + 20),
-    hpFactor: w => enemyHpFactor(LAVA_UNLOCK_WAVE) * (1 + 0.15 * (w - 1) + 0.008 * (w - 1) * (w - 1)),
+    enemyHp: (type, w) => meadowHp(type, LAVA_UNLOCK_WAVE) * (1 + 0.15 * (w - 1) + 0.008 * (w - 1) * (w - 1)),
     speedFactor: () => 1.5,
     goldMult: 3, xpMult: 3, splitSlimes: true,
     colors: { slime: '#f0702a', bat: '#ffb23e', ogre: '#7a5560', shield: '#a8553a', archer: '#d94a3a', boss: '#c22b2b' },

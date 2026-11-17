@@ -30,20 +30,15 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
 
   await fresh();
 
-  // ---- Leichtere erste Wellen ----
-  r = await E(() => { const g = __bw, o = []; for (const w of [1, 2, 3, 4]) { g.S.cleared = 9; g.S.wave = w; const e = g.spawn('slime'); o.push(+e.max.toFixed(2)); e.dead = true; } g.S.cleared = 0; g.S.wave = 1; return o; });
-  ok(r.join() === '2.6,4.59,6.97,11.36', 'Schleim-Leben in Welle 1 bis 4 nach allen Nachlässen', r.join(' / '));
-  r = await E(() => { const g = __bw, out = { slime: [], ogre: [], bad: [] };
-    // expected values from the three rules, written out independently of the game code
-    const f = w => 1 + 0.22 * (w - 1) + 0.015 * (w - 1) * (w - 1), early = w => 1 - 0.3 * Math.max(0, 10 - w) / 9, share = w => Math.max(0, Math.min(1, (13 - w) / 5));
-    const before = (hp0, w) => (hp0 * f(w) - (w <= 3 ? 2 : 0)) * early(w);
-    for (const w of [1, 4, 8, 9, 11, 13, 30]) { g.S.cleared = 40; g.S.wave = w;
-      const s = g.spawn('slime'), o = g.spawn('ogre'); s.dead = o.dead = true;
-      const es = Math.max(1, before(10, w) - 3 * share(w)), eo = before(42, w) * (1 - 0.5 * share(w));
-      if (Math.abs(s.max - es) > 1e-6 || Math.abs(o.max - eo) > 1e-6) out.bad.push(w);
-      out.slime.push(+(before(10, w) - s.max).toFixed(1)); out.ogre.push(Math.round((1 - o.max / before(42, w)) * 100)); }
-    g.S.cleared = 0; g.S.wave = 1; return out; });
-  ok(r.bad.length === 0 && r.slime.join() === '3,3,3,2.4,1.2,0,0' && r.ogre.join() === '50,50,50,40,20,0,0', 'Welle 1 bis 8: kleine Gegner 3 HP weniger, dicke 50 %; danach läuft es bis Welle 13 linear aus', 'Welle 1/4/8/9/11/13/30 · Schleim −' + r.slime.join('/') + ' HP · Oger −' + r.ogre.join('/') + ' %');
+  // ---- Leben der Gegner ----
+  const hpAt = (types, waves) => p.evaluate(([types, waves]) => { const g = __bw, o = {}; for (const t of types) { o[t] = []; for (const w of waves) { g.S.cleared = 200; g.S.wave = w; const e = g.spawn(t); o[t].push(+e.max.toFixed(2)); e.dead = true; } } g.S.cleared = 0; g.S.wave = 1; return o; }, [types, waves]);
+  r = await hpAt(['slime', 'bat', 'shield', 'archer', 'ogre', 'boss'], [1, 2, 3, 10, 16, 17]);
+  ok(JSON.stringify(r) === JSON.stringify({ slime: [3, 4, 5, 12, 18, 19], bat: [1, 2, 3, 10, 16, 17], shield: [14, 15, 16, 23, 29, 30], archer: [4, 5, 6, 13, 19, 20], ogre: [14, 17, 20, 41, 59, 62], boss: [90, 105, 120, 225, 315, 330] }),
+    'Welle 1 bis 17: kleine Gegner +1 HP pro Welle, Oger +3, Boss +15', Object.entries(r).map(([t, v]) => t + ' ' + v.join('/')).join(' · '));
+  r = await hpAt(['slime', 'ogre', 'boss'], [17, 18, 19, 30, 100]);
+  const f = n => 1 + 0.22 * (n - 1) + 0.015 * (n - 1) * (n - 1);
+  ok(['slime', 'ogre', 'boss'].every(t => [18, 19, 30, 100].every((w, i) => Math.abs(r[t][i + 1] - r[t][0] * f(w - 16)) < 0.01)) && r.slime[1] / r.slime[0] < 1.25,
+    'Ab Welle 18 normale Steigerung ohne Sprung, ausgehend vom Wert aus Welle 17', 'Schleim ' + r.slime.join(' → '));
   r = await E(() => { const g = __bw, c = g.pos(), S = g.S, o = {}; S.own.dagger = S.own.bow = true;
     for (const w of ['sword', 'dagger', 'bow']) { S.active = w; g.hold({ x: c.cx + 60, y: c.cy - 80 }); const l = g.aimLine(); o[w] = l ? [Math.round(Math.atan2(l.y2 - l.y1, l.x2 - l.x1) * 100), Math.round(Math.atan2(-80, 60) * 100), l.x2 < 0 || l.x2 > c.W || l.y2 < 0 || l.y2 > c.H] : null; }
     g.hold(null); o.none = g.aimLine(); S.active = 'sword'; S.own.dagger = S.own.bow = false; return o; });
@@ -167,7 +162,7 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   const lavaPixel = await E(() => __bw.groundSample());
   ok(meadowPixel !== lavaPixel, 'Der Boden sieht in der Lava-Welt anders aus');
   r = await E(() => { const g = __bw; const e = g.spawn('slime'); const o = { hp: Math.round(e.max), lava: e.lava, color: e.color, sp: e.sp }; e.dead = true; return o; });
-  ok(r.hp === 1698 && r.lava && r.color === '#f0702a' && r.sp === 30, 'Lava-Gegner: Welle 1 so zäh wie Wiesen-Welle 100, eigenes Aussehen, schneller', JSON.stringify(r));
+  ok(r.hp === 2329 && r.lava && r.color === '#f0702a' && r.sp === 30, 'Lava-Gegner: Welle 1 so zäh wie Wiesen-Welle 100, eigenes Aussehen, schneller', JSON.stringify(r));
   r = await E(() => { const g = __bw; g.step(2); const e = g.spawn('slime'); e.hp = 1; e.sp = 0; e.x = g.pos().cx + 100; e.y = g.pos().cy; g.ens().forEach(x => { if (x !== e) x.dead = true; }); g.step(1 / 60); const before = g.state().enemies; g.ready(); g.attack(e.x, e.y); g.step(1 / 60); const minis = g.ens().filter(x => x.mini); return { before, n: minis.length, r: +(minis[0].r / e.r).toFixed(2), again: 0 }; });
   ok(r.n === 2 && r.r === 0.62, 'Magma-Schleim teilt sich beim Tod in zwei kleine', JSON.stringify(r));
   r = await E(() => { const g = __bw; g.ens().filter(x => x.mini).forEach(x => { x.hp = 1; x.sp = 0; }); const m = g.ens().find(x => x.mini); g.step(1); g.ready(); g.attack(m.x, m.y); g.step(0.1); return g.ens().filter(x => x.mini && !x.dead).length; });
