@@ -1,6 +1,15 @@
 #!/bin/bash
-# Builds the game and runs all test suites against the standalone page (the one inside the APK).
-# Screenshots the suites take are written to the current directory.
+# Builds the game (python3 build.py) and runs every test suite against the
+# standalone page that goes into the APK. Exit code 0 = all suites passed.
+#
+# Run it from a scratch directory: the suites write screenshots (shop.png,
+# menu.png, lava.png, ...) into the current directory.
+#
+#   cd /some/scratch/dir && /path/to/burgwacht/tests/run.sh
+#
+# Output: one summary line per suite plus every FAIL line. A suite that crashes
+# shows "0 passed, 0 failed"; run it directly with node to see the error.
+# bench-weapons.js is not part of this run (it is slow and has no pass/fail).
 here="$(cd "$(dirname "$0")" && pwd)"
 python3 "$here/../build.py" || exit 1
 fail=0

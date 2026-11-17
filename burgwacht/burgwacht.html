@@ -272,7 +272,11 @@ function fillEllipse(c, x, y, rx, ry) {
 /* ===== 02-config.js ===== */
 /*
  * Game data and balance numbers. Nothing in here has side effects, so this is
- * the place to tune the game.
+ * the place to tune the game. The README (section "Spielregeln und Balance")
+ * lists the current values in readable form; keep both in step.
+ *
+ * When raising the version, change VERSION here, the credit line in
+ * src/page.html and versionCode/versionName in android/app/build.gradle.
  */
 
 const VERSION = '0.8';
@@ -304,6 +308,7 @@ const MAX_ENEMIES_ALIVE = 260;     // further enemies wait off-screen until ther
  *   price        gold needed in the shop (STARTER_WEAPON is owned from the start)
  *   baseDamage   damage of one basic hit at level 1
  *   cooldown     [seconds at level 1, seconds at ABILITY_CAP], linear in between
+ *   baseAbility  name of the level-1 attack, shown first in the ability overview
  *   milestones   level -> name of the ability unlocked there; abilities stack
  *   aimLine      weapons thrown from the castle: show a dashed aiming line while the finger is down
  * The attack code lives in 10-weapon-*.js and is attached as WEAPONS[id].attack.
@@ -335,16 +340,19 @@ const STARTER_WEAPON = 'dagger';
 
 /*
  * XP needed to go from `level` to `level + 1`.
- * Tuned together with the flat XP per enemy below so that the weapon used all
- * the time is roughly level 4 / 8 / 15 / 22 / 40 / 80 after wave 5 / 10 / 20 /
- * 30 / 50 / 100 of a first playthrough. The power law keeps working for
+ * Tuned together with the flat XP per enemy and XP_GAIN so that the weapon used
+ * all the time is roughly level 5 / 9 / 16 / 25 / 43 / 91 after wave 5 / 10 /
+ * 20 / 30 / 50 / 100 of a first playthrough without repeating waves
+ * (tests/suite-progress.js checks this curve). The power law keeps working for
  * levels far beyond 100.
  */
 const xpNeeded = level => Math.round(4 + 6.4 * Math.pow(level, 1.4));
 
 /*
- * Enemy types. r/sp/xp are the base values (radius in U before CASTLE_SCALE,
- * speed in U per second); worlds and waves scale them, see WORLDS below.
+ * Enemy types. The key is the type id used everywhere (queue, drawing, tests).
+ *   name        German name, for the README and debugging only
+ *   r, sp, xp   radius in U before CASTLE_SCALE, speed in U per second, XP per kill;
+ *               worlds and waves scale them, see WORLDS below
  *   hp, hpStep  hit points in meadow wave 1 and how many are added per wave
  *               until RAMP_UNTIL (see meadowHp below); big enemies grow faster
  *   shielded    projectile hits only deal SHIELD_BLOCK of their damage; area damage is unaffected
@@ -472,7 +480,12 @@ function rollEnemyType(waveNo) {
 /** Boss of a boss wave: slime king, wolf alpha and orc king take turns. */
 const bossFor = waveNo => BOSS_ROTATION[(Math.floor(waveNo / BOSS_EVERY) - 1) % BOSS_ROTATION.length];
 
-/* Tests set window.__bwQuiet before the game loads so rewards do not disturb what they measure. */
+/*
+ * Switches for the automated tests. Tests set window.__bwQuiet before the game
+ * loads; then achievements, chests, the skill hint, the chest animation and the
+ * music are off, so they cannot disturb what a test measures. A test can turn a
+ * single one back on through window.__bw.flags.
+ */
 const debugFlags = { achievements: !window.__bwQuiet, chests: !window.__bwQuiet, skillHint: !window.__bwQuiet, chestAnimation: !window.__bwQuiet, music: !window.__bwQuiet };
 
 /* ===== 03-state.js ===== */
@@ -493,7 +506,7 @@ function blankSave() {
     active: STARTER_WEAPON,    // weapon selected in the bar
     world: 'meadow',           // world being played, key of WORLDS
     wave: 1,                   // wave currently being played in that world
-    cleared: 0,                // highest wave ever cleared there (limits the wave arrows, pays gold once)
+    cleared: 0,                // highest wave ever cleared there (the wave arrows go up to cleared + 1)
     parked: { wave: 1, cleared: 0 },   // wave and cleared of the OTHER world while it is not played
     gold: 0,
     heal: 1,                   // lives restored after each cleared wave (shop: 1..3)
@@ -510,7 +523,7 @@ function blankSave() {
     own: { sword: false, dagger: false, star: false, bow: false, wand: false, soldier: false, armor: false, knight: false },
     // things that last until the next defeat: chest boons (id -> times taken) and chests already opened ("world:wave")
     run: { boons: {}, chests: [] },
-    hints: { waves: false, skills: false },   // one-time hint windows already shown
+    hints: { waves: false, skills: false },   // one-time hints already shown: wave arrows (first defeat), abilities (wave 2)
     stats: { kills: 0, bosses: 0, bestCombo: 0, defeats: 0, goldEarned: 0 },
     ach: {},                   // achievement id -> true once rewarded
   };
@@ -646,7 +659,7 @@ const xpFactor = () => XP_GAIN * BONUS_TIERS[S.xpLv] * boonFactor('xp', 1.5);
  *   particles    little dots from puff()
  *   texts        floating damage numbers and level-up texts
  *   timers       delayed callbacks in game time (they pause with the game)
- *   soldiers     see 20-defenders.js
+ *   soldiers     see 20-defenders.js (archers and the knight are not entities, see there)
  */
 const world = { enemies: [], projectiles: [], zones: [], effects: [], particles: [], texts: [], timers: [], soldiers: [] };
 
@@ -663,7 +676,7 @@ const combat = {
 const combo = { count: 0, timer: 0, punch: 0 };   // kill streak; punch animates the counter
 
 const wave = {
-  queue: [],          // enemy types still to spawn
+  queue: [],          // enemy type ids still to spawn; 'wolf+' leads a pack, see spawnFromQueue()
   total: 1,           // size of the wave, for the progress bar
   spawnGap: 1,        // seconds between two spawns
   spawnTimer: 0,
@@ -753,7 +766,7 @@ function floatText(x, y, text, color, big = false) {
   world.texts.push({ x, y, text, color, big, t: 0 });
 }
 
-/** Removes everything from the field. `all` also removes soldiers and visuals. */
+/** Removes enemies, projectiles, zones and timers from the field. `all` also removes the soldiers. */
 function clearField(all) {
   world.enemies = [];
   world.projectiles = [];
@@ -3712,8 +3725,12 @@ KILL_HOOKS.push((enemy, source) => {
 
 /* ===== 20-defenders.js ===== */
 /*
- * What defends the castle besides the player's weapon: the wall, the castle's
- * own lives and the little soldiers.
+ * What defends the castle besides the player's weapon:
+ *   wall and castle   take the hits of enemies that get through (wallHit, castleHit)
+ *   soldiers          walk out of the gate, hold enemies up, die after a few hits
+ *   archers           stand on the wall ring and shoot on their own (up to 10)
+ *   knight            rides around the castle and charges close enemies; immortal
+ * All of them are bought in the shop (see 31-shop.js).
  */
 
 /** An enemy reached the wall: it loses one hit point. */
@@ -4201,8 +4218,9 @@ const waveProgress = () => Math.round((1 - (wave.queue.length + world.enemies.le
 
 /* ===== 22-progress.js ===== */
 /*
- * Long-term progress: statistics, achievements and the chest that appears
- * every tenth wave.
+ * Long-term progress: gold income, statistics, achievements, and the treasure
+ * chest that appears after every third wave (opening animation, then a choice
+ * of three boons that last until the next defeat).
  */
 
 /** All gold income goes through here so the statistics stay correct. */
@@ -4910,8 +4928,10 @@ function closeShop() {
 
 /* ===== 32-menus.js ===== */
 /*
- * Overlays other than the shop: main menu with the save slots, pause menu and
- * the ability overview. Also decides when the game is paused.
+ * Overlays other than the shop: main menu with the save slots, pause menu, the
+ * ability overview and the generic dialog (greeting, hints, chest choice, world
+ * picker, statistics). Also decides when the game is paused: exactly while one
+ * of OVERLAY_IDS is visible.
  */
 
 const OVERLAY_IDS = ['menu', 'shop', 'pausep', 'abil', 'dialog', 'chestfx'];

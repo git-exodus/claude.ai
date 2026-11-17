@@ -15,7 +15,7 @@ function blankSave() {
     active: STARTER_WEAPON,    // weapon selected in the bar
     world: 'meadow',           // world being played, key of WORLDS
     wave: 1,                   // wave currently being played in that world
-    cleared: 0,                // highest wave ever cleared there (limits the wave arrows, pays gold once)
+    cleared: 0,                // highest wave ever cleared there (the wave arrows go up to cleared + 1)
     parked: { wave: 1, cleared: 0 },   // wave and cleared of the OTHER world while it is not played
     gold: 0,
     heal: 1,                   // lives restored after each cleared wave (shop: 1..3)
@@ -32,7 +32,7 @@ function blankSave() {
     own: { sword: false, dagger: false, star: false, bow: false, wand: false, soldier: false, armor: false, knight: false },
     // things that last until the next defeat: chest boons (id -> times taken) and chests already opened ("world:wave")
     run: { boons: {}, chests: [] },
-    hints: { waves: false, skills: false },   // one-time hint windows already shown
+    hints: { waves: false, skills: false },   // one-time hints already shown: wave arrows (first defeat), abilities (wave 2)
     stats: { kills: 0, bosses: 0, bestCombo: 0, defeats: 0, goldEarned: 0 },
     ach: {},                   // achievement id -> true once rewarded
   };

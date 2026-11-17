@@ -1,6 +1,10 @@
 /*
  * Game data and balance numbers. Nothing in here has side effects, so this is
- * the place to tune the game.
+ * the place to tune the game. The README (section "Spielregeln und Balance")
+ * lists the current values in readable form; keep both in step.
+ *
+ * When raising the version, change VERSION here, the credit line in
+ * src/page.html and versionCode/versionName in android/app/build.gradle.
  */
 
 const VERSION = '0.8';
@@ -32,6 +36,7 @@ const MAX_ENEMIES_ALIVE = 260;     // further enemies wait off-screen until ther
  *   price        gold needed in the shop (STARTER_WEAPON is owned from the start)
  *   baseDamage   damage of one basic hit at level 1
  *   cooldown     [seconds at level 1, seconds at ABILITY_CAP], linear in between
+ *   baseAbility  name of the level-1 attack, shown first in the ability overview
  *   milestones   level -> name of the ability unlocked there; abilities stack
  *   aimLine      weapons thrown from the castle: show a dashed aiming line while the finger is down
  * The attack code lives in 10-weapon-*.js and is attached as WEAPONS[id].attack.
@@ -63,16 +68,19 @@ const STARTER_WEAPON = 'dagger';
 
 /*
  * XP needed to go from `level` to `level + 1`.
- * Tuned together with the flat XP per enemy below so that the weapon used all
- * the time is roughly level 4 / 8 / 15 / 22 / 40 / 80 after wave 5 / 10 / 20 /
- * 30 / 50 / 100 of a first playthrough. The power law keeps working for
+ * Tuned together with the flat XP per enemy and XP_GAIN so that the weapon used
+ * all the time is roughly level 5 / 9 / 16 / 25 / 43 / 91 after wave 5 / 10 /
+ * 20 / 30 / 50 / 100 of a first playthrough without repeating waves
+ * (tests/suite-progress.js checks this curve). The power law keeps working for
  * levels far beyond 100.
  */
 const xpNeeded = level => Math.round(4 + 6.4 * Math.pow(level, 1.4));
 
 /*
- * Enemy types. r/sp/xp are the base values (radius in U before CASTLE_SCALE,
- * speed in U per second); worlds and waves scale them, see WORLDS below.
+ * Enemy types. The key is the type id used everywhere (queue, drawing, tests).
+ *   name        German name, for the README and debugging only
+ *   r, sp, xp   radius in U before CASTLE_SCALE, speed in U per second, XP per kill;
+ *               worlds and waves scale them, see WORLDS below
  *   hp, hpStep  hit points in meadow wave 1 and how many are added per wave
  *               until RAMP_UNTIL (see meadowHp below); big enemies grow faster
  *   shielded    projectile hits only deal SHIELD_BLOCK of their damage; area damage is unaffected
@@ -200,5 +208,10 @@ function rollEnemyType(waveNo) {
 /** Boss of a boss wave: slime king, wolf alpha and orc king take turns. */
 const bossFor = waveNo => BOSS_ROTATION[(Math.floor(waveNo / BOSS_EVERY) - 1) % BOSS_ROTATION.length];
 
-/* Tests set window.__bwQuiet before the game loads so rewards do not disturb what they measure. */
+/*
+ * Switches for the automated tests. Tests set window.__bwQuiet before the game
+ * loads; then achievements, chests, the skill hint, the chest animation and the
+ * music are off, so they cannot disturb what a test measures. A test can turn a
+ * single one back on through window.__bw.flags.
+ */
 const debugFlags = { achievements: !window.__bwQuiet, chests: !window.__bwQuiet, skillHint: !window.__bwQuiet, chestAnimation: !window.__bwQuiet, music: !window.__bwQuiet };

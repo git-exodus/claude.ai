@@ -1,6 +1,8 @@
 /*
- * Overlays other than the shop: main menu with the save slots, pause menu and
- * the ability overview. Also decides when the game is paused.
+ * Overlays other than the shop: main menu with the save slots, pause menu, the
+ * ability overview and the generic dialog (greeting, hints, chest choice, world
+ * picker, statistics). Also decides when the game is paused: exactly while one
+ * of OVERLAY_IDS is visible.
  */
 
 const OVERLAY_IDS = ['menu', 'shop', 'pausep', 'abil', 'dialog', 'chestfx'];

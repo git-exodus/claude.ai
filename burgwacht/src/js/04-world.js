@@ -14,7 +14,7 @@
  *   particles    little dots from puff()
  *   texts        floating damage numbers and level-up texts
  *   timers       delayed callbacks in game time (they pause with the game)
- *   soldiers     see 20-defenders.js
+ *   soldiers     see 20-defenders.js (archers and the knight are not entities, see there)
  */
 const world = { enemies: [], projectiles: [], zones: [], effects: [], particles: [], texts: [], timers: [], soldiers: [] };
 
@@ -31,7 +31,7 @@ const combat = {
 const combo = { count: 0, timer: 0, punch: 0 };   // kill streak; punch animates the counter
 
 const wave = {
-  queue: [],          // enemy types still to spawn
+  queue: [],          // enemy type ids still to spawn; 'wolf+' leads a pack, see spawnFromQueue()
   total: 1,           // size of the wave, for the progress bar
   spawnGap: 1,        // seconds between two spawns
   spawnTimer: 0,
@@ -121,7 +121,7 @@ function floatText(x, y, text, color, big = false) {
   world.texts.push({ x, y, text, color, big, t: 0 });
 }
 
-/** Removes everything from the field. `all` also removes soldiers and visuals. */
+/** Removes enemies, projectiles, zones and timers from the field. `all` also removes the soldiers. */
 function clearField(all) {
   world.enemies = [];
   world.projectiles = [];

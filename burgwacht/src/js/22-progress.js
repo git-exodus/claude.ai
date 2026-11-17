@@ -1,6 +1,7 @@
 /*
- * Long-term progress: statistics, achievements and the chest that appears
- * every tenth wave.
+ * Long-term progress: gold income, statistics, achievements, and the treasure
+ * chest that appears after every third wave (opening animation, then a choice
+ * of three boons that last until the next defeat).
  */
 
 /** All gold income goes through here so the statistics stay correct. */

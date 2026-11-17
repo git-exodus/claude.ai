@@ -1,4 +1,21 @@
-// Tests for balance, shop upgrades, special enemies, chests, achievements and the lava world.
+/*
+ * suite-progress: balance and long-term progress (written for 0.6 to 0.7).
+ *
+ *   - enemy hit points per wave (linear ramp to wave 17, then growth without a jump)
+ *   - XP curve, formulas beyond level 100, dagger damage
+ *   - aiming line for daggers and bow
+ *   - tabbed shop: tabs, tier dots, castle lives, archers, armour, more soldiers, gold and XP bonus
+ *   - 20 soldiers and 10 archers, archers shoot all round
+ *   - shield bearers (projectiles deal 25 %), crossbow archers (stop and shoot every 4 s)
+ *   - chest every 3 waves: info box, cannot be dismissed, boons work and end with a defeat
+ *   - achievements pay once, statistics window
+ *   - lava world: unlock after wave 100, world picker, own waves, look, splitting slimes,
+ *     triple gold, forge, continuing on the same wave, saving both worlds
+ *   - load test in lava wave 30 with every weapon and all troops
+ *
+ * Runs quiet (see tests/lib.js) and switches single features back on through __bw.flags.
+ * fresh() hands out the sword because many checks use sword mechanics.
+ */
 const { chromium } = require('playwright');
 let fails = 0;
 const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== '' ? '  [' + x + ']' : '')); if (!c) fails++; };

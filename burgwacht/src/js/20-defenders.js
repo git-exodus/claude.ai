@@ -1,6 +1,10 @@
 /*
- * What defends the castle besides the player's weapon: the wall, the castle's
- * own lives and the little soldiers.
+ * What defends the castle besides the player's weapon:
+ *   wall and castle   take the hits of enemies that get through (wallHit, castleHit)
+ *   soldiers          walk out of the gate, hold enemies up, die after a few hits
+ *   archers           stand on the wall ring and shoot on their own (up to 10)
+ *   knight            rides around the castle and charges close enemies; immortal
+ * All of them are bought in the shop (see 31-shop.js).
  */
 
 /** An enemy reached the wall: it loses one hit point. */

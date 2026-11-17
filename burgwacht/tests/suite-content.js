@@ -1,5 +1,17 @@
-// Tests for version 0.8: dagger start, new enemies, wolf packs, boss rotation, knight,
-// chest animation, skill hint and music.
+/*
+ * suite-content: content added in 0.8.
+ *
+ *   - daggers as starting weapon, sword in the shop for 5 gold
+ *   - knight: patrol circle, charges enemies close to the castle, never beyond 175 U
+ *   - new enemies: speeds, siege damage, club hits on soldiers, first wave of each type
+ *   - wolf packs of four (queue and spawn point), boss rotation, the alpha brings a pack
+ *   - lava colours for the new enemies
+ *   - not quiet (second page): menu and game music, skill hint after wave 2,
+ *     chest opening animation (about 2 s, tap to skip), music switch and its saving
+ *
+ * Chromium is started with --autoplay-policy=no-user-gesture-required so the
+ * music can start in headless mode; whether it sounds good cannot be tested here.
+ */
 const { chromium } = require('playwright');
 let fails = 0;
 const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== '' ? '  [' + x + ']' : '')); if (!c) fails++; };
