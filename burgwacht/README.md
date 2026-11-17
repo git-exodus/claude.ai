@@ -161,7 +161,7 @@ Kurz prüfen:
 ```
 
 ```bash
-/opt/android-sdk/build-tools/34.0.0/apksigner verify Burgwacht.apk                 # "Verifies"?
+/opt/android-sdk/build-tools/34.0.0/apksigner verify --verbose Burgwacht.apk       # erste Zeile "Verifies"?
 ```
 
 Die APK ist ein **Debug-Build** (Debug-Schlüssel von Gradle). Zum Installieren muss der Nutzer am
