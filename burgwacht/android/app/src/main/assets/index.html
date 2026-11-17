@@ -171,717 +171,3610 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
 </div>
 
 <script>
-(()=>{
+(() => {
 'use strict';
-const TAU=Math.PI*2, PI=Math.PI, cos=Math.cos, sin=Math.sin, atan2=Math.atan2;
-const rnd=(a=1,b)=>b===undefined?Math.random()*a:a+Math.random()*(b-a);
-const dist=(a,b,c,d)=>Math.hypot(a-c,b-d);
-const $=id=>document.getElementById(id);
-const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
-const game=$('game'), cv=$('c'), ctx=cv.getContext('2d');
-const MAXLV=100, MAXHP=10, SAVE='burgwacht-v3',VERSION='0.5';
-const NAMES={sword:'Schwert',dagger:'Dolche',star:'Morgenstern',bow:'Bogen',wand:'Feuerstab'};
-const PRICE={dagger:5,star:10,bow:40,wand:75};
-const MS={
- sword:{5:'Doppelschwert',10:'Dreier-Fächer',15:'Echo-Hieb',25:'Kreisende Schwerter',30:'Klingenwelle',40:'Geisterschwert',50:'Riesenschwert',60:'Schwertsplitter',70:'Zeitriss',80:'Spiegelhieb',90:'Kettenblitz',100:'Schwertregen'},
- dagger:{5:'Dolchfächer',10:'Abpraller',15:'Durchbohren',25:'Ansteckendes Gift',30:'Schattenklon',40:'Splitterdolche',50:'Bumerang',60:'Giftwolke',70:'Dolchfallen',80:'Zielsuchend',90:'Dolchwirbel',100:'Kettenreaktion'},
- bow:{5:'Doppelpfeil',10:'Durchschuss',15:'Kritischer Treffer',25:'Brandpfeil',30:'Pfeilfächer',40:'Explosivpfeil',50:'Pfeilhagel',60:'Querschläger',70:'Frostpfeil',80:'Geisterschütze',90:'Riesenpfeil',100:'Pfeilsturm'},
- wand:{5:'Brand',10:'Zwei Feuerbälle',15:'Feuerspur',25:'Kettenexplosion',30:'Flammenwand',40:'Feuergeist',50:'Lavabecken',60:'Phönix',70:'Glutregen',80:'Feuertornado',90:'Sonnenstrahl',100:'Supernova'},
- star:{5:'Schockwelle',10:'Rollende Kugel',15:'Betäubung',25:'Stachelhagel',30:'Nachbeben',40:'Brennender Boden',50:'Kettenschwung',60:'Schwarzes Loch',70:'Kugelsplitter',80:'Erdspalte',90:'Zwillingsstern',100:'Meteor'}
+
+/* ===== 01-core.js ===== */
+/*
+ * Core helpers shared by every other file.
+ *
+ * All files in src/js are concatenated into one function scope (see build.py),
+ * so everything declared here is visible everywhere without imports.
+ */
+
+const TAU = Math.PI * 2;
+const PI = Math.PI;
+const { cos, sin, atan2 } = Math;
+
+/** rnd() -> 0..1, rnd(a) -> 0..a, rnd(a, b) -> a..b */
+const rnd = (a = 1, b) => (b === undefined ? Math.random() * a : a + Math.random() * (b - a));
+const dist = (x1, y1, x2, y2) => Math.hypot(x1 - x2, y1 - y2);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const $ = id => document.getElementById(id);
+
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const game = $('game');
+const canvas = $('c');
+const ctx = canvas.getContext('2d');
+
+/*
+ * View metrics, recomputed by resize() in 40-main.js.
+ *   W, H    size of the play field in CSS pixels
+ *   DPR     device pixel ratio used for the canvas backing store
+ *   U       gameplay unit: every size and speed is a multiple of U so the game
+ *           looks the same on small and large phones
+ *   cx, cy  centre of the castle; enemies walk towards this point
+ */
+let W = 360, H = 640, DPR = 1, U = 1, cx = 180, cy = 300;
+
+/** Shortest distance from point (px, py) to the segment (x1, y1)-(x2, y2). */
+function distToSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const lengthSq = dx * dx + dy * dy || 1;
+  const t = clamp(((px - x1) * dx + (py - y1) * dy) / lengthSq, 0, 1);
+  return dist(px, py, x1 + dx * t, y1 + dy * t);
+}
+
+/* Small canvas shortcuts; `c` is any 2D context (the game canvas or an icon canvas). */
+function fillCircle(c, x, y, r) {
+  c.beginPath();
+  c.arc(x, y, r, 0, TAU);
+  c.fill();
+}
+function fillEllipse(c, x, y, rx, ry) {
+  c.beginPath();
+  c.ellipse(x, y, rx, ry, 0, 0, TAU);
+  c.fill();
+}
+
+/* ===== 02-config.js ===== */
+/*
+ * Game data and balance numbers. Nothing in here has side effects, so this is
+ * the place to tune the game.
+ */
+
+const VERSION = '0.5';
+const SAVE_KEY = 'burgwacht-v3';
+const LEGACY_SAVE_KEY = 'burgwacht-v2';   // single-save format from before the start menu
+
+/*
+ * Weapon levels. MAX_LEVEL is the only number to change when the cap is raised
+ * (1000 is planned). New abilities only exist up to ABILITY_CAP; above it only
+ * damage keeps growing and the cooldown stays at its ABILITY_CAP value.
+ */
+const MAX_LEVEL = 100;
+const ABILITY_CAP = 100;
+
+const MAX_HP = 10;                 // castle lives
+const CASTLE_SCALE = 0.6;          // castle and enemies are drawn at 60 % of their design size
+const WALL_TIERS = [0, 3, 5, 10, 25];   // wall hit points per shop tier (index = tier)
+const SOLDIER_INTERVALS = [5, 4, 3];    // seconds between soldiers per shop tier
+const MAX_SOLDIERS = 4;
+const MAX_ENEMIES_ALIVE = 260;     // further enemies wait off-screen until there is room
+
+/*
+ * Weapons, in the order of the weapon bar.
+ *   price        gold needed in the shop (the sword is owned from the start)
+ *   baseDamage   damage of one basic hit at level 1
+ *   cooldown     [seconds at level 1, seconds at ABILITY_CAP], linear in between
+ *   milestones   level -> name of the ability unlocked there; abilities stack
+ * The attack code lives in 10-weapon-*.js and is attached as WEAPONS[id].attack.
+ */
+const WEAPONS = {
+  sword: {
+    name: 'Schwert', price: 0, baseDamage: 10, cooldown: [3.5, 0.5], baseAbility: 'Schwerthieb',
+    milestones: { 5: 'Doppelschwert', 10: 'Dreier-Fächer', 15: 'Echo-Hieb', 25: 'Kreisende Schwerter', 30: 'Klingenwelle', 40: 'Geisterschwert', 50: 'Riesenschwert', 60: 'Schwertsplitter', 70: 'Zeitriss', 80: 'Spiegelhieb', 90: 'Kettenblitz', 100: 'Schwertregen' },
+  },
+  dagger: {
+    name: 'Dolche', price: 5, baseDamage: 7, cooldown: [2, 0.3], baseAbility: 'Wurfdolch',
+    milestones: { 5: 'Dolchfächer', 10: 'Abpraller', 15: 'Durchbohren', 25: 'Ansteckendes Gift', 30: 'Schattenklon', 40: 'Splitterdolche', 50: 'Bumerang', 60: 'Giftwolke', 70: 'Dolchfallen', 80: 'Zielsuchend', 90: 'Dolchwirbel', 100: 'Kettenreaktion' },
+  },
+  star: {
+    name: 'Morgenstern', price: 10, baseDamage: 16, cooldown: [5, 1], baseAbility: 'Flächenschlag',
+    milestones: { 5: 'Schockwelle', 10: 'Rollende Kugel', 15: 'Betäubung', 25: 'Stachelhagel', 30: 'Nachbeben', 40: 'Brennender Boden', 50: 'Kettenschwung', 60: 'Schwarzes Loch', 70: 'Kugelsplitter', 80: 'Erdspalte', 90: 'Zwillingsstern', 100: 'Meteor' },
+  },
+  bow: {
+    name: 'Bogen', price: 40, baseDamage: 14, cooldown: [2.5, 0.4], baseAbility: 'Pfeilschuss',
+    milestones: { 5: 'Doppelpfeil', 10: 'Durchschuss', 15: 'Kritischer Treffer', 25: 'Brandpfeil', 30: 'Pfeilfächer', 40: 'Explosivpfeil', 50: 'Pfeilhagel', 60: 'Querschläger', 70: 'Frostpfeil', 80: 'Geisterschütze', 90: 'Riesenpfeil', 100: 'Pfeilsturm' },
+  },
+  wand: {
+    name: 'Feuerstab', price: 75, baseDamage: 12, cooldown: [4, 0.8], baseAbility: 'Feuerball',
+    milestones: { 5: 'Brand', 10: 'Zwei Feuerbälle', 15: 'Feuerspur', 25: 'Kettenexplosion', 30: 'Flammenwand', 40: 'Feuergeist', 50: 'Lavabecken', 60: 'Phönix', 70: 'Glutregen', 80: 'Feuertornado', 90: 'Sonnenstrahl', 100: 'Supernova' },
+  },
 };
-const BASE={sword:10,dagger:7,star:16,bow:14,wand:12};
+const WEAPON_IDS = Object.keys(WEAPONS);
 
-/* ---------- Zustand ---------- */
-const blank=()=>({lv:{sword:1,dagger:1,star:1,bow:1,wand:1},xp:{sword:0,dagger:0,star:0,bow:0,wand:0},wave:1,active:'sword',
-  gold:0,cleared:0,heal:1,hold:false,wall:0,wallHp:0,solLv:0,own:{dagger:false,star:false,bow:false,wand:false,soldier:false}});
-const WALL=[0,3,5,10,25],SOLT=[5,4,3],K=.6;
-function waveCount(w){let n=8;for(let i=2;i<=w;i++)n+=i<=5?3:i<=15?5:i<=30?10:i<=50?15:20;return n}
-function clean(d){const o=blank();if(!d)return o;
-  for(const w in o.lv){o.lv[w]=Math.min(MAXLV,Math.max(1,d.lv?.[w]|0||1));o.xp[w]=+d.xp?.[w]||0}
-  o.gold=Math.max(0,d.gold|0);o.cleared=Math.max(0,d.cleared|0);o.heal=Math.min(3,Math.max(1,d.heal|0||1));o.hold=!!d.hold;
-  o.wall=Math.min(4,Math.max(0,d.wall|0));o.wallHp=Math.min(WALL[o.wall],Math.max(0,d.wallHp|0));o.solLv=Math.min(2,Math.max(0,d.solLv|0));
-  for(const k in o.own)o.own[k]=!!d.own?.[k];
-  o.wave=Math.min(o.cleared+1,Math.max(1,d.wave|0||1));
-  if(d.active==='sword'||o.own[d.active])o.active=d.active;return o}
-const S=blank(),DB={slots:[null,null],opts:{mute:false,vib:true,speed:1}};let slot=-1;
-try{const d=JSON.parse(localStorage.getItem(SAVE)||'null');
-  if(d){DB.slots=[0,1].map(i=>d.slots?.[i]?clean(d.slots[i]):null);DB.opts.mute=!!d.opts?.mute;DB.opts.vib=d.opts?.vib!==false;DB.opts.speed=d.opts?.speed===2?2:1}
-  else{const o=JSON.parse(localStorage.getItem('burgwacht-v2')||'null');if(o)DB.slots[0]=clean(o)}}catch(e){}
-const save=()=>{if(slot>=0)DB.slots[slot]=JSON.parse(JSON.stringify(S));try{localStorage.setItem(SAVE,JSON.stringify(DB))}catch(e){}};
-const owned=w=>w==='sword'||S.own[w];
-const need=L=>Math.round(4+L*1.4+L*L*.035);
-const dmgOf=w=>BASE[w]*(1+.09*(S.lv[w]-1));
-const CD={sword:[3.5,.5],dagger:[2,.3],star:[5,1],bow:[2.5,.4],wand:[4,.8]};
-const cdOf=w=>CD[w][0]-(CD[w][0]-CD[w][1])*(S.lv[w]-1)/99;
+/** XP needed to go from `level` to `level + 1`. */
+const xpNeeded = level => Math.round(4 + level * 1.4 + level * level * 0.035);
 
-let W=360,H=640,DPR=1,U=1,cx=180,cy=300,CR=24,ground=null;
-let hp=MAXHP,enemies=[],projs=[],zones=[],fx=[],parts=[],texts=[],timers=[];
-let cd=0,cdMax=1,atkCount=0,shake=0,castleFlash=0,time=0,fallen=false,started=false,paused=false,soldiers=[],solT=2,holdPt=null,waveTotal=1,lastProg=-1,lastKill=0,AC=null,comboN=0,comboT=0,comboP=0,bowN=0,exN=0;
-let queue=[],spawnT=0,spawnGap=1,pause=1.5;
-const after=(t,fn)=>timers.push({t,fn});
-
-/* ---------- Anzeige ---------- */
-const toastEl=$('toast');let toastQ=[],toastBusy=false;
-function toast(a,b){toastQ.push([a,b]);if(!toastBusy)nextToast()}
-function nextToast(){const t=toastQ.shift();if(!t){toastBusy=false;return}toastBusy=true;
-  toastEl.textContent=t[0];if(t[1]){const s=document.createElement('small');s.textContent=t[1];toastEl.appendChild(s)}
-  toastEl.classList.add('on');setTimeout(()=>{toastEl.classList.remove('on');setTimeout(nextToast,280)},t[1]?2600:1500)}
-function hud(){
-  $('wave').textContent='Welle '+S.wave;$('b-hold').setAttribute('aria-pressed',String(S.hold));$('b-speed').textContent='x'+DB.opts.speed;$('wdown').disabled=S.wave<=1;$('wup').disabled=S.wave>S.cleared;
-  $('gold').textContent=S.gold;$('gold').setAttribute('aria-label',S.gold+' Gold');
-  const h=$('hearts');h.textContent='';
-  for(let i=0;i<MAXHP;i++){const s=document.createElement('span');s.textContent='♥';if(i>=hp)s.className='off';h.appendChild(s)}
-  h.setAttribute('aria-label',hp+' von '+MAXHP+' Leben');
-  const wl=$('wall'),wm=WALL[S.wall];wl.hidden=!wm;wl.textContent='';wl.setAttribute('aria-label','Mauer '+S.wallHp+' von '+wm);
-  for(let i=0;i<wm;i++){const b=document.createElement('i');if(i>=S.wallHp)b.className='off';wl.appendChild(b)}
-  for(const w in NAMES){const b=$('wp-'+w),ok=owned(w);
-    b.classList.toggle('locked',!ok);b.setAttribute('aria-pressed',String(S.active===w));
-    b.querySelector('.badge').textContent=ok?S.lv[w]:PRICE[w];b.setAttribute('aria-label',NAMES[w]+(ok?', Level '+S.lv[w]:', gesperrt, '+PRICE[w]+' Gold'))}
-  const w=S.active,L=S.lv[w],nx=Object.keys(MS[w]).map(Number).find(l=>l>L),wi=$('winfo');wi.textContent='';
-  const chip=(t,c)=>{const e=document.createElement(c==='b'?'b':'span');if(c&&c!=='b')e.className=c;e.textContent=t;wi.appendChild(e)};
-  chip(NAMES[w]+' Lvl '+L,'b');chip('Schaden '+Math.round(dmgOf(w)));chip('alle '+cdOf(w).toFixed(1).replace('.',',')+' s');chip(L>=MAXLV?'MAX':'Neu ab Lvl '+nx,'nx');
-  let fs=12.5;wi.style.fontSize=fs+'px';while(wi.scrollWidth>wi.clientWidth+1&&fs>9){fs-=.5;wi.style.fontSize=fs+'px'}
-  $('wxp').firstElementChild.style.width=(L>=MAXLV?100:Math.min(100,S.xp[w]/need(L)*100))+'%';
-}
-function gainXP(w,a){
-  if(S.lv[w]>=MAXLV)return;
-  S.xp[w]+=a;let up=false;
-  while(S.lv[w]<MAXLV&&S.xp[w]>=need(S.lv[w])){S.xp[w]-=need(S.lv[w]);S.lv[w]++;up=true;
-    const m=MS[w][S.lv[w]];
-    if(m)toast(NAMES[w]+' Lvl '+S.lv[w],'Neu: '+m);
-    else texts.push({x:cx,y:cy-70*U,s:NAMES[w]+' Lvl '+S.lv[w],t:0,c:'#ffe08a',big:1})}
-  if(S.lv[w]>=MAXLV)S.xp[w]=0;
-  if(up){snd(660,.09,'triangle',.05);setTimeout(()=>snd(880,.14,'triangle',.05),90);vib(30);ring(cx,cy,90*U,'245,185,58',.6);save()}
-  hud();
-}
-
-/* ---------- Gegner ---------- */
-const TYPES={
- slime:{r:13,hp:10,sp:20,xp:1,col:'#59c36a'},
- bat:{r:10,hp:6,sp:38,xp:1,col:'#9a6bd6'},
- ogre:{r:19,hp:42,sp:13,xp:4,col:'#4f9aa8'},
- boss:{r:30,hp:260,sp:9,xp:25,col:'#e07a3f'}
+/*
+ * Enemy types. r/hp/sp/xp are the level-1 values (radius in U before CASTLE_SCALE,
+ * speed in U per second); waves scale them with the functions below.
+ */
+const ENEMY_TYPES = {
+  slime: { r: 13, hp: 10, sp: 20, xp: 1, color: '#59c36a' },
+  bat:   { r: 10, hp: 6, sp: 38, xp: 1, color: '#9a6bd6' },
+  ogre:  { r: 19, hp: 42, sp: 13, xp: 4, color: '#4f9aa8' },
+  boss:  { r: 30, hp: 260, sp: 9, xp: 25, color: '#e07a3f' },
 };
-function buildWave(){
-  const w=S.wave;queue=[];
-  const n=waveCount(w);
-  for(let i=0;i<n;i++){const r=Math.random();
-    queue.push(w>=3&&r<Math.min(.25,.04*w)?'ogre':w>=2&&r<Math.min(.25,.04*w)+Math.min(.3,.06*w)?'bat':'slime')}
-  if(w%5===0)queue.splice(Math.floor(queue.length/2),0,'boss');
-  spawnGap=Math.max(.04,Math.min(1.5,Math.min(80,10+n*.6)/n));spawnT=0;waveTotal=queue.length;
+const BOSS_EVERY = 5;   // a boss joins every 5th wave
+
+/** Number of regular enemies in a wave: +3 per wave up to 5, +5 to 15, +10 to 30, +15 to 50, +20 after. */
+function waveCount(waveNo) {
+  let n = 8;
+  for (let i = 2; i <= waveNo; i++) n += i <= 5 ? 3 : i <= 15 ? 5 : i <= 30 ? 10 : i <= 50 ? 15 : 20;
+  return n;
 }
-function spawn(type){
-  const T=TYPES[type],w=S.wave,a=rnd(TAU),dx=cos(a),dy=sin(a);
-  const t=Math.min((W/2+30)/Math.abs(dx||1e-6),((dy<0?cy:H-cy)+30)/Math.abs(dy||1e-6));
-  const f=1+.22*(w-1)+.015*(w-1)*(w-1);
-  enemies.push({type,x:cx+dx*t,y:cy+dy*t,r:T.r*U*K,hp:T.hp*f,max:T.hp*f,sp:T.sp*(1+Math.min(.5,w*.02)),xp:T.xp*(1+.12*w),
-    col:T.col,boss:type==='boss',ph:rnd(TAU),kx:0,ky:0,stun:0,freeze:0,poison:0,pdps:0,pacc:0,flash:0,oc:0,atk:0,blocked:0,burn:0,bdps:0,bacc:0,slow:0,dead:false});
+const enemyHpFactor = waveNo => 1 + 0.22 * (waveNo - 1) + 0.015 * (waveNo - 1) * (waveNo - 1);
+const enemySpeedFactor = waveNo => 1 + Math.min(0.5, waveNo * 0.02);
+const enemyXpFactor = waveNo => 1 + 0.12 * waveNo;
+/** Seconds between two spawns: a wave takes at most ~80 s to enter the field. */
+const spawnGapFor = count => clamp(Math.min(80, 10 + count * 0.6) / count, 0.04, 1.5);
+
+/** Random type for one regular enemy; ogres appear from wave 3, bats from wave 2. */
+function rollEnemyType(waveNo) {
+  const roll = Math.random();
+  const ogreShare = Math.min(0.25, 0.04 * waveNo);
+  const batShare = Math.min(0.3, 0.06 * waveNo);
+  if (waveNo >= 3 && roll < ogreShare) return 'ogre';
+  if (waveNo >= 2 && roll < ogreShare + batShare) return 'bat';
+  return 'slime';
 }
-function nearest(x,y,maxD,excl){let b=null,bd=maxD||1e9;
-  for(const e of enemies){if(e.dead||(excl&&excl.has(e)))continue;const d=dist(x,y,e.x,e.y);if(d<bd){bd=d;b=e}}return b}
-function hurt(e,d,src){
-  if(e.dead)return;e.hp-=d;e.flash=.12;
-  if(!src.dot&&texts.length<40)texts.push({x:e.x+rnd(-6,6),y:e.y-e.r*1.7,s:String(Math.max(1,Math.round(d))),t:0,c:src.c||'#fff'});
-  if(e.hp<=0)kill(e,src);
+
+/* ===== 03-state.js ===== */
+/*
+ * Persistent state: the save game `S`, the two save slots and the options.
+ *
+ * `S` is always the same object. Loading a slot copies the slot's fields into
+ * it, so other code (and the test hooks) can keep a reference to it.
+ */
+
+/** A brand-new save game. Every persistent field must be listed here. */
+function blankSave() {
+  const perWeapon = value => Object.fromEntries(WEAPON_IDS.map(id => [id, value]));
+  return {
+    lv: perWeapon(1),          // weapon levels
+    xp: perWeapon(0),          // XP towards the next level
+    active: 'sword',           // weapon selected in the bar
+    wave: 1,                   // wave currently being played
+    cleared: 0,                // highest wave ever cleared (limits the wave arrows, pays gold once)
+    gold: 0,
+    heal: 1,                   // lives restored after each cleared wave (shop: 1..3)
+    hold: false,               // "repeat this wave" toggle
+    wall: 0,                   // wall tier, index into WALL_TIERS
+    wallHp: 0,                 // current wall hit points; only refilled after a defeat
+    solLv: 0,                  // soldier speed tier, index into SOLDIER_INTERVALS
+    own: { dagger: false, star: false, bow: false, wand: false, soldier: false },
+  };
 }
-function kill(e,src){
-  e.dead=true;comboN++;comboT=1.5;comboP=1;if(comboN%10===0||e.boss)shake=Math.max(shake,e.boss?14:4);
-  if(Math.abs(time-lastKill)>.05){lastKill=time;snd(420+Math.min(30,comboN)*18,.06,'square',.025,300)}
-  if(fx.length<220){const a=atan2(e.y-cy,e.x-cx)+rnd(-.6,.6),v=rnd(110,210)*U,x0=e.x,y0=e.y,r=e.r,col=e.col,sp=rnd(-8,8);
-    fx.push({t:0,dur:.4,d(k){ctx.save();ctx.translate(x0+cos(a)*v*k*.4,y0+sin(a)*v*k*.4-sin(k*PI)*20*U);ctx.rotate(sp*k);ctx.globalAlpha=1-k*k;ctx.scale(1+k*.6,1-k*.6);
-      ctx.fillStyle=col;ctx.strokeStyle='#33283a';ctx.lineWidth=1.5*U;ctx.beginPath();ctx.arc(0,0,r*(1-k*.3),0,TAU);ctx.fill();ctx.stroke();ctx.restore()}});
-    ring(e.x,e.y,e.r*2.4,'255,255,255',.22)}
-  puff(e.x,e.y,e.col,e.boss?26:8);gainXP(S.active,e.xp);
-  const Ld=S.lv.dagger,Ls=S.lv.sword;
-  if(e.burn>0&&S.lv.wand>=25&&exN<10&&(src.ex||0)<3){exN++;const x=e.x,y=e.y,g=(src.ex||0)+1;after(.08,()=>boom(x,y,30*U,dmgOf('wand')*.5,{w:'wand',ex:g,c:'#ffb36b'}))}
-  if(e.poison>0){
-    if(Ld>=25){let n=0;for(const o of enemies){if(n>=2)break;if(o.dead||o===e||dist(o.x,o.y,e.x,e.y)>90*U)continue;
-      o.poison=4;o.pdps=Math.max(o.pdps,e.pdps);n++}}
-    if(Ld>=60)cloud(e.x,e.y,e.pdps);
+
+/** Rebuilds a save from untrusted data (old versions, edited storage), clamping every field. */
+function sanitizeSave(data) {
+  const save = blankSave();
+  if (!data) return save;
+  for (const id of WEAPON_IDS) {
+    save.lv[id] = clamp(data.lv?.[id] | 0 || 1, 1, MAX_LEVEL);
+    save.xp[id] = +data.xp?.[id] || 0;
   }
-  if(src.w==='sword'&&Ls>=60&&!src.mini){const a0=rnd(TAU);
-    for(let i=0;i<3;i++){const a=a0+i*TAU/3;projs.push({k:'mini',x:e.x,y:e.y,vx:cos(a)*300*U,vy:sin(a)*300*U,r:8*U,dmg:dmgOf('sword')*.4,life:.5,pierce:0,hit:new Set([e]),src:{w:'sword',mini:true,c:'#eaf2ff'}})}}
-  if(src.w==='dagger'&&Ld>=100&&(src.gen||0)<4&&projs.length<70){const t=nearest(e.x,e.y,400*U);
-    if(t)mkDagger(e.x,e.y,atan2(t.y-e.y,t.x-e.x),{simple:true,chain:true,gen:(src.gen||0)+1,m:.8,life:1})}
-}
-function aoe(x,y,r,d,src,cb){for(const e of enemies){if(e.dead)continue;if(dist(x,y,e.x,e.y)<r+e.r){if(cb)cb(e);hurt(e,d,src)}}}
-function knock(e,f){const a=atan2(e.y-cy,e.x-cx),k=f*U/(e.boss?3:1);e.kx+=cos(a)*k;e.ky+=sin(a)*k}
-
-/* ---------- Effekte ---------- */
-function puff(x,y,col,n){for(let i=0;i<n&&parts.length<260;i++){const a=rnd(TAU),s=rnd(30,140)*U;
-  parts.push({x,y,vx:cos(a)*s,vy:sin(a)*s-40*U,l:rnd(.3,.6),m:.6,col,sz:rnd(2,5)*U})}}
-function ring(x,y,r,rgb,dur=.4,under){if(fx.length>160)return;fx.push({t:0,dur,under,d(k){ctx.strokeStyle=`rgba(${rgb},${1-k})`;ctx.lineWidth=(6-5*k)*U;
-  ctx.beginPath();ctx.ellipse(x,y,r*(.3+.7*k),r*(.3+.7*k)*.8,0,0,TAU);ctx.stroke()}})}
-function slashFx(x,y,a,R,rgb='255,255,255'){if(fx.length>160)return;fx.push({t:0,dur:.28,d(k){const sw=Math.min(1,k*3.2);
-  ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.globalAlpha=1-k*k;ctx.fillStyle=`rgb(${rgb})`;ctx.shadowColor=`rgba(${rgb},.9)`;ctx.shadowBlur=14*U;
-  ctx.beginPath();ctx.arc(-R*.4,0,R*1.2,-1.1,-1.1+2.2*sw);ctx.arc(-R*.8,0,R*1.38,(-1.1+2.2*sw)*.82,-1.1*.82,true);ctx.closePath();ctx.fill();ctx.restore()}})}
-function drawSword(c,x,y,a,len,blade='#eef4ff',grip='#8a5a3c'){
-  c.save();c.translate(x,y);c.rotate(a);c.lineJoin='round';c.lineWidth=Math.max(1,len*.035);c.strokeStyle='#33283a';
-  const w=len*.075;c.fillStyle=blade;c.beginPath();c.moveTo(0,-w);c.lineTo(len*.74,-w);c.lineTo(len*.9,0);c.lineTo(len*.74,w);c.lineTo(0,w);c.closePath();c.fill();c.stroke();
-  c.fillStyle='rgba(120,150,190,.45)';c.fillRect(len*.04,0,len*.72,w*.8);
-  c.fillStyle=grip;c.fillRect(-len*.2,-w*.6,len*.2,w*1.2);c.strokeRect(-len*.2,-w*.6,len*.2,w*1.2);
-  c.fillStyle='#f5b93a';c.fillRect(-len*.035,-len*.15,len*.07,len*.3);c.strokeRect(-len*.035,-len*.15,len*.07,len*.3);
-  c.beginPath();c.arc(-len*.22,0,w*.9,0,TAU);c.fill();c.stroke();c.restore()}
-function drawBall(c,x,y,r,rot=0){
-  c.save();c.translate(x,y);c.rotate(rot);c.strokeStyle='#33283a';c.lineWidth=Math.max(1,r*.12);c.lineJoin='round';c.fillStyle='#cfd6de';
-  for(let i=0;i<8;i++){const a=i*TAU/8;c.beginPath();c.moveTo(cos(a-.22)*r*.9,sin(a-.22)*r*.9);c.lineTo(cos(a)*r*1.5,sin(a)*r*1.5);c.lineTo(cos(a+.22)*r*.9,sin(a+.22)*r*.9);c.closePath();c.fill();c.stroke()}
-  const g=c.createRadialGradient(-r*.3,-r*.3,r*.1,0,0,r);g.addColorStop(0,'#aab3c0');g.addColorStop(1,'#59606e');
-  c.fillStyle=g;c.beginPath();c.arc(0,0,r,0,TAU);c.fill();c.stroke();c.restore()}
-function fallSword(x,y,scale,delay,cb){
-  fx.push({t:0,dur:delay,d(k){const e=k*k;ctx.fillStyle=`rgba(0,0,0,${.12+.2*k})`;ctx.beginPath();ctx.ellipse(x,y,22*U*scale*k,9*U*scale*k,0,0,TAU);ctx.fill();
-    drawSword(ctx,x,y-(1-e)*420*U-58*U*scale,PI/2,64*U*scale)}});
-  after(delay,()=>{cb();fx.push({t:0,dur:.35,d(k){ctx.globalAlpha=1-k;drawSword(ctx,x,y-58*U*scale,PI/2,64*U*scale);ctx.globalAlpha=1}})});
-}
-function lightning(x,y,d){
-  const pts=[[x,y]],hit=new Set();let px=x,py=y;
-  for(let i=0;i<7;i++){const e=nearest(px,py,170*U,hit);if(!e)break;hit.add(e);pts.push([e.x,e.y]);px=e.x;py=e.y;hurt(e,d,{w:'sword',c:'#fff59a'})}
-  if(pts.length<2)pts.push([x+rnd(-40,40)*U,y-60*U]);
-  fx.push({t:0,dur:.3,d(k){ctx.save();ctx.globalAlpha=1-k;ctx.strokeStyle='#fff59a';ctx.shadowColor='#ffe24a';ctx.shadowBlur=16*U;ctx.lineWidth=3*U;ctx.lineJoin='round';ctx.beginPath();
-    for(let i=0;i<pts.length-1;i++){const[a,b]=pts[i],[c,d2]=pts[i+1];ctx.moveTo(a,b);
-      for(let j=1;j<4;j++){ctx.lineTo(a+(c-a)*j/4+rnd(-9,9)*U,b+(d2-b)*j/4+rnd(-9,9)*U)}ctx.lineTo(c,d2)}
-    ctx.stroke();ctx.restore()}});
+  save.gold = Math.max(0, data.gold | 0);
+  save.cleared = Math.max(0, data.cleared | 0);
+  save.heal = clamp(data.heal | 0 || 1, 1, 3);
+  save.hold = !!data.hold;
+  save.wall = clamp(data.wall | 0, 0, WALL_TIERS.length - 1);
+  save.wallHp = clamp(data.wallHp | 0, 0, WALL_TIERS[save.wall]);
+  save.solLv = clamp(data.solLv | 0, 0, SOLDIER_INTERVALS.length - 1);
+  for (const key in save.own) save.own[key] = !!data.own?.[key];
+  save.wave = clamp(data.wave | 0 || 1, 1, save.cleared + 1);
+  if (data.active === 'sword' || save.own[data.active]) save.active = data.active;
+  return save;
 }
 
-/* ---------- Schwert ---------- */
-function atkSword(tx,ty){
-  const L=S.lv.sword,d=dmgOf('sword'),a=atan2(ty-cy,tx-cx),R=50*U*(1+L*.004),src={w:'sword'};
-  const n=L>=10?3:L>=5?2:1;
-  const volley=(px,py,ang,m)=>{for(let i=0;i<n;i++){const off=(i-(n-1)/2)*R*1.05,sx=px+cos(ang+PI/2)*off,sy=py+sin(ang+PI/2)*off;
-    slashFx(sx,sy,ang+(i-(n-1)/2)*.35,R,m<1?'190,225,255':'255,255,255');
-    aoe(sx,sy,R,d*m,src,e=>{if(L>=70)e.freeze=Math.max(e.freeze,2)})}};
-  const all=m=>{volley(tx,ty,a,m);if(L>=80)volley(2*cx-tx,2*cy-ty,a+PI,m)};
-  all(1);
-  if(L>=15)after(.35,()=>all(.6));
-  const orb=zones.find(z=>z.orb);if(L>=25&&orb)orb.dur=orb.t+3;
-  if(L>=25&&!orb)zones.push({orb:1,t:0,dur:3,a0:rnd(TAU),
-    u(z){for(let i=0;i<3;i++){const g=z.a0+z.t*4+i*TAU/3,x=cx+cos(g)*92*U,y=cy+sin(g)*92*U*.85;
-      for(const e of enemies){if(!e.dead&&e.oc<=0&&dist(x,y,e.x,e.y)<20*U+e.r){e.oc=.4;hurt(e,d*.5,src)}}}},
-    d(z){const al=Math.min(1,z.t*4,(z.dur-z.t)*3);ctx.globalAlpha=al;
-      for(let i=0;i<3;i++){const g=z.a0+z.t*4+i*TAU/3;drawSword(ctx,cx+cos(g)*70*U,cy+sin(g)*70*U*.85,g,40*U)}ctx.globalAlpha=1}});
-  if(L>=30)projs.push({k:'wave',x:tx,y:ty,vx:cos(a)*380*U,vy:sin(a)*380*U,r:30*U,dmg:d*.8,life:2,pierce:99,hit:new Set(),src:{w:'sword',c:'#bfe6ff'}});
-  if(L>=40&&zc('gh')<4)zones.push({gh:1,t:0,dur:3,acc:.3,
-    u(z,dt){z.acc+=dt;if(z.acc>=.6){z.acc=0;const g=rnd(TAU);slashFx(tx,ty,g,R*.9,'200,180,255');aoe(tx,ty,R*.9,d*.5,src)}},
-    d(z){ctx.globalAlpha=.55*Math.min(1,(z.dur-z.t)*2);drawSword(ctx,tx,ty-30*U+sin(z.t*5)*4*U,PI/2+sin(z.t*9)*.5,44*U,'#d9ccff','#6b55a8');ctx.globalAlpha=1}});
-  if(L>=50)fallSword(tx,ty,2.4,.45,()=>{aoe(tx,ty,R*1.9,d*3,src);ring(tx,ty,R*2.1,'255,255,255',.5);shake=Math.max(shake,12);puff(tx,ty,'#e9e2d0',16)});
-  if(L>=90&&atkCount%3===0)lightning(tx,ty,d*1.5);
-  if(L>=100)for(let i=0;i<14;i++)after(i*.1,()=>{const live=enemies.filter(e=>!e.dead),t=live.length&&Math.random()<.7?live[Math.floor(rnd(live.length))]:null;
-    const x=t?t.x:rnd(30,W-30),y=t?t.y:rnd(70,H-110);fallSword(x,y,1,.3,()=>{aoe(x,y,R*.9,d*1.2,src);ring(x,y,R,'220,235,255',.3)})});
+const S = blankSave();
+const DB = { slots: [null, null], opts: { mute: false, vib: true, speed: 1 } };
+let slot = -1;   // index of the slot being played, -1 while in the main menu
+
+/** Reads slots and options from localStorage; storage may be unavailable, then defaults stay. */
+function loadDatabase() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (stored) {
+      DB.slots = [0, 1].map(i => (stored.slots?.[i] ? sanitizeSave(stored.slots[i]) : null));
+      DB.opts.mute = !!stored.opts?.mute;
+      DB.opts.vib = stored.opts?.vib !== false;
+      DB.opts.speed = stored.opts?.speed === 2 ? 2 : 1;
+    } else {
+      const legacy = JSON.parse(localStorage.getItem(LEGACY_SAVE_KEY) || 'null');
+      if (legacy) DB.slots[0] = sanitizeSave(legacy);
+    }
+  } catch (e) { /* private mode or blocked storage: play without saving */ }
+}
+loadDatabase();
+
+/** Writes the running game into its slot and everything to localStorage. */
+function save() {
+  if (slot >= 0) DB.slots[slot] = JSON.parse(JSON.stringify(S));
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(DB)); } catch (e) { /* see loadDatabase */ }
 }
 
-/* ---------- Dolche ---------- */
-function mkDagger(x,y,a,o={}){
-  const L=S.lv.dagger,sp=420*U;
-  const p={k:'dagger',x,y,vx:cos(a)*sp,vy:sin(a)*sp,sp,r:8*U,dmg:(o.m||1)*dmgOf('dagger'),life:o.life||1.4,
-    pierce:!o.simple&&L>=15?1:0,bounce:o.simple?(o.chain?1:0):(L>=10?2:0),split:!o.simple&&L>=40,boom:!o.simple&&L>=50,home:L>=80,
-    hit:new Set(),sc:o.simple&&!o.chain?.7:1,src:{w:'dagger',gen:o.gen||0,c:'#c9f7e4'}};
-  projs.push(p);return p;
-}
-function cloud(x,y,dps){if(zones.length>40)return;const r=45*U;zones.push({t:0,dur:3,acc:.5,under:true,
-  u(z,dt){z.acc+=dt;if(z.acc>=.5){z.acc=0;for(const e of enemies){if(!e.dead&&dist(x,y,e.x,e.y)<r+e.r){e.poison=4;e.pdps=Math.max(e.pdps,dps);hurt(e,dps*.5,{w:'dagger',dot:true})}}}},
-  d(z){const al=.5*Math.min(1,z.t*5,(z.dur-z.t)*2);for(let i=0;i<5;i++){const g=i*1.26+z.t*.6;ctx.fillStyle=`rgba(140,210,70,${al*.5})`;
-    ctx.beginPath();ctx.arc(x+cos(g)*r*.4,y+sin(g)*r*.3,r*.6,0,TAU);ctx.fill()}}})}
-function atkDagger(tx,ty){
-  const L=S.lv.dagger,d=dmgOf('dagger'),a=atan2(ty-cy,tx-cx),n=L>=5?3:1;
-  const volley=(ang,m)=>{for(let i=0;i<n;i++)mkDagger(cx+cos(ang)*16*U,cy+sin(ang)*16*U,ang+(i-(n-1)/2)*.2,{m})};
-  volley(a,1);
-  if(L>=30)after(.25,()=>{const t=nearest(cx,cy),b=t?atan2(t.y-cy,t.x-cx):a+PI;volley(b,.7);
-    fx.push({t:0,dur:.5,d(k){ctx.fillStyle=`rgba(60,40,90,${.7*(1-k)})`;const x=cx+cos(b)*34*U,y=cy+sin(b)*34*U;
-      ctx.beginPath();ctx.arc(x,y-14*U,8*U,0,TAU);ctx.fill();ctx.beginPath();ctx.moveTo(x-11*U,y+8*U);ctx.quadraticCurveTo(x,y-22*U,x+11*U,y+8*U);ctx.fill()}})});
-  if(L>=70){const traps=zones.filter(z=>z.trap);if(traps.length>=6)traps[0].t=1e9;
-    zones.push({trap:true,t:0,dur:25,under:true,
-      u(z){for(const e of enemies){if(!e.dead&&dist(tx,ty,e.x,e.y)<14*U+e.r){if(L>=25){e.poison=4;e.pdps=Math.max(e.pdps,d*.35)}hurt(e,d*2.5,{w:'dagger',c:'#c9f7e4'});ring(tx,ty,30*U,'201,247,228',.3);z.t=1e9;break}}},
-      d(){ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(tx,ty+2*U,9*U,4*U,0,0,TAU);ctx.fill();drawSword(ctx,tx,ty-20*U,PI/2,22*U,'#dff3ff','#2f8f7a')}})}
-  if(L>=90&&zc('wh')<3)zones.push({wh:1,t:0,dur:2,acc:.2,
-    u(z,dt){z.acc+=dt;if(z.acc>=.2){z.acc=0;aoe(tx,ty,58*U,d*.3,{w:'dagger',c:'#c9f7e4'},e=>{if(L>=25){e.poison=4;e.pdps=Math.max(e.pdps,d*.35)}})}},
-    d(z){ctx.globalAlpha=Math.min(1,z.t*5,(z.dur-z.t)*3);for(let i=0;i<6;i++){const g=z.t*11+i*TAU/6;drawSword(ctx,tx+cos(g)*40*U,ty+sin(g)*40*U*.85,g+PI/2,22*U,'#dff3ff','#2f8f7a')}ctx.globalAlpha=1}});
+/** Copies a slot (or a blank save) into `S`. */
+function loadSlotIntoState(index, fresh) {
+  const data = fresh || !DB.slots[index] ? blankSave() : sanitizeSave(DB.slots[index]);
+  for (const key in data) S[key] = data[key];
+  slot = index;
 }
 
-/* ---------- Morgenstern ---------- */
-function slam(x,y,m){
-  const L=S.lv.star,d=dmgOf('star')*m,R=60*U*(1+L*.003),src={w:'star',c:'#ffd9a0'};
-  fx.push({t:0,dur:.3,d(k){ctx.globalAlpha=1-k*k;drawBall(ctx,x,y-10*U,20*U*(1.25-.25*Math.min(1,k*4)),k*2);ctx.globalAlpha=1}});
-  aoe(x,y,R,d,src,e=>{if(L>=15)e.stun=Math.max(e.stun,1)});
-  ring(x,y,R,'255,217,160',.35,true);shake=Math.max(shake,7);puff(x,y,'#c9a877',10);
-  if(L>=5){for(const e of enemies){if(!e.dead&&dist(x,y,e.x,e.y)<R*1.8+e.r)knock(e,170)}ring(x,y,R*1.8,'255,255,255',.5,true)}
-  if(L>=25)for(let i=0;i<8;i++){const a=i*TAU/8+.39;projs.push({k:'spike',x,y,vx:cos(a)*330*U,vy:sin(a)*330*U,r:7*U,dmg:d*.4,life:.7,pierce:1,hit:new Set(),src})}
-  return R;
-}
-function ballProj(x,y,a,o){projs.push({k:'ball',x,y,vx:cos(a)*o.sp,vy:sin(a)*o.sp,sp:o.sp,r:o.r,dmg:o.d,life:5,pierce:99,trav:0,range:o.range,split:o.split,hit:new Set(),src:{w:'star',c:'#ffd9a0'}})}
-function atkStar(tx,ty){
-  const L=S.lv.star,d=dmgOf('star'),a=atan2(ty-cy,tx-cx),src={w:'star',c:'#ffd9a0'};
-  const R=slam(tx,ty,1);
-  if(L>=60&&zc('bh')<3)zones.push({bh:1,t:0,dur:.9,under:true,
-    u(z,dt){for(const e of enemies){if(e.dead)continue;const q=dist(tx,ty,e.x,e.y);if(q<170*U&&q>6){const s=(e.boss?35:110)*U*dt/q;e.x+=(tx-e.x)*s;e.y+=(ty-e.y)*s}}},
-    d(z){const al=Math.min(1,z.t*6,(z.dur-z.t)*5);const g=ctx.createRadialGradient(tx,ty,2,tx,ty,70*U);g.addColorStop(0,`rgba(20,8,40,${.85*al})`);g.addColorStop(1,'rgba(60,20,110,0)');
-      ctx.fillStyle=g;ctx.beginPath();ctx.arc(tx,ty,70*U,0,TAU);ctx.fill();ctx.strokeStyle=`rgba(190,140,255,${.7*al})`;ctx.lineWidth=2*U;
-      for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(tx,ty,(22+i*16)*U,z.t*9+i*2,z.t*9+i*2+2.2);ctx.stroke()}}});
-  if(L>=10)ballProj(tx,ty,a,{sp:210*U,r:18*U,d:d*.6,range:230*U,split:L>=70});
-  if(L>=30)after(L>=60?1:.5,()=>{aoe(tx,ty,R*1.3,d*.5,src);ring(tx,ty,R*1.3,'255,190,120',.45,true);shake=Math.max(shake,6);puff(tx,ty,'#c9a877',8)});
-  if(L>=40&&zc('bn')<6)zones.push({bn:1,t:0,dur:4,acc:0,under:true,
-    u(z,dt){z.acc+=dt;if(z.acc>=.5){z.acc=0;aoe(tx,ty,R,d*.2,{w:'star',dot:true})}},
-    d(z){const al=Math.min(1,z.t*4,(z.dur-z.t)*2);const g=ctx.createRadialGradient(tx,ty,2,tx,ty,R);g.addColorStop(0,`rgba(255,200,60,${.55*al})`);g.addColorStop(.7,`rgba(240,90,30,${.4*al})`);g.addColorStop(1,'rgba(240,90,30,0)');
-      ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(tx,ty,R,R*.8,0,0,TAU);ctx.fill();
-      for(let i=0;i<6;i++){const q=i*1.05+1,fy=((z.t*1.6+i*.37)%1);ctx.fillStyle=`rgba(255,${150+i*15},40,${al*(1-fy)})`;ctx.beginPath();ctx.arc(tx+cos(q*2.3)*R*.6,ty+sin(q*1.7)*R*.4-fy*22*U,(5-3*fy)*U,0,TAU);ctx.fill()}}});
-  if(L>=50)zones.push({t:0,dur:.8,hit:new Set(),
-    u(z){const g=a+z.t/z.dur*TAU,x=cx+cos(g)*120*U,y=cy+sin(g)*120*U*.85;z.bx=x;z.by=y;z.g=g;
-      for(const e of enemies){if(!e.dead&&!z.hit.has(e)&&dist(x,y,e.x,e.y)<22*U+e.r){z.hit.add(e);knock(e,140);hurt(e,d,src)}}},
-    d(z){if(z.bx===undefined)return;ctx.strokeStyle='#59606e';ctx.lineWidth=3*U;ctx.setLineDash([5*U,4*U]);ctx.beginPath();ctx.moveTo(cx,cy-20*U);ctx.lineTo(z.bx,z.by);ctx.stroke();ctx.setLineDash([]);drawBall(ctx,z.bx,z.by,16*U,z.g*3)}});
-  if(L>=80){const len=640*U,ex=tx+cos(a)*len,ey=ty+sin(a)*len,dx=ex-tx,dy=ey-ty,l2=dx*dx+dy*dy;
-    for(const e of enemies){if(e.dead)continue;const t=Math.max(0,Math.min(1,((e.x-tx)*dx+(e.y-ty)*dy)/l2));if(dist(e.x,e.y,tx+dx*t,ty+dy*t)<16*U+e.r)hurt(e,d*1.2,src)}
-    const zig=[];for(let i=0;i<=14;i++)zig.push(rnd(-9,9)*U);
-    fx.push({t:0,dur:1.4,under:true,d(k){const grow=Math.min(1,k*6);ctx.save();ctx.translate(tx,ty);ctx.rotate(a);ctx.globalAlpha=1-k*k;ctx.lineJoin='round';
-      for(const[c,w]of[['#33283a',9],['#ff9a3c',3]]){ctx.strokeStyle=c;ctx.lineWidth=w*U*(1-k*.5);ctx.beginPath();ctx.moveTo(0,0);for(let i=1;i<=14*grow;i++)ctx.lineTo(len*i/14,zig[i]);ctx.stroke()}ctx.restore()}})}
-  if(L>=90)after(.25,()=>{const live=enemies.filter(e=>!e.dead),t=live.length?live[Math.floor(rnd(live.length))]:null;slam(t?t.x:2*cx-tx,t?t.y:2*cy-ty,.8)});
-  if(L>=100){fx.push({t:0,dur:.8,d(k){const e=k*k,x=tx+(1-e)*160*U,y=ty-(1-e)*460*U;ctx.fillStyle=`rgba(0,0,0,${.3*k})`;ctx.beginPath();ctx.ellipse(tx,ty,R*2*k,R*1.5*k,0,0,TAU);ctx.fill();
-      ctx.strokeStyle='rgba(255,150,40,.7)';ctx.lineWidth=20*U;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x+50*U,y-140*U);ctx.lineTo(x,y);ctx.stroke();ctx.lineCap='butt';drawBall(ctx,x,y,34*U,k*8)}});
-    after(.8,()=>{aoe(tx,ty,R*2.2,d*4,src);ring(tx,ty,R*2.4,'255,160,60',.7);ring(tx,ty,R*1.5,'255,255,255',.5);shake=Math.max(shake,18);puff(tx,ty,'#ff9a3c',24);
-      if(zc('cr')<4)zones.push({cr:1,t:0,dur:5,acc:0,under:true,
-        u(z,dt){z.acc+=dt;if(z.acc>=.5){z.acc=0;aoe(tx,ty,R*1.7,d*.3,{w:'star',dot:true})}},
-        d(z){const al=Math.min(1,(z.dur-z.t));const g=ctx.createRadialGradient(tx,ty,2,tx,ty,R*1.7);g.addColorStop(0,`rgba(40,20,20,${.75*al})`);g.addColorStop(.6,`rgba(200,70,20,${.5*al})`);g.addColorStop(1,'rgba(255,140,40,0)');
-          ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(tx,ty,R*1.7,R*1.35,0,0,TAU);ctx.fill()}})})}
-}
-/* ---------- Bogen ---------- */
-function burnE(e,dps,t=3){e.burn=Math.max(e.burn,t);e.bdps=Math.max(e.bdps,dps)}
-function mkArrow(a,o={}){
-  if(projs.length>260)return;const L=S.lv.bow,sp=(o.big?520:640)*U;let crit=false;if(!o.simple&&!o.big){bowN++;crit=L>=15&&bowN%4===0}
-  projs.push({k:'arrow',x:cx+cos(a)*14*U,y:cy-4*U+sin(a)*14*U,vx:cos(a)*sp,vy:sin(a)*sp,sp,r:(o.big?18:6)*U,dmg:dmgOf('bow')*(o.m||1)*(crit?3:1),life:1.6,
-    pierce:o.big?99:(L>=10?2:0),bounce:o.simple||o.big?0:(L>=60?2:0),expl:!o.simple&&!o.big&&L>=40,big:!!o.big,crit,hit:new Set(),src:{w:'bow',c:crit?'#ffe14a':'#ffe9b0'}});
-}
-function atkBow(tx,ty){
-  const L=S.lv.bow,d=dmgOf('bow'),a=atan2(ty-cy,tx-cx),src={w:'bow',c:'#ffe9b0'};
-  const volley=()=>{if(L>=30)for(let i=-2;i<=2;i++)mkArrow(a+i*.13);else mkArrow(a)};
-  volley();if(L>=5)after(.09,volley);
-  if(L>=50)for(let i=0;i<10;i++)after(.1+i*.09,()=>{const g=rnd(TAU),q=rnd(0,50)*U,x=tx+cos(g)*q,y=ty+sin(g)*q*.85;
-    if(fx.length<220)fx.push({t:0,dur:.18,d(k){drawArrow(ctx,x+(1-k)*30*U,y-(1-k)*150*U,1.77,20*U)}});
-    after(.18,()=>{aoe(x,y,15*U,d*.7,src,e=>{if(L>=70)e.slow=2.5;if(L>=25)burnE(e,d*.2)});ring(x,y,15*U,'255,233,176',.2,true)})});
-  if(L>=80){const ex=zones.find(z=>z.ga);if(ex)ex.dur=ex.t+4;else zones.push({ga:1,t:0,dur:4,acc:0,
-    u(z,dt){z.acc+=dt;if(z.acc>=.35){z.acc=0;const e=nearest(cx,cy,330*U);if(e)mkArrow(atan2(e.y-cy,e.x-cx),{simple:true,m:.6})}},
-    d(z){const al=.75*Math.min(1,z.t*4,(z.dur-z.t)*3),x=cx,y=cy-52*U*K-10*U;ctx.fillStyle=`rgba(170,220,255,${al})`;ctx.beginPath();ctx.arc(x,y-7*U,4*U,0,TAU);ctx.fill();
-      ctx.beginPath();ctx.moveTo(x-5*U,y+6*U);ctx.quadraticCurveTo(x,y-10*U,x+5*U,y+6*U);ctx.fill();ctx.globalAlpha=al;drawBow(ctx,x+5*U,y-1*U,0,6*U);ctx.globalAlpha=1}})}
-  if(L>=90&&atkCount%3===0)mkArrow(a,{big:true,m:3});
-  if(L>=100)for(let i=0;i<16;i++)mkArrow(a+(i+.5)*TAU/16,{simple:true,m:.7});
+/* ---------- Values derived from the save ---------- */
+
+const owned = id => id === 'sword' || S.own[id];
+
+/** Damage of one basic hit of the weapon at its current level. */
+const damageOf = id => WEAPONS[id].baseDamage * (1 + 0.09 * (S.lv[id] - 1));
+
+/** Seconds between attacks; shrinks linearly until ABILITY_CAP and stays there. */
+function cooldownOf(id) {
+  const [slow, fast] = WEAPONS[id].cooldown;
+  const progress = (Math.min(S.lv[id], ABILITY_CAP) - 1) / (ABILITY_CAP - 1);
+  return slow - (slow - fast) * progress;
 }
 
-/* ---------- Feuerstab ---------- */
-function boom(x,y,R,d,src){
-  aoe(x,y,R,d,src,e=>{if(S.lv.wand>=5)burnE(e,dmgOf('wand')*.25)});
-  if(fx.length<220)fx.push({t:0,dur:.3,d(k){const q=R*(.55+.6*k),g=ctx.createRadialGradient(x,y,1,x,y,q);g.addColorStop(0,`rgba(255,244,180,${.95*(1-k)})`);g.addColorStop(.6,`rgba(255,140,40,${.7*(1-k)})`);g.addColorStop(1,'rgba(255,80,20,0)');
-    ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,q,0,TAU);ctx.fill()}});
-  if(parts.length<200)puff(x,y,'#ff9a3c',4);
-}
-function fireball(tx,ty,R,d,src){
-  const x0=cx,y0=cy-30*U*K,T=Math.max(.12,Math.min(.5,dist(x0,y0,tx,ty)/(420*U)));
-  fx.push({t:0,dur:T,d(k){const x=x0+(tx-x0)*k,y=y0+(ty-y0)*k-sin(k*PI)*26*U;ctx.fillStyle='rgba(255,150,40,.35)';ctx.beginPath();ctx.arc(x,y,10*U,0,TAU);ctx.fill();drawFlame(ctx,x,y+3*U,7*U,k*30)}});
-  after(T,()=>{boom(tx,ty,R,d,src);shake=Math.max(shake,3)});
-}
-function fireLine(flag,max,x1,y1,x2,y2,dur,wid,m,d){
-  if(zc(flag)>=max)return;const dx=x2-x1,dy=y2-y1,l2=dx*dx+dy*dy||1,len=Math.sqrt(l2),n=Math.max(3,Math.round(len/(14*U)));
-  zones.push({[flag]:1,t:0,dur,acc:.4,under:true,
-    u(z,dt){z.acc+=dt;if(z.acc>=.4){z.acc=0;for(const e of enemies){if(e.dead)continue;const q=Math.max(0,Math.min(1,((e.x-x1)*dx+(e.y-y1)*dy)/l2));
-      if(dist(e.x,e.y,x1+dx*q,y1+dy*q)<wid+e.r){burnE(e,d*.25);hurt(e,d*m,{w:'wand',dot:true})}}}},
-    d(z){const al=Math.min(1,z.t*5,(z.dur-z.t)*2);ctx.strokeStyle=`rgba(255,110,30,${.4*al})`;ctx.lineWidth=wid*1.6;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.lineCap='butt';
-      ctx.globalAlpha=al;for(let i=0;i<=n;i++){const q=i/n;drawFlame(ctx,x1+dx*q,y1+dy*q,wid*(.7+.25*sin(z.t*9+i*2.1)),z.t*12+i)}ctx.globalAlpha=1}});
-}
-function atkWand(tx,ty){
-  const L=S.lv.wand,d=dmgOf('wand'),a=atan2(ty-cy,tx-cx),R=44*U*(1+L*.003),src={w:'wand',c:'#ffb36b'},px=cos(a+PI/2),py=sin(a+PI/2),dot={w:'wand',dot:true};
-  if(L>=10){fireball(tx+px*26*U,ty+py*26*U,R,d,src);fireball(tx-px*26*U,ty-py*26*U,R,d,src)}else fireball(tx,ty,R,d,src);
-  if(L>=15)fireLine('tr',5,cx+cos(a)*30*U,cy+sin(a)*30*U,tx,ty,2.5,9*U,.15,d);
-  if(L>=30)fireLine('fw',4,tx-px*60*U,ty-py*60*U,tx+px*60*U,ty+py*60*U,4,11*U,.3,d);
-  if(L>=40){const ex=zones.find(z=>z.fs);if(ex)ex.dur=ex.t+5;else zones.push({fs:1,t:0,dur:5,
-    u(z){const g=z.t*3.2;z.x=cx+cos(g)*78*U;z.y=cy+sin(g)*78*U*.85;for(const e of enemies){if(!e.dead&&e.oc<=0&&dist(z.x,z.y,e.x,e.y)<16*U+e.r){e.oc=.35;burnE(e,d*.25);hurt(e,d*.6,src)}}},
-    d(z){if(z.x===undefined)return;ctx.globalAlpha=Math.min(1,z.t*4,(z.dur-z.t)*3);drawFlame(ctx,z.x,z.y,13*U,z.t*16);ctx.fillStyle='#33283a';ctx.beginPath();ctx.arc(z.x-3*U,z.y-2*U,1.5*U,0,TAU);ctx.arc(z.x+3*U,z.y-2*U,1.5*U,0,TAU);ctx.fill();ctx.globalAlpha=1}})}
-  if(L>=50&&zc('lv')<4)zones.push({lv:1,t:0,dur:5,acc:0,under:true,
-    u(z,dt){z.acc+=dt;if(z.acc>=.5){z.acc=0;aoe(tx,ty,48*U,d*.3,dot,e=>{e.slow=Math.max(e.slow,1);burnE(e,d*.25)})}},
-    d(z){const al=Math.min(1,z.t*4,(z.dur-z.t)*2),g=ctx.createRadialGradient(tx,ty,2,tx,ty,48*U);g.addColorStop(0,`rgba(255,220,90,${.8*al})`);g.addColorStop(.6,`rgba(240,90,20,${.65*al})`);g.addColorStop(1,`rgba(90,20,10,${.5*al})`);
-      ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(tx,ty,48*U,38*U,0,0,TAU);ctx.fill();ctx.fillStyle=`rgba(255,240,170,${.7*al})`;
-      for(let i=0;i<5;i++){const q=(z.t*.9+i*.21)%1,g2=i*1.9;ctx.beginPath();ctx.arc(tx+cos(g2)*26*U,ty+sin(g2)*18*U,(1-Math.abs(q-.5)*2)*5*U,0,TAU);ctx.fill()}}});
-  if(L>=60&&atkCount%2===0&&projs.length<260){const dir=atkCount%4===0?1:-1;projs.push({k:'phoenix',x:dir>0?-30:W+30,y:ty,vx:dir*520*U,vy:0,sp:520*U,r:24*U,dmg:d*2,life:3,pierce:99,hit:new Set(),src})}
-  if(L>=70)for(let i=0;i<8;i++)after(.15+i*.11,()=>{const g=rnd(TAU),q=rnd(20,90)*U,x=tx+cos(g)*q,y=ty+sin(g)*q*.85;
-    if(fx.length<220)fx.push({t:0,dur:.2,d(k){drawFlame(ctx,x+(1-k)*40*U,y-(1-k)*170*U,6*U,k*20)}});after(.2,()=>boom(x,y,22*U,d*.6,src))});
-  if(L>=80&&zc('ft')<2)zones.push({ft:1,t:0,dur:5,acc:0,x:tx,y:ty,
-    u(z,dt){const e=nearest(z.x,z.y,400*U);if(e){const q=dist(z.x,z.y,e.x,e.y)||1;z.x+=(e.x-z.x)/q*60*U*dt;z.y+=(e.y-z.y)/q*60*U*dt}
-      z.acc+=dt;if(z.acc>=.3){z.acc=0;aoe(z.x,z.y,30*U,d*.4,dot,o=>burnE(o,d*.25))}},
-    d(z){const al=Math.min(1,z.t*4,(z.dur-z.t)*2);for(let i=0;i<6;i++){const q=i/5,w=(8+q*20)*U;ctx.fillStyle=`rgba(255,${190-i*20},${70-i*8},${.45*al})`;ctx.beginPath();ctx.ellipse(z.x+sin(z.t*9+i*1.3)*5*U,z.y-q*46*U,w,w*.32,0,0,TAU);ctx.fill()}}});
-  if(L>=90&&atkCount%3===0){const len=640*U,x1=cx+cos(a)*16*U,y1=cy+sin(a)*16*U,dx=cos(a)*len,dy=sin(a)*len,l2=len*len;
-    for(const e of enemies){if(e.dead)continue;const q=Math.max(0,Math.min(1,((e.x-x1)*dx+(e.y-y1)*dy)/l2));if(dist(e.x,e.y,x1+dx*q,y1+dy*q)<18*U+e.r){burnE(e,d*.25);hurt(e,d*2.5,src)}}
-    fx.push({t:0,dur:.35,d(k){ctx.save();ctx.translate(x1,y1);ctx.rotate(a);ctx.globalAlpha=1-k*k;ctx.fillStyle='rgba(255,170,50,.55)';ctx.fillRect(0,-18*U*(1-k*.5),len,36*U*(1-k*.5));ctx.fillStyle='#fff6c8';ctx.fillRect(0,-6*U*(1-k),len,12*U*(1-k));ctx.restore()}})}
-  if(L>=100&&atkCount%4===0){fx.push({t:0,dur:.6,d(k){ctx.globalAlpha=k;drawFlame(ctx,cx,cy-40*U*K,(10+k*26)*U,k*30);ctx.globalAlpha=1}});
-    after(.6,()=>{aoe(cx,cy,330*U,d*4,src,e=>burnE(e,d*.25,4));shake=Math.max(shake,14);
-      fx.push({t:0,dur:.6,d(k){const q=330*U*k,g=ctx.createRadialGradient(cx,cy,q*.6,cx,cy,q+1);g.addColorStop(0,'rgba(255,160,40,0)');g.addColorStop(.8,`rgba(255,200,90,${.6*(1-k)})`);g.addColorStop(1,'rgba(255,255,220,0)');
-        ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,q+1,0,TAU);ctx.fill()}})})}
-}
-const ATK={sword:atkSword,dagger:atkDagger,star:atkStar,bow:atkBow,wand:atkWand};
+/** Next milestone level above the weapon's current level, or undefined. */
+const nextMilestone = id => Object.keys(WEAPONS[id].milestones).map(Number).find(level => level > S.lv[id]);
 
-/* ---------- Geschosse ---------- */
-function endProj(p){
-  if(p.k==='dagger'&&p.boom&&!p.ret){p.ret=true;p.hit.clear();p.life=3;return}
-  if(p.k==='ball'&&p.split){const a=atan2(p.vy,p.vx);for(const s of[-.7,0,.7])ballProj(p.x,p.y,a+s,{sp:p.sp,r:p.r*.6,d:p.dmg*.6,range:150*U,split:false});puff(p.x,p.y,'#aab3c0',8)}
-  p.dead=true;
+const wallMax = () => WALL_TIERS[S.wall];
+
+/* ===== 04-world.js ===== */
+/*
+ * Runtime state of the running battle (nothing here is saved) and the small
+ * registries that weapons use to put things on the field: timers, zones,
+ * effects, particles and floating texts.
+ */
+
+/*
+ * Entity lists. Entries are plain objects; dead ones are filtered out at the
+ * end of update() so code may push to these lists while iterating them.
+ *   enemies      see spawnEnemy() in 07-enemies.js
+ *   projectiles  see addProjectile() in 08-projectiles.js
+ *   zones        lingering things with their own update: fields, orbiting swords, traps
+ *   effects      pure visuals, drawn with their progress 0..1
+ *   particles    little dots from puff()
+ *   texts        floating damage numbers and level-up texts
+ *   timers       delayed callbacks in game time (they pause with the game)
+ *   soldiers     see 20-defenders.js
+ */
+const world = { enemies: [], projectiles: [], zones: [], effects: [], particles: [], texts: [], timers: [], soldiers: [] };
+
+const castle = { hp: MAX_HP, flash: 0, fallen: false };   // flash: seconds of hit feedback left
+
+const combat = {
+  cooldown: 0,        // seconds until the next attack is allowed
+  cooldownMax: 1,     // cooldown that was started by the last attack (for the ring displays)
+  attackCount: 0,     // attacks this session; drives "every n-th attack" abilities
+  bowShots: 0,        // counts aimed arrows for the critical hit
+  chainBooms: 0,      // chain explosions started this frame (capped per frame)
+};
+
+const combo = { count: 0, timer: 0, punch: 0 };   // kill streak; punch animates the counter
+
+const wave = {
+  queue: [],          // enemy types still to spawn
+  total: 1,           // size of the wave, for the progress bar
+  spawnGap: 1,        // seconds between two spawns
+  spawnTimer: 0,
+  pause: 1.5,         // breathing time before the first spawn
+};
+
+const session = {
+  time: 0,            // game time in seconds
+  shake: 0,           // screen shake strength, decays quickly
+  paused: false,      // true while any overlay is open (see refreshPause in 32-menus.js)
+  started: false,     // false until the first attack; hides the hint and gates vibration
+  holdPoint: null,    // {x, y} while a finger rests on the field (auto-fire)
+  soldierTimer: 2,
+  lastKillSound: 0,
+  lastProgress: -1,   // last wave progress written to the DOM, to avoid redundant writes
+};
+
+/* Effects that can pile up at short cooldowns stop being added above these counts. */
+const FX_CAP_COMMON = 160;
+const FX_CAP_RARE = 219;
+const PARTICLE_CAP = 260;
+const TEXT_CAP = 40;
+
+/** Runs `fn` after `delay` seconds of game time. */
+function after(delay, fn) {
+  world.timers.push({ t: delay, fn });
 }
-function onHit(p,e){
-  if(p.k==='dagger'){
-    if(S.lv.dagger>=25){e.poison=4;e.pdps=Math.max(e.pdps,p.dmg*.35)}
-    if(p.split&&!p.didSplit){p.didSplit=true;const a=atan2(p.vy,p.vx);for(const s of[-.6,.6]){const c=mkDagger(p.x,p.y,a+s,{simple:true,m:.5,life:.5});c.hit.add(e)}}
-    if(p.ret)return;
-    if(p.pierce>0){p.pierce--;return}
-    if(p.bounce>0){const t=nearest(p.x,p.y,220*U,p.hit);if(t){p.bounce--;const a=atan2(t.y-p.y,t.x-p.x);p.vx=cos(a)*p.sp;p.vy=sin(a)*p.sp;p.life=Math.max(p.life,.6);return}}
-    endProj(p);
-  }else if(p.k==='mini'||p.k==='spike'){if(p.pierce>0)p.pierce--;else p.dead=true}
-  else if(p.k==='ball')knock(e,130);
-  else if(p.k==='phoenix')burnE(e,dmgOf('wand')*.25);
-  else if(p.k==='arrow'){const L=S.lv.bow;
-    if(L>=25)burnE(e,p.dmg*.25);if(L>=70)e.slow=2.5;
-    if(p.expl&&!p.didEx){p.didEx=1;aoe(p.x,p.y,30*U,p.dmg*.6,p.src);ring(p.x,p.y,30*U,'255,200,120',.25)}
-    if(p.pierce>0){p.pierce--;return}
-    if(p.bounce>0){const t=nearest(p.x,p.y,200*U,p.hit);if(t){p.bounce--;const a=atan2(t.y-p.y,t.x-p.x);p.vx=cos(a)*p.sp;p.vy=sin(a)*p.sp;p.life=Math.max(p.life,.5);return}}
-    p.dead=true}
+
+/**
+ * Adds a lingering zone.
+ *   spec.tag     optional name for zoneCount()/findZone()
+ *   spec.dur     lifetime in seconds
+ *   spec.under   draw below enemies (ground effects)
+ *   spec.update  (zone, dt) called every frame while alive
+ *   spec.draw    (zone) called every frame
+ * Any other fields are private state of the zone. `zone.t` is its age.
+ */
+function addZone(spec) {
+  const zone = Object.assign({ t: 0, under: false, update() {}, draw() {} }, spec);
+  world.zones.push(zone);
+  return zone;
 }
-function updProjs(dt){
-  for(let i=0;i<projs.length;i++){const p=projs[i];if(p.dead)continue;p.life-=dt;
-    if(p.ret){const a=atan2(cy-p.y,cx-p.x);p.vx=cos(a)*p.sp;p.vy=sin(a)*p.sp;if(dist(p.x,p.y,cx,cy)<26*U||p.life<=0){p.dead=true;continue}}
-    else if(p.home){const t=nearest(p.x,p.y,170*U,p.hit);if(t){let c=atan2(p.vy,p.vx),q=atan2(t.y-p.y,t.x-p.x)-c;q=atan2(sin(q),cos(q));c+=Math.max(-6*dt,Math.min(6*dt,q));p.vx=cos(c)*p.sp;p.vy=sin(c)*p.sp}}
-    p.x+=p.vx*dt;p.y+=p.vy*dt;
-    if(p.k==='ball'){p.trav+=p.sp*dt;if(p.trav>=p.range){endProj(p);continue}}
-    if(!p.ret&&(p.life<=0||p.x<-40||p.x>W+40||p.y<-40||p.y>H+40)){endProj(p);if(p.dead)continue}
-    for(const e of enemies){if(e.dead||p.hit.has(e))continue;
-      if(dist(p.x,p.y,e.x,e.y)<p.r+e.r){p.hit.add(e);hurt(e,p.dmg,p.src);onHit(p,e);if(p.dead)break}}
+const findZone = tag => world.zones.find(zone => zone.tag === tag);
+function zoneCount(tag) {
+  let n = 0;
+  for (const zone of world.zones) if (zone.tag === tag) n++;
+  return n;
+}
+/** Fade factor 0..1 for zones: quick fade in, fade out near the end. */
+const zoneFade = (zone, inRate, outRate) => Math.min(1, zone.t * inRate, (zone.dur - zone.t) * outRate);
+
+/**
+ * Adds a visual effect; `draw(k)` gets the progress 0..1.
+ * With `cap`, the effect is skipped while more than `cap` effects are alive.
+ */
+function addEffect(dur, draw, { under = false, cap = Infinity } = {}) {
+  if (world.effects.length > cap) return;
+  world.effects.push({ t: 0, dur, under, draw });
+}
+
+/** Burst of `count` particles. */
+function puff(x, y, color, count) {
+  for (let i = 0; i < count && world.particles.length < PARTICLE_CAP; i++) {
+    const angle = rnd(TAU), speed = rnd(30, 140) * U;
+    world.particles.push({
+      x, y, vx: cos(angle) * speed, vy: sin(angle) * speed - 40 * U,
+      life: rnd(0.3, 0.6), maxLife: 0.6, color, size: rnd(2, 5) * U,
+    });
   }
 }
-function drawProj(p){
-  const a=atan2(p.vy,p.vx);
-  if(p.k==='dagger')drawSword(ctx,p.x-cos(a)*10*U*p.sc,p.y-sin(a)*10*U*p.sc,a,24*U*p.sc,'#dff3ff','#2f8f7a');
-  else if(p.k==='mini')drawSword(ctx,p.x,p.y,a,18*U);
-  else if(p.k==='spike'){ctx.fillStyle='#cfd6de';ctx.strokeStyle='#33283a';ctx.lineWidth=1.5*U;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(a);ctx.beginPath();ctx.moveTo(9*U,0);ctx.lineTo(-6*U,-4*U);ctx.lineTo(-6*U,4*U);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore()}
-  else if(p.k==='ball'){ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(p.x,p.y+p.r*.7,p.r,p.r*.4,0,0,TAU);ctx.fill();drawBall(ctx,p.x,p.y-p.r*.3,p.r*.8,p.trav/p.r)}
-  else if(p.k==='arrow'){if(p.crit||p.big){ctx.shadowColor=p.crit?'#ffe14a':'#9fd8ff';ctx.shadowBlur=10*U}drawArrow(ctx,p.x,p.y,a,(p.big?46:20)*U,S.lv.bow>=25?'#ffb36b':'#f3e3c0',S.lv.bow>=70?'#bfe9ff':'#dfe6ee');ctx.shadowBlur=0}
-  else if(p.k==='phoenix'){const d=p.vx>0?1:-1,f=sin(time*18)*.5;ctx.save();ctx.translate(p.x,p.y);ctx.scale(d,1);
-    for(const sgn of[-1,1]){ctx.fillStyle='rgba(255,150,40,.85)';ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(-8*U,sgn*(18+f*10)*U,-30*U,sgn*(22+f*14)*U);ctx.quadraticCurveTo(-12*U,sgn*6*U,-22*U,0);ctx.closePath();ctx.fill()}
-    ctx.restore();drawFlame(ctx,p.x,p.y+4*U,13*U,time*20);ctx.fillStyle='rgba(255,170,60,.3)';ctx.beginPath();ctx.ellipse(p.x-d*26*U,p.y,30*U,7*U,0,0,TAU);ctx.fill()}
-  else if(p.k==='wave'){ctx.save();ctx.translate(p.x,p.y);ctx.rotate(a);ctx.fillStyle='rgba(190,230,255,.85)';ctx.shadowColor='#8fd0ff';ctx.shadowBlur=16*U;
-    ctx.beginPath();ctx.arc(-p.r*.6,0,p.r*1.2,-1.1,1.1);ctx.arc(-p.r*1.1,0,p.r*1.45,.86,-.86,true);ctx.closePath();ctx.fill();ctx.restore()}
+
+/** Expanding ring; `rgb` is "r,g,b". */
+function ring(x, y, radius, rgb, dur = 0.4, under = false) {
+  addEffect(dur, k => {
+    ctx.strokeStyle = `rgba(${rgb},${1 - k})`;
+    ctx.lineWidth = (6 - 5 * k) * U;
+    const r = radius * (0.3 + 0.7 * k);
+    ctx.beginPath();
+    ctx.ellipse(x, y, r, r * 0.8, 0, 0, TAU);
+    ctx.stroke();
+  }, { under, cap: FX_CAP_COMMON });
 }
 
-/* ---------- Zeichnen ---------- */
-function makeGround(){
-  ground=document.createElement('canvas');ground.width=W*DPR;ground.height=H*DPR;const g=ground.getContext('2d');g.scale(DPR,DPR);
-  let s=7;const r=()=>(s=(s*16807)%2147483647)/2147483647;
-  const big=Math.max(W,H);let gr=g.createRadialGradient(cx,cy,10,cx,cy,big*.75);gr.addColorStop(0,'#93d672');gr.addColorStop(.55,'#74bd5e');gr.addColorStop(1,'#4d9a52');
-  g.fillStyle=gr;g.fillRect(0,0,W,H);
-  for(let i=0;i<46;i++){g.fillStyle=i%2?'rgba(255,255,220,.06)':'rgba(20,80,40,.07)';g.beginPath();g.ellipse(r()*W,r()*H,(20+r()*50)*U,(10+r()*22)*U,r()*3,0,TAU);g.fill()}
-  g.fillStyle='rgba(201,168,119,.6)';g.beginPath();g.ellipse(cx,cy+8*U,58*U,34*U,0,0,TAU);g.fill();
-  g.fillStyle='rgba(201,168,119,.35)';g.beginPath();g.ellipse(cx,cy+8*U,72*U,44*U,0,0,TAU);g.fill();
-  g.strokeStyle='rgba(40,110,55,.55)';g.lineWidth=1.4*U;g.lineCap='round';
-  for(let i=0;i<260;i++){const x=r()*W,y=r()*H;if(dist(x,y,cx,cy+8*U)<60*U)continue;g.beginPath();g.moveTo(x-3*U,y);g.lineTo(x-1*U,y-5*U);g.moveTo(x,y);g.lineTo(x,y-6*U);g.moveTo(x+3*U,y);g.lineTo(x+1.5*U,y-4*U);g.stroke()}
-  const fc=['#fff','#ffe36e','#ffb3d1','#cfe3ff'];
-  for(let i=0;i<46;i++){const x=r()*W,y=r()*H;if(dist(x,y,cx,cy+8*U)<66*U)continue;g.fillStyle=fc[i%4];for(let j=0;j<5;j++){g.beginPath();g.arc(x+cos(j*1.257)*2.4*U,y+sin(j*1.257)*2.4*U,1.7*U,0,TAU);g.fill()}g.fillStyle='#f5b93a';g.beginPath();g.arc(x,y,1.3*U,0,TAU);g.fill()}
-  for(let i=0;i<16;i++){const x=r()*W,y=r()*H,q=(3+r()*4)*U;g.fillStyle='rgba(0,0,0,.14)';g.beginPath();g.ellipse(x+1*U,y+q*.5,q*1.1,q*.5,0,0,TAU);g.fill();g.fillStyle='#b9b4ad';g.beginPath();g.ellipse(x,y,q,q*.75,0,0,TAU);g.fill();g.fillStyle='rgba(255,255,255,.35)';g.beginPath();g.ellipse(x-q*.25,y-q*.25,q*.4,q*.25,0,0,TAU);g.fill()}
-  gr=g.createRadialGradient(cx,cy,big*.3,cx,cy,big*.78);gr.addColorStop(0,'rgba(20,50,40,0)');gr.addColorStop(1,'rgba(20,50,40,.5)');g.fillStyle=gr;g.fillRect(0,0,W,H);
+function floatText(x, y, text, color, big = false) {
+  world.texts.push({ x, y, text, color, big, t: 0 });
 }
-function drawCastle(){
-  const s=U*K,hit=castleFlash>0,sq=hit?1-castleFlash*.25:1;
-  ctx.fillStyle='rgba(0,0,0,.24)';ctx.beginPath();ctx.ellipse(cx+4*s,cy+20*s,50*s,15*s,0,0,TAU);ctx.fill();
-  ctx.save();ctx.translate(cx,cy+18*s);ctx.scale(s*(2-sq),s*sq);ctx.translate(0,-18);
-  ctx.lineWidth=2;ctx.strokeStyle='#4a3b42';ctx.lineJoin='round';
-  const stone=hit?'#ffd0c8':'#efe7d4',roof='#e2574c';
-  const box=(x,y,w,h,f)=>{ctx.fillStyle=f;ctx.beginPath();ctx.roundRect(x,y,w,h,2);ctx.fill();ctx.fillStyle='rgba(74,59,66,.12)';ctx.fillRect(x+w*.6,y,w*.4,h);ctx.beginPath();ctx.roundRect(x,y,w,h,2);ctx.stroke()};
-  const tri=(x1,x2,y,ty,f)=>{ctx.fillStyle=f;ctx.beginPath();ctx.moveTo(x1,y);ctx.lineTo(x2,y);ctx.lineTo((x1+x2)/2,ty);ctx.closePath();ctx.fill();ctx.fillStyle='rgba(74,59,66,.14)';ctx.beginPath();ctx.moveTo((x1+x2)/2,y);ctx.lineTo(x2,y);ctx.lineTo((x1+x2)/2,ty);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(x1,y);ctx.lineTo(x2,y);ctx.lineTo((x1+x2)/2,ty);ctx.closePath();ctx.stroke()};
-  const win=(x,y)=>{ctx.fillStyle='#4a3b42';ctx.beginPath();ctx.roundRect(x-3,y,6,10,[3,3,0,0]);ctx.fill();ctx.fillStyle='#ffd978';ctx.fillRect(x-1.5,y+3,3,6)};
-  box(-14,-46,28,48,stone);tri(-19,19,-46,-74,roof);win(0,-36);
-  ctx.strokeStyle='#4a3b42';ctx.beginPath();ctx.moveTo(0,-74);ctx.lineTo(0,-92);ctx.stroke();
-  const wv=sin(time*5)*3;ctx.fillStyle='#f5b93a';ctx.beginPath();ctx.moveTo(0,-92);ctx.quadraticCurveTo(9,-90+wv,17,-86);ctx.quadraticCurveTo(9,-83-wv,0,-81);ctx.closePath();ctx.fill();ctx.stroke();
-  box(-24,-8,48,26,stone);
-  for(let i=0;i<5;i++)box(-24+i*10.4,-15,6.4,8,stone);
-  box(-42,-26,20,44,stone);tri(-46,-18,-26,-50,roof);win(-32,-16);
-  box(22,-26,20,44,stone);tri(18,46,-26,-50,roof);win(32,-16);
-  ctx.fillStyle='#8a5a3c';ctx.beginPath();ctx.roundRect(-8,0,16,18,[8,8,0,0]);ctx.fill();ctx.stroke();
-  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,18);ctx.stroke();ctx.fillStyle='#f5b93a';ctx.beginPath();ctx.arc(3,10,1.4,0,TAU);ctx.fill();
+
+/** Removes everything from the field. `all` also removes soldiers and visuals. */
+function clearField(all) {
+  world.enemies = [];
+  world.projectiles = [];
+  world.zones = [];
+  world.timers = [];
+  if (all) {
+    world.soldiers = [];
+    session.soldierTimer = 2;
+  }
+}
+
+/* ===== 05-audio.js ===== */
+/*
+ * Sound and vibration. Sounds are short synthesised tones (no audio files),
+ * so the game stays a single small file.
+ */
+
+let audioContext = null;   // created lazily: browsers only allow audio after a user gesture
+
+/**
+ * Plays one tone.
+ *   freq   start frequency in Hz
+ *   dur    length in seconds
+ *   type   oscillator shape: 'square' | 'triangle' | 'sawtooth'
+ *   volume 0..1
+ *   slide  Hz added to the frequency over the duration (negative = falling)
+ */
+function sound(freq, dur = 0.08, type = 'square', volume = 0.05, slide = 0) {
+  if (DB.opts.mute) return;
+  try {
+    audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioContext.state === 'suspended') audioContext.resume();
+    const now = audioContext.currentTime;
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    if (slide) osc.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), now + dur);
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    osc.start(now);
+    osc.stop(now + dur + 0.02);
+  } catch (e) { /* no audio available: stay silent */ }
+}
+
+/** Vibrates the phone; only after the first attack, because it needs a user gesture too. */
+function vibrate(ms) {
+  if (!DB.opts.vib || !session.started || !navigator.vibrate) return;
+  try { navigator.vibrate(ms); } catch (e) { /* not supported */ }
+}
+
+/* Attack sound per weapon: [freq, dur, type, volume, slide]. */
+const ATTACK_SOUNDS = {
+  sword: [520, 0.1, 'triangle', 0.05, -260],
+  dagger: [900, 0.05, 'square', 0.03, 200],
+  star: [130, 0.2, 'sawtooth', 0.07, -70],
+  bow: [700, 0.07, 'triangle', 0.05, -350],
+  wand: [260, 0.16, 'sawtooth', 0.05, 240],
+};
+
+/* ===== 06-sprites.js ===== */
+/*
+ * Everything that is drawn as a picture: weapon shapes, castle, wall, enemies,
+ * soldiers and the pre-rendered ground. All art is drawn with canvas calls,
+ * there are no image files.
+ *
+ * Functions taking `c` draw on any 2D context (they are reused for the weapon
+ * icons); the others draw on the game canvas `ctx`.
+ */
+
+const INK = '#33283a';          // outline colour of all sprites
+const DISPLAY_FONT = '"Lilita One","Trebuchet MS",system-ui,sans-serif';
+
+/* ---------- Weapon shapes ---------- */
+
+/** Sword pointing along `angle`, hilt at (x, y). Also used for daggers with other colours. */
+function drawSword(c, x, y, angle, len, blade = '#eef4ff', grip = '#8a5a3c') {
+  const w = len * 0.075;
+  c.save();
+  c.translate(x, y);
+  c.rotate(angle);
+  c.lineJoin = 'round';
+  c.lineWidth = Math.max(1, len * 0.035);
+  c.strokeStyle = INK;
+  // blade
+  c.fillStyle = blade;
+  c.beginPath();
+  c.moveTo(0, -w);
+  c.lineTo(len * 0.74, -w);
+  c.lineTo(len * 0.9, 0);
+  c.lineTo(len * 0.74, w);
+  c.lineTo(0, w);
+  c.closePath();
+  c.fill();
+  c.stroke();
+  c.fillStyle = 'rgba(120,150,190,.45)';
+  c.fillRect(len * 0.04, 0, len * 0.72, w * 0.8);
+  // grip, guard, pommel
+  c.fillStyle = grip;
+  c.fillRect(-len * 0.2, -w * 0.6, len * 0.2, w * 1.2);
+  c.strokeRect(-len * 0.2, -w * 0.6, len * 0.2, w * 1.2);
+  c.fillStyle = '#f5b93a';
+  c.fillRect(-len * 0.035, -len * 0.15, len * 0.07, len * 0.3);
+  c.strokeRect(-len * 0.035, -len * 0.15, len * 0.07, len * 0.3);
+  c.beginPath();
+  c.arc(-len * 0.22, 0, w * 0.9, 0, TAU);
+  c.fill();
+  c.stroke();
+  c.restore();
+}
+const DAGGER_BLADE = '#dff3ff', DAGGER_GRIP = '#2f8f7a';
+
+/** Spiked ball of the morning star. */
+function drawBall(c, x, y, r, rotation = 0) {
+  c.save();
+  c.translate(x, y);
+  c.rotate(rotation);
+  c.strokeStyle = INK;
+  c.lineWidth = Math.max(1, r * 0.12);
+  c.lineJoin = 'round';
+  c.fillStyle = '#cfd6de';
+  for (let i = 0; i < 8; i++) {
+    const a = i * TAU / 8;
+    c.beginPath();
+    c.moveTo(cos(a - 0.22) * r * 0.9, sin(a - 0.22) * r * 0.9);
+    c.lineTo(cos(a) * r * 1.5, sin(a) * r * 1.5);
+    c.lineTo(cos(a + 0.22) * r * 0.9, sin(a + 0.22) * r * 0.9);
+    c.closePath();
+    c.fill();
+    c.stroke();
+  }
+  const metal = c.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
+  metal.addColorStop(0, '#aab3c0');
+  metal.addColorStop(1, '#59606e');
+  c.fillStyle = metal;
+  c.beginPath();
+  c.arc(0, 0, r, 0, TAU);
+  c.fill();
+  c.stroke();
+  c.restore();
+}
+
+function drawBow(c, x, y, angle, r) {
+  c.save();
+  c.translate(x, y);
+  c.rotate(angle);
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+  for (const [color, width] of [[INK, r * 0.3], ['#b9793f', r * 0.17]]) {
+    c.strokeStyle = color;
+    c.lineWidth = width;
+    c.beginPath();
+    c.arc(0, 0, r, -1.25, 1.25);
+    c.stroke();
+  }
+  // string
+  c.strokeStyle = '#eef4ff';
+  c.lineWidth = r * 0.06;
+  c.beginPath();
+  c.moveTo(cos(-1.25) * r, sin(-1.25) * r);
+  c.lineTo(-r * 0.25, 0);
+  c.lineTo(cos(1.25) * r, sin(1.25) * r);
+  c.stroke();
+  c.restore();
+}
+
+function drawArrow(c, x, y, angle, len, shaft = '#f3e3c0', tip = '#dfe6ee') {
+  c.save();
+  c.translate(x, y);
+  c.rotate(angle);
+  c.lineCap = 'round';
+  for (const [color, width] of [[INK, len * 0.16], [shaft, len * 0.08]]) {
+    c.strokeStyle = color;
+    c.lineWidth = width;
+    c.beginPath();
+    c.moveTo(-len * 0.5, 0);
+    c.lineTo(len * 0.4, 0);
+    c.stroke();
+  }
+  c.fillStyle = tip;
+  c.strokeStyle = INK;
+  c.lineWidth = len * 0.05;
+  c.beginPath();
+  c.moveTo(len * 0.55, 0);
+  c.lineTo(len * 0.28, -len * 0.13);
+  c.lineTo(len * 0.28, len * 0.13);
+  c.closePath();
+  c.fill();
+  c.stroke();
+  // fletching
+  c.fillStyle = '#e2574c';
+  c.beginPath();
+  c.moveTo(-len * 0.5, 0);
+  c.lineTo(-len * 0.62, -len * 0.12);
+  c.lineTo(-len * 0.4, 0);
+  c.lineTo(-len * 0.62, len * 0.12);
+  c.closePath();
+  c.fill();
+  c.restore();
+}
+
+/** Flame with its base at (x, y); `t` wobbles the tip. */
+function drawFlame(c, x, y, r, t = 0) {
+  const glow = c.createRadialGradient(x, y, r * 0.1, x, y, r);
+  glow.addColorStop(0, '#fff3b0');
+  glow.addColorStop(0.45, '#ffb03a');
+  glow.addColorStop(1, 'rgba(255,80,20,0)');
+  c.fillStyle = glow;
+  c.beginPath();
+  c.moveTo(x - r * 0.7, y + r * 0.3);
+  c.quadraticCurveTo(x - r * 0.9, y - r * 0.5, x + sin(t) * r * 0.2, y - r * 1.5);
+  c.quadraticCurveTo(x + r * 0.9, y - r * 0.5, x + r * 0.7, y + r * 0.3);
+  c.arc(x, y + r * 0.3, r * 0.7, 0, PI);
+  c.fill();
+}
+
+/** Paints the 72x72 icon canvases of the weapon bar. */
+function drawWeaponIcons() {
+  for (const id of WEAPON_IDS) {
+    const g = $('wp-' + id).querySelector('canvas').getContext('2d');
+    g.clearRect(0, 0, 72, 72);
+    if (id === 'sword') {
+      drawSword(g, 16, 56, -PI / 4, 58);
+    } else if (id === 'dagger') {
+      drawSword(g, 10, 44, -0.5, 36, DAGGER_BLADE, DAGGER_GRIP);
+      drawSword(g, 24, 62, -0.9, 36, DAGGER_BLADE, DAGGER_GRIP);
+    } else if (id === 'star') {
+      g.strokeStyle = '#8f97a6';
+      g.lineWidth = 4;
+      g.setLineDash([6, 4]);
+      g.beginPath();
+      g.moveTo(10, 64);
+      g.lineTo(38, 32);
+      g.stroke();
+      g.setLineDash([]);
+      drawBall(g, 44, 26, 15, 0.3);
+    } else if (id === 'bow') {
+      drawBow(g, 30, 36, -PI / 4, 26);
+      drawArrow(g, 36, 36, -PI / 4, 50);
+    } else {
+      g.lineCap = 'round';
+      for (const [color, width] of [[INK, 9], ['#8a5a3c', 5]]) {
+        g.strokeStyle = color;
+        g.lineWidth = width;
+        g.beginPath();
+        g.moveTo(14, 62);
+        g.lineTo(44, 26);
+        g.stroke();
+      }
+      drawFlame(g, 48, 24, 15);
+    }
+  }
+}
+
+/* ---------- Castle and wall ---------- */
+
+/** Radius within which an enemy counts as having reached the castle. */
+const castleRadius = () => 24 * U * CASTLE_SCALE;
+
+function drawCastle() {
+  const s = U * CASTLE_SCALE;
+  const hit = castle.flash > 0;
+  const squash = hit ? 1 - castle.flash * 0.25 : 1;
+  const stone = hit ? '#ffd0c8' : '#efe7d4';
+  const roof = '#e2574c';
+  const outline = '#4a3b42';
+
+  ctx.fillStyle = 'rgba(0,0,0,.24)';
+  fillEllipse(ctx, cx + 4 * s, cy + 20 * s, 50 * s, 15 * s);
+
+  // From here on coordinates are in castle design units, origin at the gate's base.
+  ctx.save();
+  ctx.translate(cx, cy + 18 * s);
+  ctx.scale(s * (2 - squash), s * squash);
+  ctx.translate(0, -18);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = outline;
+  ctx.lineJoin = 'round';
+
+  const block = (x, y, w, h) => {
+    ctx.fillStyle = stone;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(74,59,66,.12)';     // shaded right side for depth
+    ctx.fillRect(x + w * 0.6, y, w * 0.4, h);
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 2);
+    ctx.stroke();
+  };
+  const cone = (x1, x2, baseY, tipY) => {
+    const mid = (x1 + x2) / 2;
+    const path = (fromX) => {
+      ctx.beginPath();
+      ctx.moveTo(fromX, baseY);
+      ctx.lineTo(x2, baseY);
+      ctx.lineTo(mid, tipY);
+      ctx.closePath();
+    };
+    ctx.fillStyle = roof;
+    path(x1);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(74,59,66,.14)';
+    path(mid);
+    ctx.fill();
+    path(x1);
+    ctx.stroke();
+  };
+  const windowAt = (x, y) => {
+    ctx.fillStyle = outline;
+    ctx.beginPath();
+    ctx.roundRect(x - 3, y, 6, 10, [3, 3, 0, 0]);
+    ctx.fill();
+    ctx.fillStyle = '#ffd978';
+    ctx.fillRect(x - 1.5, y + 3, 3, 6);
+  };
+
+  // keep with flag
+  block(-14, -46, 28, 48);
+  cone(-19, 19, -46, -74);
+  windowAt(0, -36);
+  ctx.strokeStyle = outline;
+  ctx.beginPath();
+  ctx.moveTo(0, -74);
+  ctx.lineTo(0, -92);
+  ctx.stroke();
+  const wave_ = sin(session.time * 5) * 3;
+  ctx.fillStyle = '#f5b93a';
+  ctx.beginPath();
+  ctx.moveTo(0, -92);
+  ctx.quadraticCurveTo(9, -90 + wave_, 17, -86);
+  ctx.quadraticCurveTo(9, -83 - wave_, 0, -81);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // front wall with battlements
+  block(-24, -8, 48, 26);
+  for (let i = 0; i < 5; i++) block(-24 + i * 10.4, -15, 6.4, 8);
+  // side towers
+  block(-42, -26, 20, 44);
+  cone(-46, -18, -26, -50);
+  windowAt(-32, -16);
+  block(22, -26, 20, 44);
+  cone(18, 46, -26, -50);
+  windowAt(32, -16);
+  // gate
+  ctx.fillStyle = '#8a5a3c';
+  ctx.beginPath();
+  ctx.roundRect(-8, 0, 16, 18, [8, 8, 0, 0]);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, 18);
+  ctx.stroke();
+  ctx.fillStyle = '#f5b93a';
+  fillCircle(ctx, 3, 10, 1.4);
   ctx.restore();
 }
-function drawEnemy(e){
-  const b=sin(time*8+e.ph),r=e.r,fly=e.type==='bat'?r*1.1+b*2*U:0,x=e.x,y=e.y-fly;
-  ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(e.x,e.y+r*.75,r*(fly?.7:1),r*.35,0,0,TAU);ctx.fill();
-  ctx.save();ctx.translate(x,y);ctx.lineWidth=2*U;ctx.strokeStyle='#33283a';ctx.lineJoin='round';
-  const col=e.flash>0?'#fff':e.freeze>0?'#bfe9ff':e.slow>0?'#9fd0ee':e.col;ctx.fillStyle=col;
-  const moving=e.freeze<=0&&e.stun<=0,sq=moving?1+b*.08:1;
-  if(e.type==='bat'){const f=moving?sin(time*22+e.ph)*.6:0;
-    for(const d of[-1,1]){ctx.beginPath();ctx.moveTo(d*r*.5,0);ctx.lineTo(d*r*2.1,-r*(.9+f));ctx.lineTo(d*r*1.7,r*.1);ctx.lineTo(d*r*1.2,-r*.1);ctx.lineTo(d*r*.9,r*.5);ctx.closePath();ctx.fill();ctx.stroke()}
-    ctx.beginPath();ctx.arc(0,0,r*.85,0,TAU);ctx.fill();ctx.stroke();
-    ctx.beginPath();ctx.moveTo(-r*.6,-r*.6);ctx.lineTo(-r*.45,-r*1.25);ctx.lineTo(-r*.1,-r*.8);ctx.moveTo(r*.6,-r*.6);ctx.lineTo(r*.45,-r*1.25);ctx.lineTo(r*.1,-r*.8);ctx.fill();ctx.stroke();
-  }else if(e.type==='ogre'){ctx.scale(2-sq,sq);ctx.beginPath();ctx.roundRect(-r*.95,-r*1.1,r*1.9,r*2,r*.6);ctx.fill();ctx.stroke();
-    ctx.fillStyle='#efe7d4';for(const d of[-1,1]){ctx.beginPath();ctx.moveTo(d*r*.5,-r*1.05);ctx.lineTo(d*r*.95,-r*1.7);ctx.lineTo(d*r*.85,-r*.95);ctx.closePath();ctx.fill();ctx.stroke()}
-    ctx.fillStyle='rgba(51,40,58,.25)';ctx.fillRect(-r*.6,r*.35,r*1.2,r*.18);
-  }else{ctx.scale(2-sq,sq);ctx.beginPath();ctx.moveTo(-r,r*.8);ctx.bezierCurveTo(-r*1.25,-r*.9,r*1.25,-r*.9,r,r*.8);ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.fillStyle='rgba(255,255,255,.4)';ctx.beginPath();ctx.ellipse(-r*.35,-r*.15,r*.22,r*.13,-.5,0,TAU);ctx.fill();
-    if(e.boss){ctx.fillStyle='#f5b93a';ctx.beginPath();ctx.moveTo(-r*.5,-r*.45);ctx.lineTo(-r*.55,-r*1.05);ctx.lineTo(-r*.25,-r*.75);ctx.lineTo(0,-r*1.15);ctx.lineTo(r*.25,-r*.75);ctx.lineTo(r*.55,-r*1.05);ctx.lineTo(r*.5,-r*.45);ctx.closePath();ctx.fill();ctx.stroke()}}
-  const ey=e.type==='ogre'?-r*.25:e.type==='bat'?-r*.1:r*.15,ex=r*.36;
-  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-ex,ey,r*.24,0,TAU);ctx.arc(ex,ey,r*.24,0,TAU);ctx.fill();
-  ctx.fillStyle='#33283a';ctx.beginPath();ctx.arc(-ex,ey+r*.05,r*.12,0,TAU);ctx.arc(ex,ey+r*.05,r*.12,0,TAU);ctx.fill();
-  if(e.type==='ogre'||e.boss){ctx.lineWidth=2*U;ctx.beginPath();ctx.moveTo(-ex-r*.25,ey-r*.38);ctx.lineTo(-ex+r*.2,ey-r*.2);ctx.moveTo(ex+r*.25,ey-r*.38);ctx.lineTo(ex-r*.2,ey-r*.2);ctx.stroke()}
+
+/* The wall is an ellipse of stone blocks around the castle. */
+const wallRadiusX = () => 44 * U;
+const wallRadiusY = () => 23 * U;
+const wallCenterY = () => cy + 5 * U;
+const WALL_BLOCKS = 26;
+
+/** Draws the back half (front = false, before the castle) or the front half of the wall. */
+function drawWall(front) {
+  const max = wallMax();
+  if (!max) return;
+  const standing = Math.ceil(WALL_BLOCKS * S.wallHp / max);   // damaged blocks turn into rubble
+  ctx.lineWidth = 1.3 * U;
+  ctx.strokeStyle = '#4a3b42';
+  ctx.lineJoin = 'round';
+  for (let i = 0; i < WALL_BLOCKS; i++) {
+    const angle = i / WALL_BLOCKS * TAU + 0.12;
+    if ((sin(angle) > 0) !== front) continue;
+    const x = cx + cos(angle) * wallRadiusX();
+    const y = wallCenterY() + sin(angle) * wallRadiusY();
+    const up = (i * 7) % WALL_BLOCKS < standing;       // i*7 spreads the damage around the ring
+    const height = up ? (i % 2 ? 9 : 7) * U : 3 * U;
+    ctx.fillStyle = up ? (i % 2 ? '#d8d2c6' : '#c4bdb0') : '#8f897f';
+    ctx.beginPath();
+    ctx.roundRect(x - 5.6 * U, y - height, 11.2 * U, height + 2 * U, 1.5 * U);
+    ctx.fill();
+    ctx.stroke();
+    if (up) {
+      ctx.fillStyle = 'rgba(74,59,66,.14)';
+      ctx.fillRect(x + U, y - height + U, 3.6 * U, height);
+    }
+  }
+}
+
+/* ---------- Enemies ---------- */
+
+function drawEnemy(e) {
+  const t = session.time;
+  const bob = sin(t * 8 + e.phase);
+  const r = e.r;
+  const flyHeight = e.type === 'bat' ? r * 1.1 + bob * 2 * U : 0;
+  const x = e.x, y = e.y - flyHeight;
+  const moving = e.freeze <= 0 && e.stun <= 0;
+  const squash = moving ? 1 + bob * 0.08 : 1;
+
+  ctx.fillStyle = 'rgba(0,0,0,.22)';
+  fillEllipse(ctx, e.x, e.y + r * 0.75, r * (flyHeight ? 0.7 : 1), r * 0.35);
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.lineWidth = 2 * U;
+  ctx.strokeStyle = INK;
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = e.flash > 0 ? '#fff' : e.freeze > 0 ? '#bfe9ff' : e.slow > 0 ? '#9fd0ee' : e.color;
+
+  if (e.type === 'bat') {
+    const flap = moving ? sin(t * 22 + e.phase) * 0.6 : 0;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(side * r * 0.5, 0);
+      ctx.lineTo(side * r * 2.1, -r * (0.9 + flap));
+      ctx.lineTo(side * r * 1.7, r * 0.1);
+      ctx.lineTo(side * r * 1.2, -r * 0.1);
+      ctx.lineTo(side * r * 0.9, r * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.85, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+    // ears
+    ctx.beginPath();
+    for (const side of [-1, 1]) {
+      ctx.moveTo(side * r * 0.6, -r * 0.6);
+      ctx.lineTo(side * r * 0.45, -r * 1.25);
+      ctx.lineTo(side * r * 0.1, -r * 0.8);
+    }
+    ctx.fill();
+    ctx.stroke();
+  } else if (e.type === 'ogre') {
+    ctx.scale(2 - squash, squash);
+    ctx.beginPath();
+    ctx.roundRect(-r * 0.95, -r * 1.1, r * 1.9, r * 2, r * 0.6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#efe7d4';   // horns
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(side * r * 0.5, -r * 1.05);
+      ctx.lineTo(side * r * 0.95, -r * 1.7);
+      ctx.lineTo(side * r * 0.85, -r * 0.95);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(51,40,58,.25)';
+    ctx.fillRect(-r * 0.6, r * 0.35, r * 1.2, r * 0.18);
+  } else {
+    // slime, and the boss as a crowned slime
+    ctx.scale(2 - squash, squash);
+    ctx.beginPath();
+    ctx.moveTo(-r, r * 0.8);
+    ctx.bezierCurveTo(-r * 1.25, -r * 0.9, r * 1.25, -r * 0.9, r, r * 0.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.4)';
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.35, -r * 0.15, r * 0.22, r * 0.13, -0.5, 0, TAU);
+    ctx.fill();
+    if (e.boss) {
+      ctx.fillStyle = '#f5b93a';
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.5, -r * 0.45);
+      ctx.lineTo(-r * 0.55, -r * 1.05);
+      ctx.lineTo(-r * 0.25, -r * 0.75);
+      ctx.lineTo(0, -r * 1.15);
+      ctx.lineTo(r * 0.25, -r * 0.75);
+      ctx.lineTo(r * 0.55, -r * 1.05);
+      ctx.lineTo(r * 0.5, -r * 0.45);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  // eyes
+  const eyeY = e.type === 'ogre' ? -r * 0.25 : e.type === 'bat' ? -r * 0.1 : r * 0.15;
+  const eyeX = r * 0.36;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(-eyeX, eyeY, r * 0.24, 0, TAU);
+  ctx.arc(eyeX, eyeY, r * 0.24, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.arc(-eyeX, eyeY + r * 0.05, r * 0.12, 0, TAU);
+  ctx.arc(eyeX, eyeY + r * 0.05, r * 0.12, 0, TAU);
+  ctx.fill();
+  if (e.type === 'ogre' || e.boss) {   // angry brows
+    ctx.lineWidth = 2 * U;
+    ctx.beginPath();
+    ctx.moveTo(-eyeX - r * 0.25, eyeY - r * 0.38);
+    ctx.lineTo(-eyeX + r * 0.2, eyeY - r * 0.2);
+    ctx.moveTo(eyeX + r * 0.25, eyeY - r * 0.38);
+    ctx.lineTo(eyeX - r * 0.2, eyeY - r * 0.2);
+    ctx.stroke();
+  }
   ctx.restore();
-  if(e.poison>0){ctx.fillStyle='rgba(140,210,70,.9)';for(let i=0;i<2;i++){const q=(time*1.4+i*.5+e.ph)%1;ctx.beginPath();ctx.arc(x+(i?1:-1)*r*.5,y-r*.6-q*14*U,2.5*U*(1-q),0,TAU);ctx.fill()}}
-  if(e.burn>0)drawFlame(ctx,x,y-r*.9,r*.55,time*14+e.ph);
-  if(e.stun>0){ctx.fillStyle='#ffe36e';for(let i=0;i<3;i++){const q=time*6+i*2.1;ctx.beginPath();ctx.arc(x+cos(q)*r*.8,y-r*1.3+sin(q)*r*.25,2.2*U,0,TAU);ctx.fill()}}
-  if(e.freeze>0){ctx.strokeStyle='rgba(190,235,255,.9)';ctx.lineWidth=2*U;ctx.beginPath();ctx.arc(x,y,r*1.25,0,TAU);ctx.stroke()}
-  if(e.hp<e.max){const w=r*2,k=Math.max(0,e.hp/e.max);ctx.fillStyle='#33283a';ctx.fillRect(x-w/2-1,y-r*1.75-1,w+2,5*U+2);ctx.fillStyle=k>.5?'#7ddc5a':k>.25?'#f5b93a':'#e9524f';ctx.fillRect(x-w/2,y-r*1.75,w*k,5*U)}
-}
-function draw(){
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-  if(shake>0&&!RM)ctx.translate(rnd(-shake,shake)*.5,rnd(-shake,shake)*.5);
-  ctx.drawImage(ground,0,0,W,H);
-  for(const z of zones)if(z.under)z.d(z);
-  for(const f of fx)if(f.under)f.d(f.t/f.dur);
-  const list=[[cy,0,null]];for(const e of enemies)if(!e.dead)list.push([e.y,1,e]);for(const o of soldiers)list.push([o.y,2,o]);
-  list.sort((a,b)=>a[0]-b[0]);
-  for(const l of list)l[1]===1?drawEnemy(l[2]):l[1]===2?drawSoldier(l[2]):(drawWall(false),drawCastle(),drawWall(true));
-  // Abklingzeit-Ring um die Burg
-  const k=cdMax?1-Math.max(0,cd)/cdMax:1;ctx.lineWidth=4*U;ctx.lineCap='round';
-  ctx.strokeStyle='rgba(51,40,58,.35)';ctx.beginPath();ctx.ellipse(cx,cy+11*U,32*U,14*U,0,0,TAU);ctx.stroke();
-  ctx.strokeStyle=k>=1?'#f5b93a':'#fff6df';ctx.beginPath();ctx.ellipse(cx,cy+11*U,32*U,14*U,0,-PI/2,-PI/2+TAU*k);ctx.stroke();ctx.lineCap='butt';
-  for(const p of projs)if(!p.dead)drawProj(p);
-  for(const z of zones)if(!z.under)z.d(z);
-  for(const f of fx)if(!f.under)f.d(f.t/f.dur);
-  for(const p of parts){ctx.globalAlpha=Math.max(0,p.l/p.m);ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.sz,0,TAU);ctx.fill()}ctx.globalAlpha=1;
-  ctx.textAlign='center';ctx.lineJoin='round';
-  for(const t of texts){ctx.globalAlpha=Math.max(0,1-t.t/(t.big?1.4:.7));ctx.font=`${(t.big?19:14)*U}px "Lilita One","Trebuchet MS",system-ui,sans-serif`;
-    ctx.lineWidth=3*U;ctx.strokeStyle='#33283a';ctx.strokeText(t.s,t.x,t.y);ctx.fillStyle=t.c;ctx.fillText(t.s,t.x,t.y)}
-  ctx.globalAlpha=1;
-  if(comboN>=5){const sc=1+comboP*.35;ctx.save();ctx.translate(cx,182);ctx.scale(sc,sc);ctx.font=`${22*U}px "Lilita One","Trebuchet MS",system-ui,sans-serif`;
-    ctx.globalAlpha=Math.min(1,comboT*2);ctx.lineWidth=4*U;ctx.strokeStyle='#33283a';ctx.strokeText('×'+comboN,0,0);ctx.fillStyle=comboN>=50?'#ff7a4a':comboN>=20?'#ffd24a':'#fff6df';ctx.fillText('×'+comboN,0,0);ctx.restore()}
+
+  drawEnemyStatus(e, x, y);
 }
 
-/* ---------- Ablauf ---------- */
-const WRX=()=>44*U,WRY=()=>23*U,WCY=()=>cy+5*U;
-function wallHit(x,y){snd(160,.12,'square',.05,-60);vib(25);S.wallHp--;shake=Math.max(shake,4);puff(x,y,'#b9b4ad',7);hud();if(S.wallHp<=0){puff(cx,WCY(),'#b9b4ad',30);toast('Die Mauer ist gefallen')}}
-function drawWall(front){
-  const m=WALL[S.wall];if(!m)return;const N=26,live=Math.ceil(N*S.wallHp/m),u=U;
-  ctx.lineWidth=1.3*u;ctx.strokeStyle='#4a3b42';ctx.lineJoin='round';
-  for(let i=0;i<N;i++){const a=i/N*TAU+.12,sn=sin(a);if((sn>0)!==front)continue;
-    const x=cx+cos(a)*WRX(),y=WCY()+sn*WRY(),up=(i*7)%N<live,h=up?(i%2?9:7)*u:3*u;
-    ctx.fillStyle=up?(i%2?'#d8d2c6':'#c4bdb0'):'#8f897f';ctx.beginPath();ctx.roundRect(x-5.6*u,y-h,11.2*u,h+2*u,1.5*u);ctx.fill();ctx.stroke();
-    if(up){ctx.fillStyle='rgba(74,59,66,.14)';ctx.fillRect(x+1*u,y-h+1*u,3.6*u,h)}}
-}
-function castleHit(){snd(90,.2,'sawtooth',.07);vib(60);hp--;castleFlash=.3;shake=Math.max(shake,10);puff(cx,cy,'#efe7d4',8);hud();if(hp<=0)fallen=true}
-function update(dt){
-  time+=dt;cd-=dt;exN=0;if(holdPt&&cd<=0)attack(holdPt.x,holdPt.y);
-  shake=Math.max(0,shake-dt*40);castleFlash=Math.max(0,castleFlash-dt);
-  for(let i=0;i<timers.length;i++){const t=timers[i];t.t-=dt;if(t.t<=0){t.done=true;t.fn()}}
-  timers=timers.filter(t=>!t.done);
-  if(pause>0)pause-=dt;
-  else if(queue.length){spawnT=Math.max(spawnT-dt,-spawnGap*3);while(spawnT<=0&&queue.length&&enemies.length<260){spawn(queue.shift());spawnT+=spawnGap}}
-  else if(!enemies.length){const w=S.wave;let g=0;if(w>S.cleared){S.cleared=w;g=w;S.gold+=g}
-    hp=Math.min(MAXHP,hp+S.heal);if(!S.hold)S.wave++;if(g)snd(1200,.07,'triangle',.05);save();pause=2.5;buildWave();hud();toast('Welle '+w+' geschafft',g?'+'+g+' Gold':'')}
-  for(const e of enemies){if(e.dead)continue;e.flash-=dt;e.oc-=dt;e.atk-=dt;e.blocked-=dt;
-    if(e.poison>0){e.poison-=dt;e.pacc+=dt;if(e.pacc>=.5){e.pacc=0;hurt(e,e.pdps*.5,{w:'dagger',dot:true})}}
-    if(e.burn>0&&!e.dead){e.burn-=dt;e.bacc+=dt;if(e.bacc>=.5){e.bacc=0;hurt(e,e.bdps*.5,{w:'wand',dot:true})}}
-    e.slow-=dt;
-    if(e.dead)continue;
-    e.x+=e.kx*dt;e.y+=e.ky*dt;const dec=Math.exp(-5*dt);e.kx*=dec;e.ky*=dec;
-    if(e.freeze>0)e.freeze-=dt;else if(e.stun>0)e.stun-=dt;else if(e.blocked>0){}
-    else{const a=atan2(cy-e.y,cx-e.x),sp=e.sp*U*(e.slow>0?.5:1),wb=e.type==='bat'?sin(time*4+e.ph)*.7:0;e.x+=(cos(a)-sin(a)*wb)*sp*dt;e.y+=(sin(a)+cos(a)*wb)*sp*dt}
-    e.x=Math.max(-60,Math.min(W+60,e.x));e.y=Math.max(-60,Math.min(H+60,e.y));
-    if(S.wallHp>0){const ex=(e.x-cx)/(WRX()+e.r),ey=(e.y-WCY())/(WRY()+e.r);if(ex*ex+ey*ey<1){e.dead=true;puff(e.x,e.y,e.col,6);wallHit(e.x,e.y)}}
-    else if(dist(e.x,e.y,cx,cy)<CR+e.r){e.dead=true;puff(e.x,e.y,e.col,6);castleHit()}}
-  if(comboT>0){comboT-=dt;if(comboT<=0)comboN=0}comboP=Math.max(0,comboP-dt*5);
-  updSoldiers(dt);updProjs(dt);
-  for(const z of zones){z.t+=dt;if(z.t<z.dur)z.u(z,dt)}
-  zones=zones.filter(z=>z.t<z.dur);
-  for(const f of fx)f.t+=dt;fx=fx.filter(f=>f.t<f.dur);
-  for(const p of parts){p.l-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=260*U*dt}parts=parts.filter(p=>p.l>0);
-  for(const t of texts){t.t+=dt;t.y-=28*U*dt}texts=texts.filter(t=>t.t<(t.big?1.4:.7));
-  enemies=enemies.filter(e=>!e.dead);projs=projs.filter(p=>!p.dead);
-  if(fallen){fallen=false;shake=0;castleFlash=0;comboN=0;snd(220,.5,'sawtooth',.07,-160);vib(200);resetField(true);openShop()}
-  const pr=Math.round((1-(queue.length+enemies.length)/Math.max(1,waveTotal))*100);if(pr!==lastProg){lastProg=pr;$('wprog').style.width=Math.max(0,pr)+'%'}
-  $('wp-'+S.active).querySelector('.cd').style.setProperty('--p',Math.max(0,Math.min(1,cd/cdMax)).toFixed(3));
-}
-function attack(x,y,tap){
-  if(paused)return;
-  if(cd>0){if(tap)ring(cx,cy+11*U,40*U,'233,82,79',.25);return}
-  if(!started){started=true;$('hint').style.opacity=0}
-  atkCount++;cdMax=cdOf(S.active);cd=cdMax;ATK[S.active](x,y);
-  if(S.active==='sword')snd(520,.1,'triangle',.05,-260);else if(S.active==='dagger')snd(900,.05,'square',.03,200);else if(S.active==='bow')snd(700,.07,'triangle',.05,-350);else if(S.active==='wand')snd(260,.16,'sawtooth',.05,240);else snd(130,.2,'sawtooth',.07,-70);
+/** Status markers above an enemy: poison bubbles, flame, stun stars, frost ring, health bar. */
+function drawEnemyStatus(e, x, y) {
+  const t = session.time, r = e.r;
+  if (e.poison > 0) {
+    ctx.fillStyle = 'rgba(140,210,70,.9)';
+    for (let i = 0; i < 2; i++) {
+      const rise = (t * 1.4 + i * 0.5 + e.phase) % 1;
+      fillCircle(ctx, x + (i ? 1 : -1) * r * 0.5, y - r * 0.6 - rise * 14 * U, 2.5 * U * (1 - rise));
+    }
+  }
+  if (e.burn > 0) drawFlame(ctx, x, y - r * 0.9, r * 0.55, t * 14 + e.phase);
+  if (e.stun > 0) {
+    ctx.fillStyle = '#ffe36e';
+    for (let i = 0; i < 3; i++) {
+      const a = t * 6 + i * 2.1;
+      fillCircle(ctx, x + cos(a) * r * 0.8, y - r * 1.3 + sin(a) * r * 0.25, 2.2 * U);
+    }
+  }
+  if (e.freeze > 0) {
+    ctx.strokeStyle = 'rgba(190,235,255,.9)';
+    ctx.lineWidth = 2 * U;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 1.25, 0, TAU);
+    ctx.stroke();
+  }
+  if (e.hp < e.max) {
+    const width = r * 2, share = Math.max(0, e.hp / e.max);
+    ctx.fillStyle = INK;
+    ctx.fillRect(x - width / 2 - 1, y - r * 1.75 - 1, width + 2, 5 * U + 2);
+    ctx.fillStyle = share > 0.5 ? '#7ddc5a' : share > 0.25 ? '#f5b93a' : '#e9524f';
+    ctx.fillRect(x - width / 2, y - r * 1.75, width * share, 5 * U);
+  }
 }
 
-/* ---------- Wellenwahl, Shop, Soldaten ---------- */
-function resetField(all){enemies=[];projs=[];zones=[];timers=[];if(all){soldiers=[];solT=2}pause=1.5;buildWave()}
-function setWave(n){
-  n=Math.max(1,Math.min(S.cleared+1,n));if(n===S.wave||paused)return;
-  S.wave=n;resetField(false);hud();save();toast('Welle '+n);
+/* ---------- Soldier ---------- */
+
+function drawSoldier(soldier) {
+  const u = U * 0.8;
+  const hop = soldier.walking ? Math.abs(sin(session.time * 12 + soldier.phase)) * 2 * u : 0;
+  const x = soldier.x, y = soldier.y - hop;
+  ctx.fillStyle = 'rgba(0,0,0,.22)';
+  fillEllipse(ctx, soldier.x, soldier.y + 7 * u, 7 * u, 3 * u);
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(soldier.facing, 1);
+  ctx.lineWidth = 1.5 * u;
+  ctx.strokeStyle = INK;
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = '#4a3b42';   // legs
+  ctx.fillRect(-3.5 * u, 3 * u, 2.5 * u, 4 * u);
+  ctx.fillRect(u, 3 * u, 2.5 * u, 4 * u);
+  ctx.fillStyle = soldier.flash > 0 ? '#fff' : '#4f7fd6';   // tunic
+  ctx.beginPath();
+  ctx.roundRect(-5 * u, -4 * u, 10 * u, 8.5 * u, 2.5 * u);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#ffd9b3';   // head
+  ctx.beginPath();
+  ctx.arc(0, -8 * u, 4.2 * u, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#b9c2cf';   // helmet
+  ctx.beginPath();
+  ctx.arc(0, -8.6 * u, 4.6 * u, PI, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = INK;
+  fillCircle(ctx, 1.8 * u, -7.2 * u, 0.8 * u);
+  drawSword(ctx, 5 * u, u, soldier.swing > 0 ? 0.3 : -1.1, 13 * u);
+  ctx.fillStyle = '#e2574c';   // shield
+  ctx.beginPath();
+  ctx.arc(-4.5 * u, u, 3.2 * u, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  // one dot per hit the soldier can still take
+  for (let i = 0; i < soldier.maxHp; i++) {
+    ctx.fillStyle = i < soldier.hp ? '#7ddc5a' : 'rgba(51,40,58,.45)';
+    fillCircle(ctx, x - 4 * u + i * 4 * u, y - 17 * u, 1.6 * u);
+  }
 }
-const SHOP=[
- {n:'Soldat',d:'Alle 5 Sekunden kommt ein kleiner Soldat aus der Burg. Er hält 3 Schläge aus und bremst Gegner.',t:[2],lv:()=>+S.own.soldier,buy:()=>{S.own.soldier=true}},
- {n:'Soldaten-Tempo',tn:['alle 4 s','alle 3 s'],d:'Soldaten kommen schneller aus der Burg.',t:[25,80],lv:()=>S.solLv,need:()=>S.own.soldier,nt:'Erst Soldat',buy:()=>{S.solLv++}},
- {n:'Dolche',d:'Schaltet die Dolche als Waffe frei.',t:[5],lv:()=>+S.own.dagger,buy:()=>{S.own.dagger=true}},
- {n:'Morgenstern',d:'Schaltet den Morgenstern als Waffe frei.',t:[10],lv:()=>+S.own.star,buy:()=>{S.own.star=true}},
- {n:'Bogen',d:'Schneller Fernschuss, stark gegen einzelne Gegner.',t:[40],lv:()=>+S.own.bow,buy:()=>{S.own.bow=true}},
- {n:'Feuerstab',d:'Feuerbälle, die explodieren und Gegner in Brand setzen.',t:[75],lv:()=>+S.own.wand,buy:()=>{S.own.wand=true}},
- {n:'Heilung',tn:['+2','+3'],d:'Leben, die die Burg nach jeder geschafften Welle zurückbekommt.',t:[20,32],lv:()=>S.heal-1,buy:()=>{S.heal++}},
- {n:'Mauer',tn:['3 HP','5 HP','10 HP','25 HP'],d:'Fängt Treffer ab, bevor die Burg Leben verliert. Wird nur nach einer Niederlage repariert.',t:[15,30,120,300],lv:()=>S.wall,buy:()=>{S.wall++}}
+
+/* ---------- Ground ---------- */
+
+let ground = null;   // off-screen canvas with the static background, rebuilt on resize
+
+function makeGround() {
+  ground = document.createElement('canvas');
+  ground.width = W * DPR;
+  ground.height = H * DPR;
+  const g = ground.getContext('2d');
+  g.scale(DPR, DPR);
+
+  // Seeded generator so the meadow looks the same after every resize.
+  let seed = 7;
+  const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const far = Math.max(W, H);
+  const yardY = cy + 8 * U;   // centre of the trodden ground around the castle
+
+  let fill = g.createRadialGradient(cx, cy, 10, cx, cy, far * 0.75);
+  fill.addColorStop(0, '#93d672');
+  fill.addColorStop(0.55, '#74bd5e');
+  fill.addColorStop(1, '#4d9a52');
+  g.fillStyle = fill;
+  g.fillRect(0, 0, W, H);
+
+  // light and dark patches
+  for (let i = 0; i < 46; i++) {
+    g.fillStyle = i % 2 ? 'rgba(255,255,220,.06)' : 'rgba(20,80,40,.07)';
+    g.beginPath();
+    g.ellipse(rand() * W, rand() * H, (20 + rand() * 50) * U, (10 + rand() * 22) * U, rand() * 3, 0, TAU);
+    g.fill();
+  }
+  // castle yard
+  g.fillStyle = 'rgba(201,168,119,.6)';
+  fillEllipse(g, cx, yardY, 58 * U, 34 * U);
+  g.fillStyle = 'rgba(201,168,119,.35)';
+  fillEllipse(g, cx, yardY, 72 * U, 44 * U);
+  // grass tufts
+  g.strokeStyle = 'rgba(40,110,55,.55)';
+  g.lineWidth = 1.4 * U;
+  g.lineCap = 'round';
+  for (let i = 0; i < 260; i++) {
+    const x = rand() * W, y = rand() * H;
+    if (dist(x, y, cx, yardY) < 60 * U) continue;
+    g.beginPath();
+    g.moveTo(x - 3 * U, y);
+    g.lineTo(x - U, y - 5 * U);
+    g.moveTo(x, y);
+    g.lineTo(x, y - 6 * U);
+    g.moveTo(x + 3 * U, y);
+    g.lineTo(x + 1.5 * U, y - 4 * U);
+    g.stroke();
+  }
+  // flowers
+  const petals = ['#fff', '#ffe36e', '#ffb3d1', '#cfe3ff'];
+  for (let i = 0; i < 46; i++) {
+    const x = rand() * W, y = rand() * H;
+    if (dist(x, y, cx, yardY) < 66 * U) continue;
+    g.fillStyle = petals[i % 4];
+    for (let j = 0; j < 5; j++) fillCircle(g, x + cos(j * 1.257) * 2.4 * U, y + sin(j * 1.257) * 2.4 * U, 1.7 * U);
+    g.fillStyle = '#f5b93a';
+    fillCircle(g, x, y, 1.3 * U);
+  }
+  // stones
+  for (let i = 0; i < 16; i++) {
+    const x = rand() * W, y = rand() * H, size = (3 + rand() * 4) * U;
+    g.fillStyle = 'rgba(0,0,0,.14)';
+    fillEllipse(g, x + U, y + size * 0.5, size * 1.1, size * 0.5);
+    g.fillStyle = '#b9b4ad';
+    fillEllipse(g, x, y, size, size * 0.75);
+    g.fillStyle = 'rgba(255,255,255,.35)';
+    fillEllipse(g, x - size * 0.25, y - size * 0.25, size * 0.4, size * 0.25);
+  }
+  // darker edges
+  fill = g.createRadialGradient(cx, cy, far * 0.3, cx, cy, far * 0.78);
+  fill.addColorStop(0, 'rgba(20,50,40,0)');
+  fill.addColorStop(1, 'rgba(20,50,40,.5)');
+  g.fillStyle = fill;
+  g.fillRect(0, 0, W, H);
+}
+
+/* ===== 07-enemies.js ===== */
+/*
+ * Enemies: spawning, damage, death, status effects and movement.
+ *
+ * Damage always goes through hurt(enemy, amount, source). `source` describes
+ * where the damage came from:
+ *   weapon   id of the weapon ('soldier' for soldiers)
+ *   color    colour of the floating damage number
+ *   dot      true for damage over time: no number is shown
+ * plus weapon-specific flags that the kill hooks read (splinter, generation, chain).
+ */
+
+/** Puts one enemy of `type` on a random point just outside the screen. */
+function spawnEnemy(type) {
+  const base = ENEMY_TYPES[type];
+  const waveNo = S.wave;
+  // Walk from the castle along a random direction until the screen edge (+30 px) is reached.
+  const angle = rnd(TAU), dx = cos(angle), dy = sin(angle);
+  const toSide = (W / 2 + 30) / Math.abs(dx || 1e-6);
+  const toTopOrBottom = ((dy < 0 ? cy : H - cy) + 30) / Math.abs(dy || 1e-6);
+  const reach = Math.min(toSide, toTopOrBottom);
+  const hp = base.hp * enemyHpFactor(waveNo);
+
+  const enemy = {
+    type,
+    boss: type === 'boss',
+    x: cx + dx * reach, y: cy + dy * reach,
+    r: base.r * U * CASTLE_SCALE,
+    hp, max: hp,
+    sp: base.sp * enemySpeedFactor(waveNo),   // in U per second
+    xp: base.xp * enemyXpFactor(waveNo),
+    color: base.color,
+    phase: rnd(TAU),                          // desynchronises the idle animation
+    dead: false,
+    flash: 0,                                 // white hit flash, seconds
+    knockX: 0, knockY: 0,                     // knockback velocity, decays
+    // status effects: remaining seconds
+    stun: 0, freeze: 0, slow: 0, blocked: 0,
+    poison: 0, poisonDps: 0, poisonTick: 0,
+    burn: 0, burnDps: 0, burnTick: 0,
+    orbitCd: 0,                               // re-hit delay for things that circle through enemies
+    attackCd: 0,                              // delay between hits on a soldier
+  };
+  world.enemies.push(enemy);
+  return enemy;
+}
+
+/** Closest living enemy to (x, y) within `maxDist`, skipping those in the `exclude` set. */
+function nearestEnemy(x, y, maxDist = 1e9, exclude = null) {
+  let best = null, bestDist = maxDist;
+  for (const e of world.enemies) {
+    if (e.dead || (exclude && exclude.has(e))) continue;
+    const d = dist(x, y, e.x, e.y);
+    if (d < bestDist) { bestDist = d; best = e; }
+  }
+  return best;
+}
+
+function hurt(enemy, amount, source) {
+  if (enemy.dead) return;
+  enemy.hp -= amount;
+  enemy.flash = 0.12;
+  if (!source.dot && world.texts.length < TEXT_CAP) {
+    floatText(enemy.x + rnd(-6, 6), enemy.y - enemy.r * 1.7, String(Math.max(1, Math.round(amount))), source.color || '#fff');
+  }
+  if (enemy.hp <= 0) kill(enemy, source);
+}
+
+/** Damages every enemy touching the circle; `onEach(enemy)` runs before the damage. */
+function areaDamage(x, y, radius, amount, source, onEach) {
+  for (const e of world.enemies) {
+    if (e.dead || dist(x, y, e.x, e.y) >= radius + e.r) continue;
+    if (onEach) onEach(e);
+    hurt(e, amount, source);
+  }
+}
+
+/** Pushes an enemy away from the castle; bosses are three times heavier. */
+function knockback(enemy, force) {
+  const angle = atan2(enemy.y - cy, enemy.x - cx);
+  const strength = force * U / (enemy.boss ? 3 : 1);
+  enemy.knockX += cos(angle) * strength;
+  enemy.knockY += sin(angle) * strength;
+}
+
+/* Status effects keep the stronger of the old and new value, they never stack. */
+function applyBurn(enemy, dps, seconds = 3) {
+  enemy.burn = Math.max(enemy.burn, seconds);
+  enemy.burnDps = Math.max(enemy.burnDps, dps);
+}
+function applyPoison(enemy, dps) {
+  enemy.poison = 4;
+  enemy.poisonDps = Math.max(enemy.poisonDps, dps);
+}
+
+/*
+ * Weapons register functions here that run whenever an enemy dies:
+ * (enemy, source) => void. See the weapon files for the individual hooks.
+ */
+const KILL_HOOKS = [];
+
+function kill(enemy, source) {
+  enemy.dead = true;
+
+  // kill streak
+  combo.count++;
+  combo.timer = 1.5;
+  combo.punch = 1;
+  if (combo.count % 10 === 0 || enemy.boss) session.shake = Math.max(session.shake, enemy.boss ? 14 : 4);
+  if (Math.abs(session.time - session.lastKillSound) > 0.05) {
+    session.lastKillSound = session.time;
+    sound(420 + Math.min(30, combo.count) * 18, 0.06, 'square', 0.025, 300);   // pitch rises with the streak
+  }
+
+  deathEffect(enemy);
+  puff(enemy.x, enemy.y, enemy.color, enemy.boss ? 26 : 8);
+  gainXp(S.active, enemy.xp);
+  for (const hook of KILL_HOOKS) hook(enemy, source);
+}
+
+/** The body is flung away from the castle, spins, flattens and fades. */
+function deathEffect(enemy) {
+  if (world.effects.length >= 220) return;
+  const angle = atan2(enemy.y - cy, enemy.x - cx) + rnd(-0.6, 0.6);
+  const speed = rnd(110, 210) * U, spin = rnd(-8, 8);
+  const { x, y, r, color } = enemy;
+  addEffect(0.4, k => {
+    ctx.save();
+    ctx.translate(x + cos(angle) * speed * k * 0.4, y + sin(angle) * speed * k * 0.4 - sin(k * PI) * 20 * U);
+    ctx.rotate(spin * k);
+    ctx.globalAlpha = 1 - k * k;
+    ctx.scale(1 + k * 0.6, 1 - k * 0.6);
+    ctx.fillStyle = color;
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.5 * U;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * (1 - k * 0.3), 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  });
+  ring(enemy.x, enemy.y, enemy.r * 2.4, '255,255,255', 0.22);
+}
+
+/** One frame of status effects, movement and castle contact for all enemies. */
+function updateEnemies(dt) {
+  for (const e of world.enemies) {
+    if (e.dead) continue;
+    e.flash -= dt;
+    e.orbitCd -= dt;
+    e.attackCd -= dt;
+    e.blocked -= dt;
+    e.slow -= dt;
+    tickDamageOverTime(e, dt);
+    if (e.dead) continue;
+
+    // knockback slides the enemy and fades out
+    e.x += e.knockX * dt;
+    e.y += e.knockY * dt;
+    const decay = Math.exp(-5 * dt);
+    e.knockX *= decay;
+    e.knockY *= decay;
+
+    // frozen, stunned or held up by a soldier: no walking this frame
+    if (e.freeze > 0) e.freeze -= dt;
+    else if (e.stun > 0) e.stun -= dt;
+    else if (e.blocked <= 0) walkToCastle(e, dt);
+
+    e.x = clamp(e.x, -60, W + 60);
+    e.y = clamp(e.y, -60, H + 60);
+    checkCastleContact(e);
+  }
+}
+
+function tickDamageOverTime(e, dt) {
+  if (e.poison > 0) {
+    e.poison -= dt;
+    e.poisonTick += dt;
+    if (e.poisonTick >= 0.5) {
+      e.poisonTick = 0;
+      hurt(e, e.poisonDps * 0.5, { weapon: 'dagger', dot: true });
+    }
+  }
+  if (e.burn > 0 && !e.dead) {
+    e.burn -= dt;
+    e.burnTick += dt;
+    if (e.burnTick >= 0.5) {
+      e.burnTick = 0;
+      hurt(e, e.burnDps * 0.5, { weapon: 'wand', dot: true });
+    }
+  }
+}
+
+function walkToCastle(e, dt) {
+  const angle = atan2(cy - e.y, cx - e.x);
+  const speed = e.sp * U * (e.slow > 0 ? 0.5 : 1);
+  const weave = e.type === 'bat' ? sin(session.time * 4 + e.phase) * 0.7 : 0;   // bats fly in a wavy line
+  e.x += (cos(angle) - sin(angle) * weave) * speed * dt;
+  e.y += (sin(angle) + cos(angle) * weave) * speed * dt;
+}
+
+/** An enemy that reaches the wall (while it stands) or the castle deals 1 damage and is gone. */
+function checkCastleContact(e) {
+  if (S.wallHp > 0) {
+    const nx = (e.x - cx) / (wallRadiusX() + e.r);
+    const ny = (e.y - wallCenterY()) / (wallRadiusY() + e.r);
+    if (nx * nx + ny * ny >= 1) return;
+    e.dead = true;
+    puff(e.x, e.y, e.color, 6);
+    wallHit(e.x, e.y);
+  } else if (dist(e.x, e.y, cx, cy) < castleRadius() + e.r) {
+    e.dead = true;
+    puff(e.x, e.y, e.color, 6);
+    castleHit();
+  }
+}
+
+/* ===== 08-projectiles.js ===== */
+/*
+ * Projectiles: everything that flies and hits enemies on contact.
+ *
+ * The generic part (movement, lifetime, collision) is here. What a projectile
+ * does when it hits, when it expires and how it looks is defined per kind in
+ * PROJECTILE_KINDS; the weapon files register their kinds there:
+ *   onHit(p, enemy)   after the damage was dealt; set p.dead = true to remove it
+ *   onExpire(p)       lifetime, range or screen edge reached; default: remove
+ *   draw(p, angle)    angle is the flight direction
+ */
+const PROJECTILE_KINDS = {};
+
+/**
+ * Adds a projectile. Required: kind, x, y, angle, speed, r (radius), dmg, source.
+ * Common options: life (seconds), pierce (extra enemies it passes through).
+ * Further fields are kind-specific. `p.hit` holds the enemies already damaged.
+ */
+function addProjectile(spec) {
+  const p = Object.assign({ life: 1.5, pierce: 0, dead: false, hit: new Set() }, spec);
+  p.vx = cos(spec.angle) * spec.speed;
+  p.vy = sin(spec.angle) * spec.speed;
+  world.projectiles.push(p);
+  return p;
+}
+
+/** Points the projectile at (x, y) without changing its speed. */
+function aimProjectile(p, x, y) {
+  const angle = atan2(y - p.y, x - p.x);
+  p.vx = cos(angle) * p.speed;
+  p.vy = sin(angle) * p.speed;
+}
+
+function expireProjectile(p) {
+  const kind = PROJECTILE_KINDS[p.kind];
+  if (kind.onExpire) kind.onExpire(p);
+  else p.dead = true;
+}
+
+/** Shared "pierce, then bounce to the next enemy, then stop" behaviour of daggers and arrows. */
+function pierceOrBounce(p, bounceRange, minLife) {
+  if (p.pierce > 0) { p.pierce--; return true; }
+  if (p.bounce > 0) {
+    const target = nearestEnemy(p.x, p.y, bounceRange, p.hit);
+    if (target) {
+      p.bounce--;
+      aimProjectile(p, target.x, target.y);
+      p.life = Math.max(p.life, minLife);
+      return true;
+    }
+  }
+  return false;
+}
+
+const offScreen = p => p.x < -40 || p.x > W + 40 || p.y < -40 || p.y > H + 40;
+
+function updateProjectiles(dt) {
+  const list = world.projectiles;
+  // Index loop on purpose: hits may add new projectiles to the end of the list.
+  for (let i = 0; i < list.length; i++) {
+    const p = list[i];
+    if (p.dead) continue;
+    p.life -= dt;
+
+    if (p.returning) {
+      // boomerang daggers fly back to the castle and vanish there
+      aimProjectile(p, cx, cy);
+      if (dist(p.x, p.y, cx, cy) < 26 * U || p.life <= 0) { p.dead = true; continue; }
+    } else if (p.homing) {
+      steerTowardsEnemy(p, dt);
+    }
+
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+
+    if (p.range !== undefined) {           // rolling balls stop after a distance
+      p.travelled += p.speed * dt;
+      if (p.travelled >= p.range) { expireProjectile(p); continue; }
+    }
+    if (!p.returning && (p.life <= 0 || offScreen(p))) {
+      expireProjectile(p);
+      if (p.dead) continue;
+    }
+
+    for (const e of world.enemies) {
+      if (e.dead || p.hit.has(e) || dist(p.x, p.y, e.x, e.y) >= p.r + e.r) continue;
+      p.hit.add(e);
+      hurt(e, p.dmg, p.source);
+      const kind = PROJECTILE_KINDS[p.kind];
+      if (kind.onHit) kind.onHit(p, e);
+      if (p.dead) break;
+    }
+  }
+}
+
+/** Turns the projectile towards the nearest not-yet-hit enemy, at most 6 rad/s. */
+function steerTowardsEnemy(p, dt) {
+  const target = nearestEnemy(p.x, p.y, 170 * U, p.hit);
+  if (!target) return;
+  let heading = atan2(p.vy, p.vx);
+  let turn = atan2(target.y - p.y, target.x - p.x) - heading;
+  turn = atan2(sin(turn), cos(turn));   // normalise to -PI..PI
+  heading += clamp(turn, -6 * dt, 6 * dt);
+  p.vx = cos(heading) * p.speed;
+  p.vy = sin(heading) * p.speed;
+}
+
+function drawProjectile(p) {
+  PROJECTILE_KINDS[p.kind].draw(p, atan2(p.vy, p.vx));
+}
+
+/* ===== 10-weapon-sword.js ===== */
+/*
+ * Sword: melee slashes at the tapped point.
+ *
+ * Every weapon file follows the same layout: helpers, one small function per
+ * ability, then the attack function that calls the abilities unlocked at the
+ * current level (they all stack), then the projectile kinds and kill hooks.
+ */
+
+const SWORD_SOURCE = { weapon: 'sword' };
+
+/** White crescent that sweeps open and fades. */
+function slashEffect(x, y, angle, radius, rgb = '255,255,255') {
+  addEffect(0.28, k => {
+    const sweep = Math.min(1, k * 3.2);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.globalAlpha = 1 - k * k;
+    ctx.fillStyle = `rgb(${rgb})`;
+    ctx.shadowColor = `rgba(${rgb},.9)`;
+    ctx.shadowBlur = 14 * U;
+    ctx.beginPath();
+    ctx.arc(-radius * 0.4, 0, radius * 1.2, -1.1, -1.1 + 2.2 * sweep);
+    ctx.arc(-radius * 0.8, 0, radius * 1.38, (-1.1 + 2.2 * sweep) * 0.82, -1.1 * 0.82, true);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }, { cap: FX_CAP_COMMON });
+}
+
+/** A sword drops from the sky onto (x, y); `onImpact` runs when it lands. */
+function fallingSword(x, y, scale, delay, onImpact) {
+  const length = 64 * U * scale, restY = y - 58 * U * scale;
+  addEffect(delay, k => {
+    ctx.fillStyle = `rgba(0,0,0,${0.12 + 0.2 * k})`;   // growing shadow on the ground
+    fillEllipse(ctx, x, y, 22 * U * scale * k, 9 * U * scale * k);
+    drawSword(ctx, x, restY - (1 - k * k) * 420 * U, PI / 2, length);
+  });
+  after(delay, () => {
+    onImpact();
+    addEffect(0.35, k => {
+      ctx.globalAlpha = 1 - k;
+      drawSword(ctx, x, restY, PI / 2, length);
+      ctx.globalAlpha = 1;
+    });
+  });
+}
+
+/* ---------- Abilities ---------- */
+
+/** Lvl 1/5/10: one, two or three slashes side by side. Lvl 70 freezes what they hit. */
+function swordSlashes(a, x, y, angle, damageShare) {
+  const count = a.level >= 10 ? 3 : a.level >= 5 ? 2 : 1;
+  for (let i = 0; i < count; i++) {
+    const offset = (i - (count - 1) / 2) * a.radius * 1.05;
+    const sx = x + cos(angle + PI / 2) * offset;
+    const sy = y + sin(angle + PI / 2) * offset;
+    slashEffect(sx, sy, angle + (i - (count - 1) / 2) * 0.35, a.radius, damageShare < 1 ? '190,225,255' : '255,255,255');
+    areaDamage(sx, sy, a.radius, a.damage * damageShare, SWORD_SOURCE, e => {
+      if (a.level >= 70) e.freeze = Math.max(e.freeze, 2);
+    });
+  }
+}
+
+/** The basic strike; from lvl 80 it is mirrored on the opposite side of the castle. */
+function swordStrike(a, damageShare) {
+  swordSlashes(a, a.x, a.y, a.angle, damageShare);
+  if (a.level >= 80) swordSlashes(a, 2 * cx - a.x, 2 * cy - a.y, a.angle + PI, damageShare);
+}
+
+/** Lvl 25: three swords circle the castle for 3 s; attacking again extends them. */
+function swordOrbit(a) {
+  const existing = findZone('swordOrbit');
+  if (existing) { existing.dur = existing.t + 3; return; }
+  const bladeAngle = (zone, i) => zone.startAngle + zone.t * 4 + i * TAU / 3;
+  addZone({
+    tag: 'swordOrbit', dur: 3, startAngle: rnd(TAU),
+    update(zone) {
+      for (let i = 0; i < 3; i++) {
+        const g = bladeAngle(zone, i);
+        const x = cx + cos(g) * 92 * U, y = cy + sin(g) * 92 * U * 0.85;
+        for (const e of world.enemies) {
+          if (e.dead || e.orbitCd > 0 || dist(x, y, e.x, e.y) >= 20 * U + e.r) continue;
+          e.orbitCd = 0.4;
+          hurt(e, a.damage * 0.5, SWORD_SOURCE);
+        }
+      }
+    },
+    draw(zone) {
+      ctx.globalAlpha = zoneFade(zone, 4, 3);
+      for (let i = 0; i < 3; i++) {
+        const g = bladeAngle(zone, i);
+        drawSword(ctx, cx + cos(g) * 70 * U, cy + sin(g) * 70 * U * 0.85, g, 40 * U);
+      }
+      ctx.globalAlpha = 1;
+    },
+  });
+}
+
+/** Lvl 30: a crescent flies from the tap point to the screen edge through everything. */
+function swordBladeWave(a) {
+  addProjectile({
+    kind: 'bladeWave', x: a.x, y: a.y, angle: a.angle, speed: 380 * U, r: 30 * U,
+    dmg: a.damage * 0.8, life: 2, pierce: 99, source: { weapon: 'sword', color: '#bfe6ff' },
+  });
+}
+
+/** Lvl 40: a ghost sword stays at the tap point and slashes on its own for 3 s (max. 4). */
+function swordGhost(a) {
+  if (zoneCount('ghostSword') >= 4) return;
+  const { x, y } = a, radius = a.radius * 0.9;
+  addZone({
+    tag: 'ghostSword', dur: 3, tick: 0.3,
+    update(zone, dt) {
+      zone.tick += dt;
+      if (zone.tick < 0.6) return;
+      zone.tick = 0;
+      slashEffect(x, y, rnd(TAU), radius, '200,180,255');
+      areaDamage(x, y, radius, a.damage * 0.5, SWORD_SOURCE);
+    },
+    draw(zone) {
+      ctx.globalAlpha = 0.55 * Math.min(1, (zone.dur - zone.t) * 2);
+      drawSword(ctx, x, y - 30 * U + sin(zone.t * 5) * 4 * U, PI / 2 + sin(zone.t * 9) * 0.5, 44 * U, '#d9ccff', '#6b55a8');
+      ctx.globalAlpha = 1;
+    },
+  });
+}
+
+/** Lvl 50: a giant sword falls on the tap point. */
+function swordGiant(a) {
+  const { x, y } = a;
+  fallingSword(x, y, 2.4, 0.45, () => {
+    areaDamage(x, y, a.radius * 1.9, a.damage * 3, SWORD_SOURCE);
+    ring(x, y, a.radius * 2.1, '255,255,255', 0.5);
+    session.shake = Math.max(session.shake, 12);
+    puff(x, y, '#e9e2d0', 16);
+  });
+}
+
+/** Lvl 90, every 3rd attack: lightning jumps across up to 7 enemies. */
+function swordLightning(a) {
+  const points = [[a.x, a.y]], struck = new Set();
+  let px = a.x, py = a.y;
+  for (let i = 0; i < 7; i++) {
+    const e = nearestEnemy(px, py, 170 * U, struck);
+    if (!e) break;
+    struck.add(e);
+    points.push([e.x, e.y]);
+    px = e.x;
+    py = e.y;
+    hurt(e, a.damage * 1.5, { weapon: 'sword', color: '#fff59a' });
+  }
+  if (points.length < 2) points.push([a.x + rnd(-40, 40) * U, a.y - 60 * U]);   // strike into the air
+  addEffect(0.3, k => {
+    ctx.save();
+    ctx.globalAlpha = 1 - k;
+    ctx.strokeStyle = '#fff59a';
+    ctx.shadowColor = '#ffe24a';
+    ctx.shadowBlur = 16 * U;
+    ctx.lineWidth = 3 * U;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (let i = 0; i < points.length - 1; i++) {
+      const [x1, y1] = points[i], [x2, y2] = points[i + 1];
+      ctx.moveTo(x1, y1);
+      for (let j = 1; j < 4; j++) {   // three jittered joints per jump, re-rolled every frame
+        ctx.lineTo(x1 + (x2 - x1) * j / 4 + rnd(-9, 9) * U, y1 + (y2 - y1) * j / 4 + rnd(-9, 9) * U);
+      }
+      ctx.lineTo(x2, y2);
+    }
+    ctx.stroke();
+    ctx.restore();
+  });
+}
+
+/** Lvl 100: 14 swords rain down, mostly on enemies. */
+function swordRain(a) {
+  for (let i = 0; i < 14; i++) {
+    after(i * 0.1, () => {
+      const alive = world.enemies.filter(e => !e.dead);
+      const target = alive.length && Math.random() < 0.7 ? alive[Math.floor(rnd(alive.length))] : null;
+      const x = target ? target.x : rnd(30, W - 30);
+      const y = target ? target.y : rnd(70, H - 110);
+      fallingSword(x, y, 1, 0.3, () => {
+        areaDamage(x, y, a.radius * 0.9, a.damage * 1.2, SWORD_SOURCE);
+        ring(x, y, a.radius, '220,235,255', 0.3);
+      });
+    });
+  }
+}
+
+/* ---------- Attack ---------- */
+
+WEAPONS.sword.attack = function (x, y) {
+  const level = S.lv.sword;
+  // `a` bundles what the abilities need to know about this attack
+  const a = { x, y, level, damage: damageOf('sword'), angle: atan2(y - cy, x - cx), radius: 50 * U * (1 + level * 0.004) };
+
+  swordStrike(a, 1);
+  if (level >= 15) after(0.35, () => swordStrike(a, 0.6));   // echo
+  if (level >= 25) swordOrbit(a);
+  if (level >= 30) swordBladeWave(a);
+  if (level >= 40) swordGhost(a);
+  if (level >= 50) swordGiant(a);
+  if (level >= 90 && combat.attackCount % 3 === 0) swordLightning(a);
+  if (level >= 100) swordRain(a);
+};
+
+/* ---------- Projectile kinds and kill hook ---------- */
+
+PROJECTILE_KINDS.bladeWave = {
+  draw(p, angle) {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(angle);
+    ctx.fillStyle = 'rgba(190,230,255,.85)';
+    ctx.shadowColor = '#8fd0ff';
+    ctx.shadowBlur = 16 * U;
+    ctx.beginPath();
+    ctx.arc(-p.r * 0.6, 0, p.r * 1.2, -1.1, 1.1);
+    ctx.arc(-p.r * 1.1, 0, p.r * 1.45, 0.86, -0.86, true);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  },
+};
+
+PROJECTILE_KINDS.swordSplinter = {
+  onHit(p) { p.dead = true; },
+  draw(p, angle) { drawSword(ctx, p.x, p.y, angle, 18 * U); },
+};
+
+/** Lvl 60: enemies killed by the sword burst into three small swords (which do not burst again). */
+KILL_HOOKS.push((enemy, source) => {
+  if (source.weapon !== 'sword' || source.splinter || S.lv.sword < 60) return;
+  const startAngle = rnd(TAU);
+  for (let i = 0; i < 3; i++) {
+    addProjectile({
+      kind: 'swordSplinter', x: enemy.x, y: enemy.y, angle: startAngle + i * TAU / 3, speed: 300 * U, r: 8 * U,
+      dmg: damageOf('sword') * 0.4, life: 0.5, hit: new Set([enemy]),
+      source: { weapon: 'sword', splinter: true, color: '#eaf2ff' },
+    });
+  }
+});
+
+/* ===== 11-weapon-dagger.js ===== */
+/*
+ * Daggers: fast throws from the castle towards the tapped point, later with
+ * poison, bounces and chain reactions.
+ */
+
+const DAGGER_COLOR = '#c9f7e4';
+const POISON_SHARE = 0.35;   // poison damage per second as a share of the dagger's hit damage
+
+/**
+ * Throws one dagger.
+ *   opts.share       damage multiplier
+ *   opts.minor       a spawned dagger (split or chain): no pierce, split or boomerang
+ *   opts.chain       spawned by the lvl-100 chain reaction: full size, bounces once
+ *   opts.generation  chain depth, limits the chain reaction
+ */
+function throwDagger(x, y, angle, opts = {}) {
+  const level = S.lv.dagger;
+  const main = !opts.minor;
+  return addProjectile({
+    kind: 'dagger', x, y, angle, speed: 420 * U, r: 8 * U,
+    dmg: (opts.share || 1) * damageOf('dagger'),
+    life: opts.life || 1.4,
+    pierce: main && level >= 15 ? 1 : 0,
+    bounce: main ? (level >= 10 ? 2 : 0) : (opts.chain ? 1 : 0),
+    splits: main && level >= 40,
+    boomerang: main && level >= 50,
+    homing: level >= 80,
+    scale: main || opts.chain ? 1 : 0.7,
+    source: { weapon: 'dagger', generation: opts.generation || 0, color: DAGGER_COLOR },
+  });
+}
+
+/* ---------- Abilities ---------- */
+
+/** Lvl 1/5: one dagger or a fan of three, thrown from the castle. */
+function daggerVolley(angle, share) {
+  const count = S.lv.dagger >= 5 ? 3 : 1;
+  for (let i = 0; i < count; i++) {
+    throwDagger(cx + cos(angle) * 16 * U, cy + sin(angle) * 16 * U, angle + (i - (count - 1) / 2) * 0.2, { share });
+  }
+}
+
+/** Lvl 30: a shadow clone throws a second volley at the enemy closest to the castle. */
+function daggerShadowClone(a) {
+  after(0.25, () => {
+    const target = nearestEnemy(cx, cy);
+    const angle = target ? atan2(target.y - cy, target.x - cx) : a.angle + PI;
+    daggerVolley(angle, 0.7);
+    const x = cx + cos(angle) * 34 * U, y = cy + sin(angle) * 34 * U;
+    addEffect(0.5, k => {
+      ctx.fillStyle = `rgba(60,40,90,${0.7 * (1 - k)})`;
+      fillCircle(ctx, x, y - 14 * U, 8 * U);
+      ctx.beginPath();
+      ctx.moveTo(x - 11 * U, y + 8 * U);
+      ctx.quadraticCurveTo(x, y - 22 * U, x + 11 * U, y + 8 * U);
+      ctx.fill();
+    });
+  });
+}
+
+/** Lvl 70: a dagger stuck in the ground at the tap point; the first enemy to step on it is hit hard. */
+function daggerTrap(a) {
+  const traps = world.zones.filter(zone => zone.tag === 'daggerTrap');
+  if (traps.length >= 6) traps[0].t = Infinity;   // at most 6 traps: the oldest one goes
+  const { x, y } = a;
+  addZone({
+    tag: 'daggerTrap', dur: 25, under: true,
+    update(zone) {
+      for (const e of world.enemies) {
+        if (e.dead || dist(x, y, e.x, e.y) >= 14 * U + e.r) continue;
+        if (a.level >= 25) applyPoison(e, a.damage * POISON_SHARE);
+        hurt(e, a.damage * 2.5, { weapon: 'dagger', color: DAGGER_COLOR });
+        ring(x, y, 30 * U, '201,247,228', 0.3);
+        zone.t = Infinity;
+        break;
+      }
+    },
+    draw() {
+      ctx.fillStyle = 'rgba(0,0,0,.2)';
+      fillEllipse(ctx, x, y + 2 * U, 9 * U, 4 * U);
+      drawSword(ctx, x, y - 20 * U, PI / 2, 22 * U, DAGGER_BLADE, DAGGER_GRIP);
+    },
+  });
+}
+
+/** Lvl 90: a ring of spinning daggers at the tap point for 2 s (max. 3). */
+function daggerWhirl(a) {
+  if (zoneCount('daggerWhirl') >= 3) return;
+  const { x, y } = a;
+  addZone({
+    tag: 'daggerWhirl', dur: 2, tick: 0.2,
+    update(zone, dt) {
+      zone.tick += dt;
+      if (zone.tick < 0.2) return;
+      zone.tick = 0;
+      areaDamage(x, y, 58 * U, a.damage * 0.3, { weapon: 'dagger', color: DAGGER_COLOR }, e => {
+        if (a.level >= 25) applyPoison(e, a.damage * POISON_SHARE);
+      });
+    },
+    draw(zone) {
+      ctx.globalAlpha = zoneFade(zone, 5, 3);
+      for (let i = 0; i < 6; i++) {
+        const g = zone.t * 11 + i * TAU / 6;
+        drawSword(ctx, x + cos(g) * 40 * U, y + sin(g) * 40 * U * 0.85, g + PI / 2, 22 * U, DAGGER_BLADE, DAGGER_GRIP);
+      }
+      ctx.globalAlpha = 1;
+    },
+  });
+}
+
+/** Lvl 60: a poison cloud that lingers where a poisoned enemy died. */
+function poisonCloud(x, y, dps) {
+  if (world.zones.length > 40) return;
+  const radius = 45 * U;
+  addZone({
+    dur: 3, under: true, tick: 0.5,
+    update(zone, dt) {
+      zone.tick += dt;
+      if (zone.tick < 0.5) return;
+      zone.tick = 0;
+      areaDamage(x, y, radius, dps * 0.5, { weapon: 'dagger', dot: true }, e => applyPoison(e, dps));
+    },
+    draw(zone) {
+      const alpha = 0.5 * zoneFade(zone, 5, 2);
+      ctx.fillStyle = `rgba(140,210,70,${alpha * 0.5})`;
+      for (let i = 0; i < 5; i++) {
+        const g = i * 1.26 + zone.t * 0.6;
+        fillCircle(ctx, x + cos(g) * radius * 0.4, y + sin(g) * radius * 0.3, radius * 0.6);
+      }
+    },
+  });
+}
+
+/* ---------- Attack ---------- */
+
+WEAPONS.dagger.attack = function (x, y) {
+  const level = S.lv.dagger;
+  const a = { x, y, level, damage: damageOf('dagger'), angle: atan2(y - cy, x - cx) };
+
+  daggerVolley(a.angle, 1);
+  if (level >= 30) daggerShadowClone(a);
+  if (level >= 70) daggerTrap(a);
+  if (level >= 90) daggerWhirl(a);
+  // Lvl 10 bounce, 15 pierce, 25 poison, 40 split, 50 boomerang and 80 homing live in the projectile below.
+};
+
+/* ---------- Projectile kind and kill hooks ---------- */
+
+PROJECTILE_KINDS.dagger = {
+  onHit(p, enemy) {
+    if (S.lv.dagger >= 25) applyPoison(enemy, p.dmg * POISON_SHARE);
+    if (p.splits && !p.hasSplit) {
+      // Lvl 40: the first hit splits off two small daggers
+      p.hasSplit = true;
+      const angle = atan2(p.vy, p.vx);
+      for (const spread of [-0.6, 0.6]) {
+        const child = throwDagger(p.x, p.y, angle + spread, { minor: true, share: 0.5, life: 0.5 });
+        child.hit.add(enemy);
+      }
+    }
+    if (p.returning) return;                 // on the way back it cuts through everything
+    if (pierceOrBounce(p, 220 * U, 0.6)) return;
+    expireProjectile(p);
+  },
+  onExpire(p) {
+    if (p.boomerang && !p.returning) {
+      // Lvl 50: fly back to the castle and hit everything again
+      p.returning = true;
+      p.hit.clear();
+      p.life = 3;
+      return;
+    }
+    p.dead = true;
+  },
+  draw(p, angle) {
+    const back = 10 * U * p.scale;   // the sprite's origin is the hilt, the hit point is further forward
+    drawSword(ctx, p.x - cos(angle) * back, p.y - sin(angle) * back, angle, 24 * U * p.scale, DAGGER_BLADE, DAGGER_GRIP);
+  },
+};
+
+/** Lvl 25: poison jumps to two neighbours when its carrier dies. Lvl 60: it also leaves a cloud. */
+KILL_HOOKS.push(enemy => {
+  if (enemy.poison <= 0) return;
+  const level = S.lv.dagger;
+  if (level >= 25) {
+    let spread = 0;
+    for (const other of world.enemies) {
+      if (spread >= 2) break;
+      if (other.dead || other === enemy || dist(other.x, other.y, enemy.x, enemy.y) > 90 * U) continue;
+      applyPoison(other, enemy.poisonDps);
+      spread++;
+    }
+  }
+  if (level >= 60) poisonCloud(enemy.x, enemy.y, enemy.poisonDps);
+});
+
+/** Lvl 100: every dagger kill throws a new dagger at the nearest enemy (up to 4 links deep). */
+KILL_HOOKS.push((enemy, source) => {
+  if (source.weapon !== 'dagger' || S.lv.dagger < 100) return;
+  const generation = source.generation || 0;
+  if (generation >= 4 || world.projectiles.length >= 70) return;
+  const target = nearestEnemy(enemy.x, enemy.y, 400 * U);
+  if (!target) return;
+  throwDagger(enemy.x, enemy.y, atan2(target.y - enemy.y, target.x - enemy.x),
+    { minor: true, chain: true, generation: generation + 1, share: 0.8, life: 1 });
+});
+
+/* ===== 12-weapon-star.js ===== */
+/*
+ * Morning star: slow, heavy area hits at the tapped point.
+ */
+
+const STAR_SOURCE = { weapon: 'star', color: '#ffd9a0' };
+const STAR_DOT = { weapon: 'star', dot: true };
+
+/**
+ * The impact itself, used by the attack and by the twin star.
+ * Includes lvl 5 shockwave, lvl 15 stun and lvl 25 spikes. Returns the hit radius.
+ */
+function starSlam(x, y, share) {
+  const level = S.lv.star;
+  const damage = damageOf('star') * share;
+  const radius = 60 * U * (1 + level * 0.003);
+
+  addEffect(0.3, k => {
+    ctx.globalAlpha = 1 - k * k;
+    drawBall(ctx, x, y - 10 * U, 20 * U * (1.25 - 0.25 * Math.min(1, k * 4)), k * 2);
+    ctx.globalAlpha = 1;
+  });
+  areaDamage(x, y, radius, damage, STAR_SOURCE, e => {
+    if (level >= 15) e.stun = Math.max(e.stun, 1);
+  });
+  ring(x, y, radius, '255,217,160', 0.35, true);
+  session.shake = Math.max(session.shake, 7);
+  puff(x, y, '#c9a877', 10);
+
+  if (level >= 5) {
+    for (const e of world.enemies) {
+      if (!e.dead && dist(x, y, e.x, e.y) < radius * 1.8 + e.r) knockback(e, 170);
+    }
+    ring(x, y, radius * 1.8, '255,255,255', 0.5, true);
+  }
+  if (level >= 25) {
+    for (let i = 0; i < 8; i++) {
+      addProjectile({
+        kind: 'spike', x, y, angle: i * TAU / 8 + 0.39, speed: 330 * U, r: 7 * U,
+        dmg: damage * 0.4, life: 0.7, pierce: 1, source: STAR_SOURCE,
+      });
+    }
+  }
+  return radius;
+}
+
+/** Ball that rolls a fixed distance through enemies; `splits` makes it break into three at the end. */
+function rollBall(x, y, angle, { speed, r, dmg, range, splits }) {
+  addProjectile({
+    kind: 'ball', x, y, angle, speed, r, dmg, range, splits,
+    travelled: 0, life: 5, pierce: 99, source: STAR_SOURCE,
+  });
+}
+
+/* ---------- Abilities ---------- */
+
+/** Lvl 60: a black hole pulls enemies to the impact point for 0.9 s (max. 3). */
+function starBlackHole(a) {
+  if (zoneCount('blackHole') >= 3) return;
+  const { x, y } = a;
+  addZone({
+    tag: 'blackHole', dur: 0.9, under: true,
+    update(zone, dt) {
+      for (const e of world.enemies) {
+        if (e.dead) continue;
+        const d = dist(x, y, e.x, e.y);
+        if (d >= 170 * U || d <= 6) continue;
+        const step = (e.boss ? 35 : 110) * U * dt / d;
+        e.x += (x - e.x) * step;
+        e.y += (y - e.y) * step;
+      }
+    },
+    draw(zone) {
+      const alpha = zoneFade(zone, 6, 5);
+      const hole = ctx.createRadialGradient(x, y, 2, x, y, 70 * U);
+      hole.addColorStop(0, `rgba(20,8,40,${0.85 * alpha})`);
+      hole.addColorStop(1, 'rgba(60,20,110,0)');
+      ctx.fillStyle = hole;
+      fillCircle(ctx, x, y, 70 * U);
+      ctx.strokeStyle = `rgba(190,140,255,${0.7 * alpha})`;
+      ctx.lineWidth = 2 * U;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(x, y, (22 + i * 16) * U, zone.t * 9 + i * 2, zone.t * 9 + i * 2 + 2.2);
+        ctx.stroke();
+      }
+    },
+  });
+}
+
+/** Lvl 30: a second, wider impact; it waits for the black hole when that is unlocked. */
+function starAftershock(a) {
+  const { x, y } = a;
+  after(a.level >= 60 ? 1 : 0.5, () => {
+    areaDamage(x, y, a.radius * 1.3, a.damage * 0.5, STAR_SOURCE);
+    ring(x, y, a.radius * 1.3, '255,190,120', 0.45, true);
+    session.shake = Math.max(session.shake, 6);
+    puff(x, y, '#c9a877', 8);
+  });
+}
+
+/** Lvl 40: the ground burns for 4 s (max. 6 patches). */
+function starBurningGround(a) {
+  if (zoneCount('burningGround') >= 6) return;
+  const { x, y, radius } = a;
+  addZone({
+    tag: 'burningGround', dur: 4, under: true, tick: 0,
+    update(zone, dt) {
+      zone.tick += dt;
+      if (zone.tick < 0.5) return;
+      zone.tick = 0;
+      areaDamage(x, y, radius, a.damage * 0.2, STAR_DOT);
+    },
+    draw(zone) {
+      const alpha = zoneFade(zone, 4, 2);
+      const glow = ctx.createRadialGradient(x, y, 2, x, y, radius);
+      glow.addColorStop(0, `rgba(255,200,60,${0.55 * alpha})`);
+      glow.addColorStop(0.7, `rgba(240,90,30,${0.4 * alpha})`);
+      glow.addColorStop(1, 'rgba(240,90,30,0)');
+      ctx.fillStyle = glow;
+      fillEllipse(ctx, x, y, radius, radius * 0.8);
+      for (let i = 0; i < 6; i++) {   // rising sparks
+        const q = i * 1.05 + 1, rise = (zone.t * 1.6 + i * 0.37) % 1;
+        ctx.fillStyle = `rgba(255,${150 + i * 15},40,${alpha * (1 - rise)})`;
+        fillCircle(ctx, x + cos(q * 2.3) * radius * 0.6, y + sin(q * 1.7) * radius * 0.4 - rise * 22 * U, (5 - 3 * rise) * U);
+      }
+    },
+  });
+}
+
+/** Lvl 50: the ball swings once around the castle on its chain. */
+function starChainSwing(a) {
+  addZone({
+    dur: 0.8, struck: new Set(),
+    update(zone) {
+      zone.angle = a.angle + zone.t / zone.dur * TAU;
+      zone.x = cx + cos(zone.angle) * 120 * U;
+      zone.y = cy + sin(zone.angle) * 120 * U * 0.85;
+      for (const e of world.enemies) {
+        if (e.dead || zone.struck.has(e) || dist(zone.x, zone.y, e.x, e.y) >= 22 * U + e.r) continue;
+        zone.struck.add(e);
+        knockback(e, 140);
+        hurt(e, a.damage, STAR_SOURCE);
+      }
+    },
+    draw(zone) {
+      if (zone.x === undefined) return;
+      ctx.strokeStyle = '#59606e';
+      ctx.lineWidth = 3 * U;
+      ctx.setLineDash([5 * U, 4 * U]);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 20 * U);
+      ctx.lineTo(zone.x, zone.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      drawBall(ctx, zone.x, zone.y, 16 * U, zone.angle * 3);
+    },
+  });
+}
+
+/** Lvl 80: a fissure tears from the impact to the screen edge. */
+function starFissure(a) {
+  const { x, y, angle } = a;
+  const length = 640 * U;
+  const endX = x + cos(angle) * length, endY = y + sin(angle) * length;
+  for (const e of world.enemies) {
+    if (!e.dead && distToSegment(e.x, e.y, x, y, endX, endY) < 16 * U + e.r) hurt(e, a.damage * 1.2, STAR_SOURCE);
+  }
+  const zigzag = [];
+  for (let i = 0; i <= 14; i++) zigzag.push(rnd(-9, 9) * U);
+  addEffect(1.4, k => {
+    const grown = Math.min(1, k * 6);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.globalAlpha = 1 - k * k;
+    ctx.lineJoin = 'round';
+    for (const [color, width] of [[INK, 9], ['#ff9a3c', 3]]) {   // dark crack with a glowing core
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width * U * (1 - k * 0.5);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      for (let i = 1; i <= 14 * grown; i++) ctx.lineTo(length * i / 14, zigzag[i]);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }, { under: true });
+}
+
+/** Lvl 90: a second, slightly weaker slam on a random enemy. */
+function starTwin(a) {
+  after(0.25, () => {
+    const alive = world.enemies.filter(e => !e.dead);
+    const target = alive.length ? alive[Math.floor(rnd(alive.length))] : null;
+    starSlam(target ? target.x : 2 * cx - a.x, target ? target.y : 2 * cy - a.y, 0.8);
+  });
+}
+
+/** Lvl 100: a meteor hits 0.8 s later and leaves a burning crater (max. 4). */
+function starMeteor(a) {
+  const { x, y, radius } = a;
+  addEffect(0.8, k => {
+    const fall = k * k;
+    const mx = x + (1 - fall) * 160 * U, my = y - (1 - fall) * 460 * U;
+    ctx.fillStyle = `rgba(0,0,0,${0.3 * k})`;
+    fillEllipse(ctx, x, y, radius * 2 * k, radius * 1.5 * k);
+    ctx.strokeStyle = 'rgba(255,150,40,.7)';
+    ctx.lineWidth = 20 * U;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(mx + 50 * U, my - 140 * U);
+    ctx.lineTo(mx, my);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+    drawBall(ctx, mx, my, 34 * U, k * 8);
+  });
+  after(0.8, () => {
+    areaDamage(x, y, radius * 2.2, a.damage * 4, STAR_SOURCE);
+    ring(x, y, radius * 2.4, '255,160,60', 0.7);
+    ring(x, y, radius * 1.5, '255,255,255', 0.5);
+    session.shake = Math.max(session.shake, 18);
+    puff(x, y, '#ff9a3c', 24);
+    if (zoneCount('crater') >= 4) return;
+    addZone({
+      tag: 'crater', dur: 5, under: true, tick: 0,
+      update(zone, dt) {
+        zone.tick += dt;
+        if (zone.tick < 0.5) return;
+        zone.tick = 0;
+        areaDamage(x, y, radius * 1.7, a.damage * 0.3, STAR_DOT);
+      },
+      draw(zone) {
+        const alpha = Math.min(1, zone.dur - zone.t);
+        const glow = ctx.createRadialGradient(x, y, 2, x, y, radius * 1.7);
+        glow.addColorStop(0, `rgba(40,20,20,${0.75 * alpha})`);
+        glow.addColorStop(0.6, `rgba(200,70,20,${0.5 * alpha})`);
+        glow.addColorStop(1, 'rgba(255,140,40,0)');
+        ctx.fillStyle = glow;
+        fillEllipse(ctx, x, y, radius * 1.7, radius * 1.35);
+      },
+    });
+  });
+}
+
+/* ---------- Attack ---------- */
+
+WEAPONS.star.attack = function (x, y) {
+  const level = S.lv.star;
+  const a = { x, y, level, damage: damageOf('star'), angle: atan2(y - cy, x - cx) };
+
+  a.radius = starSlam(x, y, 1);
+  if (level >= 60) starBlackHole(a);
+  if (level >= 10) rollBall(x, y, a.angle, { speed: 210 * U, r: 18 * U, dmg: a.damage * 0.6, range: 230 * U, splits: level >= 70 });
+  if (level >= 30) starAftershock(a);
+  if (level >= 40) starBurningGround(a);
+  if (level >= 50) starChainSwing(a);
+  if (level >= 80) starFissure(a);
+  if (level >= 90) starTwin(a);
+  if (level >= 100) starMeteor(a);
+};
+
+/* ---------- Projectile kinds ---------- */
+
+PROJECTILE_KINDS.spike = {
+  onHit(p) {
+    if (p.pierce > 0) p.pierce--;
+    else p.dead = true;
+  },
+  draw(p, angle) {
+    ctx.fillStyle = '#cfd6de';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.5 * U;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(angle);
+    ctx.beginPath();
+    ctx.moveTo(9 * U, 0);
+    ctx.lineTo(-6 * U, -4 * U);
+    ctx.lineTo(-6 * U, 4 * U);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+PROJECTILE_KINDS.ball = {
+  onHit(p, enemy) { knockback(enemy, 130); },
+  onExpire(p) {
+    if (p.splits) {
+      // Lvl 70: break into three smaller balls that roll on
+      const angle = atan2(p.vy, p.vx);
+      for (const spread of [-0.7, 0, 0.7]) {
+        rollBall(p.x, p.y, angle + spread, { speed: p.speed, r: p.r * 0.6, dmg: p.dmg * 0.6, range: 150 * U, splits: false });
+      }
+      puff(p.x, p.y, '#aab3c0', 8);
+    }
+    p.dead = true;
+  },
+  draw(p) {
+    ctx.fillStyle = 'rgba(0,0,0,.2)';
+    fillEllipse(ctx, p.x, p.y + p.r * 0.7, p.r, p.r * 0.4);
+    drawBall(ctx, p.x, p.y - p.r * 0.3, p.r * 0.8, p.travelled / p.r);
+  },
+};
+
+/* ===== 13-weapon-bow.js ===== */
+/*
+ * Bow: fast, precise arrows from the castle towards the tapped point.
+ */
+
+const BOW_COLOR = '#ffe9b0';
+const BOW_SOURCE = { weapon: 'bow', color: BOW_COLOR };
+const PROJECTILE_LIMIT = 260;   // arrows and phoenixes are not fired above this many projectiles
+
+/**
+ * Shoots one arrow from the castle.
+ *   opts.share   damage multiplier
+ *   opts.minor   automatic arrow (ghost archer, arrow storm): never critical, bouncing or explosive
+ *   opts.giant   the lvl-90 giant arrow: big, flies through everything
+ */
+function shootArrow(angle, opts = {}) {
+  if (world.projectiles.length > PROJECTILE_LIMIT) return;
+  const level = S.lv.bow;
+  const aimed = !opts.minor && !opts.giant;
+  let critical = false;
+  if (aimed) {
+    combat.bowShots++;
+    critical = level >= 15 && combat.bowShots % 4 === 0;   // Lvl 15: every 4th aimed arrow deals triple damage
+  }
+  addProjectile({
+    kind: 'arrow',
+    x: cx + cos(angle) * 14 * U, y: cy - 4 * U + sin(angle) * 14 * U,
+    angle, speed: (opts.giant ? 520 : 640) * U, r: (opts.giant ? 18 : 6) * U,
+    dmg: damageOf('bow') * (opts.share || 1) * (critical ? 3 : 1),
+    life: 1.6,
+    pierce: opts.giant ? 99 : (level >= 10 ? 2 : 0),
+    bounce: aimed && level >= 60 ? 2 : 0,
+    explosive: aimed && level >= 40,
+    giant: !!opts.giant, critical,
+    source: { weapon: 'bow', color: critical ? '#ffe14a' : BOW_COLOR },
+  });
+}
+
+/* ---------- Abilities ---------- */
+
+/** Lvl 1/30: one arrow or a fan of five. */
+function bowVolley(a) {
+  if (a.level >= 30) for (let i = -2; i <= 2; i++) shootArrow(a.angle + i * 0.13);
+  else shootArrow(a.angle);
+}
+
+/** Lvl 50: ten arrows rain on the tap point over one second. */
+function bowHail(a) {
+  for (let i = 0; i < 10; i++) {
+    after(0.1 + i * 0.09, () => {
+      const g = rnd(TAU), spread = rnd(0, 50) * U;
+      const x = a.x + cos(g) * spread, y = a.y + sin(g) * spread * 0.85;
+      addEffect(0.18, k => drawArrow(ctx, x + (1 - k) * 30 * U, y - (1 - k) * 150 * U, 1.77, 20 * U), { cap: FX_CAP_RARE });
+      after(0.18, () => {
+        areaDamage(x, y, 15 * U, a.damage * 0.7, BOW_SOURCE, e => {
+          if (a.level >= 70) e.slow = 2.5;
+          if (a.level >= 25) applyBurn(e, a.damage * 0.2);
+        });
+        ring(x, y, 15 * U, '255,233,176', 0.2, true);
+      });
+    });
+  }
+}
+
+/** Lvl 80: a ghost archer on the tower shoots the nearest enemy for 4 s; attacking again extends him. */
+function bowGhostArcher() {
+  const existing = findZone('ghostArcher');
+  if (existing) { existing.dur = existing.t + 4; return; }
+  addZone({
+    tag: 'ghostArcher', dur: 4, tick: 0,
+    update(zone, dt) {
+      zone.tick += dt;
+      if (zone.tick < 0.35) return;
+      zone.tick = 0;
+      const target = nearestEnemy(cx, cy, 330 * U);
+      if (target) shootArrow(atan2(target.y - cy, target.x - cx), { minor: true, share: 0.6 });
+    },
+    draw(zone) {
+      const alpha = 0.75 * zoneFade(zone, 4, 3);
+      const x = cx, y = cy - 52 * U * CASTLE_SCALE - 10 * U;   // just above the keep's roof
+      ctx.fillStyle = `rgba(170,220,255,${alpha})`;
+      fillCircle(ctx, x, y - 7 * U, 4 * U);
+      ctx.beginPath();
+      ctx.moveTo(x - 5 * U, y + 6 * U);
+      ctx.quadraticCurveTo(x, y - 10 * U, x + 5 * U, y + 6 * U);
+      ctx.fill();
+      ctx.globalAlpha = alpha;
+      drawBow(ctx, x + 5 * U, y - U, 0, 6 * U);
+      ctx.globalAlpha = 1;
+    },
+  });
+}
+
+/* ---------- Attack ---------- */
+
+WEAPONS.bow.attack = function (x, y) {
+  const level = S.lv.bow;
+  const a = { x, y, level, damage: damageOf('bow'), angle: atan2(y - cy, x - cx) };
+
+  bowVolley(a);
+  if (level >= 5) after(0.09, () => bowVolley(a));                           // double shot
+  if (level >= 50) bowHail(a);
+  if (level >= 80) bowGhostArcher();
+  if (level >= 90 && combat.attackCount % 3 === 0) shootArrow(a.angle, { giant: true, share: 3 });
+  if (level >= 100) {
+    for (let i = 0; i < 16; i++) shootArrow(a.angle + (i + 0.5) * TAU / 16, { minor: true, share: 0.7 });   // arrow storm
+  }
+  // Lvl 10 pierce, 15 critical, 25 fire, 40 explosive, 60 ricochet and 70 frost live in the projectile below.
+};
+
+/* ---------- Projectile kind ---------- */
+
+PROJECTILE_KINDS.arrow = {
+  onHit(p, enemy) {
+    const level = S.lv.bow;
+    if (level >= 25) applyBurn(enemy, p.dmg * 0.25);
+    if (level >= 70) enemy.slow = 2.5;
+    if (p.explosive && !p.hasExploded) {
+      p.hasExploded = true;
+      areaDamage(p.x, p.y, 30 * U, p.dmg * 0.6, p.source);
+      ring(p.x, p.y, 30 * U, '255,200,120', 0.25);
+    }
+    if (pierceOrBounce(p, 200 * U, 0.5)) return;
+    p.dead = true;
+  },
+  draw(p, angle) {
+    const level = S.lv.bow;
+    if (p.critical || p.giant) {
+      ctx.shadowColor = p.critical ? '#ffe14a' : '#9fd8ff';
+      ctx.shadowBlur = 10 * U;
+    }
+    drawArrow(ctx, p.x, p.y, angle, (p.giant ? 46 : 20) * U, level >= 25 ? '#ffb36b' : '#f3e3c0', level >= 70 ? '#bfe9ff' : '#dfe6ee');
+    ctx.shadowBlur = 0;
+  },
+};
+
+/* ===== 14-weapon-wand.js ===== */
+/*
+ * Fire wand: fireballs that explode at the tapped point and set enemies on fire.
+ */
+
+const WAND_SOURCE = { weapon: 'wand', color: '#ffb36b' };
+const WAND_DOT = { weapon: 'wand', dot: true };
+const BURN_SHARE = 0.25;   // burn damage per second as a share of the wand's hit damage
+
+/** Explosion: damages everything in `radius`; from lvl 5 it also sets enemies on fire. */
+function explode(x, y, radius, damage, source) {
+  areaDamage(x, y, radius, damage, source, e => {
+    if (S.lv.wand >= 5) applyBurn(e, damageOf('wand') * BURN_SHARE);
+  });
+  addEffect(0.3, k => {
+    const r = radius * (0.55 + 0.6 * k);
+    const flash = ctx.createRadialGradient(x, y, 1, x, y, r);
+    flash.addColorStop(0, `rgba(255,244,180,${0.95 * (1 - k)})`);
+    flash.addColorStop(0.6, `rgba(255,140,40,${0.7 * (1 - k)})`);
+    flash.addColorStop(1, 'rgba(255,80,20,0)');
+    ctx.fillStyle = flash;
+    fillCircle(ctx, x, y, r);
+  }, { cap: FX_CAP_RARE });
+  if (world.particles.length < 200) puff(x, y, '#ff9a3c', 4);
+}
+
+/** A fireball arcs from the keep to (x, y) and explodes there. */
+function throwFireball(x, y, radius, damage) {
+  const startX = cx, startY = cy - 30 * U * CASTLE_SCALE;
+  const flight = clamp(dist(startX, startY, x, y) / (420 * U), 0.12, 0.5);
+  addEffect(flight, k => {
+    const bx = startX + (x - startX) * k;
+    const by = startY + (y - startY) * k - sin(k * PI) * 26 * U;
+    ctx.fillStyle = 'rgba(255,150,40,.35)';
+    fillCircle(ctx, bx, by, 10 * U);
+    drawFlame(ctx, bx, by + 3 * U, 7 * U, k * 30);
+  });
+  after(flight, () => {
+    explode(x, y, radius, damage, WAND_SOURCE);
+    session.shake = Math.max(session.shake, 3);
+  });
+}
+
+/** A burning line on the ground; enemies touching it burn and take `share` of the damage per tick. */
+function fireLine(tag, limit, x1, y1, x2, y2, dur, width, share, damage) {
+  if (zoneCount(tag) >= limit) return;
+  const flames = Math.max(3, Math.round(dist(x1, y1, x2, y2) / (14 * U)));
+  addZone({
+    tag, dur, under: true, tick: 0.4,
+    update(zone, dt) {
+      zone.tick += dt;
+      if (zone.tick < 0.4) return;
+      zone.tick = 0;
+      for (const e of world.enemies) {
+        if (e.dead || distToSegment(e.x, e.y, x1, y1, x2, y2) >= width + e.r) continue;
+        applyBurn(e, damage * BURN_SHARE);
+        hurt(e, damage * share, WAND_DOT);
+      }
+    },
+    draw(zone) {
+      const alpha = zoneFade(zone, 5, 2);
+      ctx.strokeStyle = `rgba(255,110,30,${0.4 * alpha})`;
+      ctx.lineWidth = width * 1.6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.globalAlpha = alpha;
+      for (let i = 0; i <= flames; i++) {
+        const q = i / flames;
+        drawFlame(ctx, x1 + (x2 - x1) * q, y1 + (y2 - y1) * q, width * (0.7 + 0.25 * sin(zone.t * 9 + i * 2.1)), zone.t * 12 + i);
+      }
+      ctx.globalAlpha = 1;
+    },
+  });
+}
+
+/* ---------- Abilities ---------- */
+
+/** Lvl 40: a fire spirit circles the castle for 5 s; attacking again extends it. */
+function wandSpirit(a) {
+  const existing = findZone('fireSpirit');
+  if (existing) { existing.dur = existing.t + 5; return; }
+  addZone({
+    tag: 'fireSpirit', dur: 5,
+    update(zone) {
+      const g = zone.t * 3.2;
+      zone.x = cx + cos(g) * 78 * U;
+      zone.y = cy + sin(g) * 78 * U * 0.85;
+      for (const e of world.enemies) {
+        if (e.dead || e.orbitCd > 0 || dist(zone.x, zone.y, e.x, e.y) >= 16 * U + e.r) continue;
+        e.orbitCd = 0.35;
+        applyBurn(e, a.damage * BURN_SHARE);
+        hurt(e, a.damage * 0.6, WAND_SOURCE);
+      }
+    },
+    draw(zone) {
+      if (zone.x === undefined) return;
+      ctx.globalAlpha = zoneFade(zone, 4, 3);
+      drawFlame(ctx, zone.x, zone.y, 13 * U, zone.t * 16);
+      ctx.fillStyle = INK;   // eyes
+      ctx.beginPath();
+      ctx.arc(zone.x - 3 * U, zone.y - 2 * U, 1.5 * U, 0, TAU);
+      ctx.arc(zone.x + 3 * U, zone.y - 2 * U, 1.5 * U, 0, TAU);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    },
+  });
+}
+
+/** Lvl 50: a lava pool at the tap point burns and slows for 5 s (max. 4). */
+function wandLavaPool(a) {
+  if (zoneCount('lavaPool') >= 4) return;
+  const { x, y } = a;
+  addZone({
+    tag: 'lavaPool', dur: 5, under: true, tick: 0,
+    update(zone, dt) {
+      zone.tick += dt;
+      if (zone.tick < 0.5) return;
+      zone.tick = 0;
+      areaDamage(x, y, 48 * U, a.damage * 0.3, WAND_DOT, e => {
+        e.slow = Math.max(e.slow, 1);
+        applyBurn(e, a.damage * BURN_SHARE);
+      });
+    },
+    draw(zone) {
+      const alpha = zoneFade(zone, 4, 2);
+      const lava = ctx.createRadialGradient(x, y, 2, x, y, 48 * U);
+      lava.addColorStop(0, `rgba(255,220,90,${0.8 * alpha})`);
+      lava.addColorStop(0.6, `rgba(240,90,20,${0.65 * alpha})`);
+      lava.addColorStop(1, `rgba(90,20,10,${0.5 * alpha})`);
+      ctx.fillStyle = lava;
+      fillEllipse(ctx, x, y, 48 * U, 38 * U);
+      ctx.fillStyle = `rgba(255,240,170,${0.7 * alpha})`;
+      for (let i = 0; i < 5; i++) {   // bubbles
+        const q = (zone.t * 0.9 + i * 0.21) % 1, g = i * 1.9;
+        fillCircle(ctx, x + cos(g) * 26 * U, y + sin(g) * 18 * U, (1 - Math.abs(q - 0.5) * 2) * 5 * U);
+      }
+    },
+  });
+}
+
+/** Lvl 60, every 2nd attack: a phoenix crosses the field at the tap height, alternating sides. */
+function wandPhoenix(a) {
+  if (world.projectiles.length >= PROJECTILE_LIMIT) return;
+  const fromLeft = combat.attackCount % 4 === 0;
+  addProjectile({
+    kind: 'phoenix', x: fromLeft ? -30 : W + 30, y: a.y, angle: fromLeft ? 0 : PI, speed: 520 * U, r: 24 * U,
+    dmg: a.damage * 2, life: 3, pierce: 99, source: WAND_SOURCE,
+  });
+}
+
+/** Lvl 70: eight embers rain around the tap point. */
+function wandEmberRain(a) {
+  for (let i = 0; i < 8; i++) {
+    after(0.15 + i * 0.11, () => {
+      const g = rnd(TAU), spread = rnd(20, 90) * U;
+      const x = a.x + cos(g) * spread, y = a.y + sin(g) * spread * 0.85;
+      addEffect(0.2, k => drawFlame(ctx, x + (1 - k) * 40 * U, y - (1 - k) * 170 * U, 6 * U, k * 20), { cap: FX_CAP_RARE });
+      after(0.2, () => explode(x, y, 22 * U, a.damage * 0.6, WAND_SOURCE));
+    });
+  }
+}
+
+/** Lvl 80: a fire tornado wanders towards enemies for 5 s (max. 2). */
+function wandTornado(a) {
+  if (zoneCount('fireTornado') >= 2) return;
+  addZone({
+    tag: 'fireTornado', dur: 5, tick: 0, x: a.x, y: a.y,
+    update(zone, dt) {
+      const target = nearestEnemy(zone.x, zone.y, 400 * U);
+      if (target) {
+        const d = dist(zone.x, zone.y, target.x, target.y) || 1;
+        zone.x += (target.x - zone.x) / d * 60 * U * dt;
+        zone.y += (target.y - zone.y) / d * 60 * U * dt;
+      }
+      zone.tick += dt;
+      if (zone.tick < 0.3) return;
+      zone.tick = 0;
+      areaDamage(zone.x, zone.y, 30 * U, a.damage * 0.4, WAND_DOT, e => applyBurn(e, a.damage * BURN_SHARE));
+    },
+    draw(zone) {
+      const alpha = zoneFade(zone, 4, 2);
+      for (let i = 0; i < 6; i++) {   // stacked rings, wider towards the top
+        const q = i / 5, width = (8 + q * 20) * U;
+        ctx.fillStyle = `rgba(255,${190 - i * 20},${70 - i * 8},${0.45 * alpha})`;
+        fillEllipse(ctx, zone.x + sin(zone.t * 9 + i * 1.3) * 5 * U, zone.y - q * 46 * U, width, width * 0.32);
+      }
+    },
+  });
+}
+
+/** Lvl 90, every 3rd attack: a sun beam from the castle through the tap point to the screen edge. */
+function wandSunBeam(a) {
+  const length = 640 * U;
+  const x1 = cx + cos(a.angle) * 16 * U, y1 = cy + sin(a.angle) * 16 * U;
+  const x2 = x1 + cos(a.angle) * length, y2 = y1 + sin(a.angle) * length;
+  for (const e of world.enemies) {
+    if (e.dead || distToSegment(e.x, e.y, x1, y1, x2, y2) >= 18 * U + e.r) continue;
+    applyBurn(e, a.damage * BURN_SHARE);
+    hurt(e, a.damage * 2.5, WAND_SOURCE);
+  }
+  addEffect(0.35, k => {
+    ctx.save();
+    ctx.translate(x1, y1);
+    ctx.rotate(a.angle);
+    ctx.globalAlpha = 1 - k * k;
+    ctx.fillStyle = 'rgba(255,170,50,.55)';
+    ctx.fillRect(0, -18 * U * (1 - k * 0.5), length, 36 * U * (1 - k * 0.5));
+    ctx.fillStyle = '#fff6c8';
+    ctx.fillRect(0, -6 * U * (1 - k), length, 12 * U * (1 - k));
+    ctx.restore();
+  });
+}
+
+/** Lvl 100, every 4th attack: after a short charge a supernova hits everything around the castle. */
+function wandSupernova(a) {
+  const reach = 330 * U;
+  addEffect(0.6, k => {
+    ctx.globalAlpha = k;
+    drawFlame(ctx, cx, cy - 40 * U * CASTLE_SCALE, (10 + k * 26) * U, k * 30);
+    ctx.globalAlpha = 1;
+  });
+  after(0.6, () => {
+    areaDamage(cx, cy, reach, a.damage * 4, WAND_SOURCE, e => applyBurn(e, a.damage * BURN_SHARE, 4));
+    session.shake = Math.max(session.shake, 14);
+    addEffect(0.6, k => {
+      const r = reach * k;
+      const shell = ctx.createRadialGradient(cx, cy, r * 0.6, cx, cy, r + 1);
+      shell.addColorStop(0, 'rgba(255,160,40,0)');
+      shell.addColorStop(0.8, `rgba(255,200,90,${0.6 * (1 - k)})`);
+      shell.addColorStop(1, 'rgba(255,255,220,0)');
+      ctx.fillStyle = shell;
+      fillCircle(ctx, cx, cy, r + 1);
+    });
+  });
+}
+
+/* ---------- Attack ---------- */
+
+WEAPONS.wand.attack = function (x, y) {
+  const level = S.lv.wand;
+  const a = { x, y, level, damage: damageOf('wand'), angle: atan2(y - cy, x - cx) };
+  const radius = 44 * U * (1 + level * 0.003);
+  // unit vector across the throwing direction, for the twin fireballs and the flame wall
+  const sideX = cos(a.angle + PI / 2), sideY = sin(a.angle + PI / 2);
+
+  if (level >= 10) {
+    throwFireball(x + sideX * 26 * U, y + sideY * 26 * U, radius, a.damage);
+    throwFireball(x - sideX * 26 * U, y - sideY * 26 * U, radius, a.damage);
+  } else {
+    throwFireball(x, y, radius, a.damage);
+  }
+  if (level >= 15) {   // fire trail from the castle to the tap point
+    fireLine('fireTrail', 5, cx + cos(a.angle) * 30 * U, cy + sin(a.angle) * 30 * U, x, y, 2.5, 9 * U, 0.15, a.damage);
+  }
+  if (level >= 30) {   // flame wall across the tap point
+    fireLine('flameWall', 4, x - sideX * 60 * U, y - sideY * 60 * U, x + sideX * 60 * U, y + sideY * 60 * U, 4, 11 * U, 0.3, a.damage);
+  }
+  if (level >= 40) wandSpirit(a);
+  if (level >= 50) wandLavaPool(a);
+  if (level >= 60 && combat.attackCount % 2 === 0) wandPhoenix(a);
+  if (level >= 70) wandEmberRain(a);
+  if (level >= 80) wandTornado(a);
+  if (level >= 90 && combat.attackCount % 3 === 0) wandSunBeam(a);
+  if (level >= 100 && combat.attackCount % 4 === 0) wandSupernova(a);
+};
+
+/* ---------- Projectile kind and kill hook ---------- */
+
+PROJECTILE_KINDS.phoenix = {
+  onHit(p, enemy) { applyBurn(enemy, damageOf('wand') * BURN_SHARE); },
+  draw(p) {
+    const dir = p.vx > 0 ? 1 : -1, flap = sin(session.time * 18) * 0.5;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.scale(dir, 1);
+    ctx.fillStyle = 'rgba(255,150,40,.85)';
+    for (const side of [-1, 1]) {   // wings
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(-8 * U, side * (18 + flap * 10) * U, -30 * U, side * (22 + flap * 14) * U);
+      ctx.quadraticCurveTo(-12 * U, side * 6 * U, -22 * U, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    drawFlame(ctx, p.x, p.y + 4 * U, 13 * U, session.time * 20);
+    ctx.fillStyle = 'rgba(255,170,60,.3)';   // trail
+    fillEllipse(ctx, p.x - dir * 26 * U, p.y, 30 * U, 7 * U);
+  },
+};
+
+/**
+ * Lvl 25: burning enemies explode when they die. The explosion can ignite and
+ * kill further enemies, so the chain is limited to 3 links and 10 per frame.
+ */
+KILL_HOOKS.push((enemy, source) => {
+  if (enemy.burn <= 0 || S.lv.wand < 25) return;
+  const link = source.chain || 0;
+  if (link >= 3 || combat.chainBooms >= 10) return;
+  combat.chainBooms++;
+  const { x, y } = enemy;
+  after(0.08, () => explode(x, y, 30 * U, damageOf('wand') * 0.5, { weapon: 'wand', chain: link + 1, color: '#ffb36b' }));
+});
+
+/* ===== 20-defenders.js ===== */
+/*
+ * What defends the castle besides the player's weapon: the wall, the castle's
+ * own lives and the little soldiers.
+ */
+
+/** An enemy reached the wall: it loses one hit point. */
+function wallHit(x, y) {
+  sound(160, 0.12, 'square', 0.05, -60);
+  vibrate(25);
+  S.wallHp--;
+  session.shake = Math.max(session.shake, 4);
+  puff(x, y, '#b9b4ad', 7);
+  renderHud();
+  if (S.wallHp <= 0) {
+    puff(cx, wallCenterY(), '#b9b4ad', 30);
+    toast('Die Mauer ist gefallen');
+  }
+}
+
+/** An enemy reached the castle: it loses one life; at zero the battle is lost. */
+function castleHit() {
+  sound(90, 0.2, 'sawtooth', 0.07);
+  vibrate(60);
+  castle.hp--;
+  castle.flash = 0.3;
+  session.shake = Math.max(session.shake, 10);
+  puff(cx, cy, '#efe7d4', 8);
+  renderHud();
+  if (castle.hp <= 0) castle.fallen = true;   // handled at the end of update(), see 40-main.js
+}
+
+/* ---------- Soldiers ---------- */
+
+const SOLDIER_HP = 3;                // hits a soldier survives
+const SOLDIER_RADIUS = () => 5.5 * U;
+const SOLDIER_HIT_INTERVAL = 0.8;    // seconds between a soldier's hits
+const ENEMY_HIT_INTERVAL = 1.2;      // seconds between an enemy's hits on a soldier
+
+function spawnSoldier() {
+  world.soldiers.push({
+    x: cx, y: cy + 13 * U,           // the castle gate
+    hp: SOLDIER_HP, maxHp: SOLDIER_HP,
+    attackCd: 0,
+    flash: 0, swing: 0,              // hit flash and sword swing, seconds
+    walking: false, facing: 1,       // facing: 1 = right, -1 = left
+    phase: rnd(TAU),
+    guardAngle: rnd(0.25, PI - 0.25),   // where he waits in front of the castle when idle
+  });
+}
+
+/** Soldier damage is deliberately tiny: they are there to hold enemies up, not to kill. */
+const soldierDamage = () => 2 * (1 + 0.15 * (S.wave - 1));
+
+function updateSoldiers(dt) {
+  if (S.own.soldier) {
+    session.soldierTimer -= dt;
+    if (session.soldierTimer <= 0) {
+      session.soldierTimer = SOLDIER_INTERVALS[S.solLv];
+      if (world.soldiers.length < MAX_SOLDIERS) spawnSoldier();
+    }
+  }
+
+  for (const soldier of world.soldiers) {
+    soldier.flash -= dt;
+    soldier.attackCd -= dt;
+    soldier.swing -= dt;
+    soldier.walking = false;
+
+    const enemy = nearestEnemy(soldier.x, soldier.y, 260 * U);
+    if (!enemy) {
+      walkToGuardPost(soldier, dt);
+      continue;
+    }
+    soldier.facing = enemy.x < soldier.x ? -1 : 1;
+    const gap = dist(soldier.x, soldier.y, enemy.x, enemy.y);
+    if (gap > enemy.r + SOLDIER_RADIUS() + 2 * U) {
+      moveTowards(soldier, enemy.x, enemy.y, 48 * U * dt);
+      continue;
+    }
+    // In contact: the enemy stops walking and trades blows with the soldier.
+    if (enemy.freeze <= 0 && enemy.stun <= 0) {
+      enemy.blocked = 0.15;   // refreshed every frame while in contact
+      if (enemy.attackCd <= 0) {
+        enemy.attackCd = ENEMY_HIT_INTERVAL;
+        soldier.hp--;
+        soldier.flash = 0.15;
+        puff(soldier.x, soldier.y - 6 * U, '#cfe3ff', 4);
+      }
+    }
+    if (soldier.attackCd <= 0) {
+      soldier.attackCd = SOLDIER_HIT_INTERVAL;
+      soldier.swing = 0.2;
+      hurt(enemy, soldierDamage(), { weapon: 'soldier', color: '#cfe3ff' });
+    }
+  }
+  world.soldiers = world.soldiers.filter(soldier => soldier.hp > 0);
+}
+
+function walkToGuardPost(soldier, dt) {
+  const postX = cx + cos(soldier.guardAngle) * 64 * U;
+  const postY = cy + 20 * U + sin(soldier.guardAngle) * 34 * U;
+  if (dist(soldier.x, soldier.y, postX, postY) <= 3 * U) return;
+  soldier.facing = postX < soldier.x ? -1 : 1;
+  moveTowards(soldier, postX, postY, 40 * U * dt);
+}
+
+function moveTowards(soldier, x, y, step) {
+  const d = dist(soldier.x, soldier.y, x, y) || 1;
+  soldier.x += (x - soldier.x) / d * step;
+  soldier.y += (y - soldier.y) / d * step;
+  soldier.walking = true;
+}
+
+/* ===== 21-waves.js ===== */
+/*
+ * Wave flow: building a wave, spawning it, clearing it, choosing a wave with
+ * the arrows, and what happens after a defeat.
+ */
+
+/** Fills the spawn queue for the current wave S.wave. */
+function buildWave() {
+  const waveNo = S.wave;
+  const count = waveCount(waveNo);
+  wave.queue = [];
+  for (let i = 0; i < count; i++) wave.queue.push(rollEnemyType(waveNo));
+  if (waveNo % BOSS_EVERY === 0) wave.queue.splice(Math.floor(wave.queue.length / 2), 0, 'boss');   // boss arrives mid-wave
+  wave.spawnGap = spawnGapFor(count);
+  wave.spawnTimer = 0;
+  wave.total = wave.queue.length;
+}
+
+/** Clears the field and starts the current wave over. `all` also removes the soldiers. */
+function restartWave(all) {
+  clearField(all);
+  wave.pause = 1.5;
+  buildWave();
+}
+
+/** One frame of wave flow: wait, spawn, or finish the wave when nothing is left. */
+function updateWave(dt) {
+  if (wave.pause > 0) {
+    wave.pause -= dt;
+  } else if (wave.queue.length) {
+    // Enemies come one by one. If the field is full the timer may run up to
+    // three spawns behind, so the backlog arrives quickly once there is room.
+    wave.spawnTimer = Math.max(wave.spawnTimer - dt, -wave.spawnGap * 3);
+    while (wave.spawnTimer <= 0 && wave.queue.length && world.enemies.length < MAX_ENEMIES_ALIVE) {
+      spawnEnemy(wave.queue.shift());
+      wave.spawnTimer += wave.spawnGap;
+    }
+  } else if (!world.enemies.length) {
+    completeWave();
+  }
+}
+
+function completeWave() {
+  const waveNo = S.wave;
+  let gold = 0;
+  if (waveNo > S.cleared) {     // gold only for waves cleared for the first time
+    S.cleared = waveNo;
+    gold = waveNo;
+    S.gold += gold;
+    sound(1200, 0.07, 'triangle', 0.05);
+  }
+  castle.hp = Math.min(MAX_HP, castle.hp + S.heal);
+  if (!S.hold) S.wave++;
+  save();
+  wave.pause = 2.5;
+  buildWave();
+  renderHud();
+  toast('Welle ' + waveNo + ' geschafft', gold ? '+' + gold + ' Gold' : '');
+}
+
+/** Wave arrows: jump to any wave up to the first one not cleared yet. Resets the enemies. */
+function setWave(waveNo) {
+  waveNo = clamp(waveNo, 1, S.cleared + 1);
+  if (waveNo === S.wave || session.paused) return;
+  S.wave = waveNo;
+  restartWave(false);
+  renderHud();
+  save();
+  toast('Welle ' + waveNo);
+}
+
+/** The castle fell: stop all feedback and open the shop. */
+function handleDefeat() {
+  castle.fallen = false;
+  session.shake = 0;        // otherwise the frozen screen would keep shaking behind the shop
+  castle.flash = 0;
+  combo.count = 0;
+  sound(220, 0.5, 'sawtooth', 0.07, -160);
+  vibrate(200);
+  restartWave(true);
+  openShop();
+}
+
+/** Leaving the shop after a defeat: back to wave 1 with full lives and a repaired wall. */
+function continueAfterDefeat() {
+  S.wave = 1;
+  S.wallHp = wallMax();
+  castle.hp = MAX_HP;
+  combat.cooldown = 0;
+  restartWave(true);
+}
+
+/** Share of the wave that is already dealt with, 0..100, for the progress bar. */
+const waveProgress = () => Math.round((1 - (wave.queue.length + world.enemies.length) / Math.max(1, wave.total)) * 100);
+
+/* ===== 30-hud.js ===== */
+/*
+ * In-game interface: toasts, the top bar, the weapon bar with its info line,
+ * and gaining XP (which is mostly a display matter: bars, toasts, level-ups).
+ */
+
+/* ---------- Toasts ---------- */
+
+const toastEl = $('toast');
+const toastQueue = [];
+let toastBusy = false;
+
+/** Shows a short message below the top bar; `detail` is an optional second line. */
+function toast(title, detail) {
+  toastQueue.push([title, detail]);
+  if (!toastBusy) showNextToast();
+}
+function showNextToast() {
+  const next = toastQueue.shift();
+  if (!next) { toastBusy = false; return; }
+  toastBusy = true;
+  const [title, detail] = next;
+  toastEl.textContent = title;
+  if (detail) {
+    const line = document.createElement('small');
+    line.textContent = detail;
+    toastEl.appendChild(line);
+  }
+  toastEl.classList.add('on');
+  setTimeout(() => {
+    toastEl.classList.remove('on');
+    setTimeout(showNextToast, 280);
+  }, detail ? 2600 : 1500);
+}
+
+/* ---------- Top bar and weapon bar ---------- */
+
+/** Redraws every DOM part of the HUD from the current state. Cheap enough to call on any change. */
+function renderHud() {
+  $('wave').textContent = 'Welle ' + S.wave;
+  $('wdown').disabled = S.wave <= 1;
+  $('wup').disabled = S.wave > S.cleared;
+  $('b-hold').setAttribute('aria-pressed', String(S.hold));
+  $('b-speed').textContent = 'x' + DB.opts.speed;
+  $('gold').textContent = S.gold;
+  $('gold').setAttribute('aria-label', S.gold + ' Gold');
+  renderHearts();
+  renderWallBricks();
+  renderWeaponBar();
+  renderWeaponInfo();
+}
+
+function renderHearts() {
+  const box = $('hearts');
+  box.textContent = '';
+  for (let i = 0; i < MAX_HP; i++) {
+    const heart = document.createElement('span');
+    heart.textContent = '♥';
+    if (i >= castle.hp) heart.className = 'off';
+    box.appendChild(heart);
+  }
+  box.setAttribute('aria-label', castle.hp + ' von ' + MAX_HP + ' Leben');
+}
+
+/** One brick per wall hit point; lost ones are dimmed. Wraps into several rows. */
+function renderWallBricks() {
+  const box = $('wall'), max = wallMax();
+  box.hidden = !max;
+  box.textContent = '';
+  box.setAttribute('aria-label', 'Mauer ' + S.wallHp + ' von ' + max);
+  for (let i = 0; i < max; i++) {
+    const brick = document.createElement('i');
+    if (i >= S.wallHp) brick.className = 'off';
+    box.appendChild(brick);
+  }
+}
+
+/** Round weapon buttons: level badge when owned, price when locked. */
+function renderWeaponBar() {
+  for (const id of WEAPON_IDS) {
+    const button = $('wp-' + id), weapon = WEAPONS[id], has = owned(id);
+    button.classList.toggle('locked', !has);
+    button.setAttribute('aria-pressed', String(S.active === id));
+    button.querySelector('.badge').textContent = has ? S.lv[id] : weapon.price;
+    button.setAttribute('aria-label', weapon.name + (has ? ', Level ' + S.lv[id] : ', gesperrt, ' + weapon.price + ' Gold'));
+  }
+}
+
+/** Info line under the weapons: name and level, damage, attack interval, next ability; plus the XP bar. */
+function renderWeaponInfo() {
+  const id = S.active, level = S.lv[id];
+  const line = $('winfo');
+  line.textContent = '';
+  const chip = (text, tag = 'span', className = '') => {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    el.textContent = text;
+    line.appendChild(el);
+  };
+  chip(WEAPONS[id].name + ' Lvl ' + level, 'b');
+  chip('Schaden ' + Math.round(damageOf(id)));
+  chip('alle ' + cooldownOf(id).toFixed(1).replace('.', ',') + ' s');
+  const next = nextMilestone(id);
+  chip(next ? 'Neu ab Lvl ' + next : 'MAX', 'span', 'nx');
+
+  // Shrink the font until the line fits; long weapon names would overflow otherwise.
+  let fontSize = 12.5;
+  line.style.fontSize = fontSize + 'px';
+  while (line.scrollWidth > line.clientWidth + 1 && fontSize > 9) {
+    fontSize -= 0.5;
+    line.style.fontSize = fontSize + 'px';
+  }
+  const share = level >= MAX_LEVEL ? 1 : Math.min(1, S.xp[id] / xpNeeded(level));
+  $('wxp').firstElementChild.style.width = share * 100 + '%';
+}
+
+/** Per-frame HUD parts: wave progress bar and the cooldown ring on the active weapon. */
+function updateHudMeters() {
+  const progress = waveProgress();
+  if (progress !== session.lastProgress) {
+    session.lastProgress = progress;
+    $('wprog').style.width = Math.max(0, progress) + '%';
+  }
+  const left = clamp(combat.cooldown / combat.cooldownMax, 0, 1);
+  $('wp-' + S.active).querySelector('.cd').style.setProperty('--p', left.toFixed(3));
+}
+
+function clearCooldownRings() {
+  document.querySelectorAll('.wp .cd').forEach(el => el.style.setProperty('--p', 0));
+}
+
+/* ---------- XP ---------- */
+
+/** Gives XP to a weapon and handles level-ups, including the announcement of new abilities. */
+function gainXp(id, amount) {
+  if (S.lv[id] >= MAX_LEVEL) return;
+  S.xp[id] += amount;
+  let leveledUp = false;
+  while (S.lv[id] < MAX_LEVEL && S.xp[id] >= xpNeeded(S.lv[id])) {
+    S.xp[id] -= xpNeeded(S.lv[id]);
+    S.lv[id]++;
+    leveledUp = true;
+    const title = WEAPONS[id].name + ' Lvl ' + S.lv[id];
+    const ability = WEAPONS[id].milestones[S.lv[id]];
+    if (ability) toast(title, 'Neu: ' + ability);
+    else floatText(cx, cy - 70 * U, title, '#ffe08a', true);
+  }
+  if (S.lv[id] >= MAX_LEVEL) S.xp[id] = 0;
+  if (leveledUp) {
+    sound(660, 0.09, 'triangle', 0.05);
+    setTimeout(() => sound(880, 0.14, 'triangle', 0.05), 90);
+    vibrate(30);
+    ring(cx, cy, 90 * U, '245,185,58', 0.6);
+    save();
+  }
+  renderHud();
+}
+
+/* ===== 31-shop.js ===== */
+/*
+ * The shop, which only opens after a defeat.
+ *
+ * SHOP_ITEMS is data: every entry describes one row.
+ *   name      title of the row
+ *   tierNames optional names of the tiers, shown as "name: tier"
+ *   text      description
+ *   prices    gold per tier; one entry = one-time purchase
+ *   level()   tiers already bought
+ *   buy()     applies the next tier
+ *   requires  optional { met(), label } shown on the button while not met
+ */
+
+const weaponItem = (id, text) => ({
+  name: WEAPONS[id].name, text, prices: [WEAPONS[id].price],
+  level: () => +S.own[id],
+  buy: () => { S.own[id] = true; },
+});
+
+const SHOP_ITEMS = [
+  {
+    name: 'Soldat', prices: [2],
+    text: 'Alle 5 Sekunden kommt ein kleiner Soldat aus der Burg. Er hält 3 Schläge aus und bremst Gegner.',
+    level: () => +S.own.soldier,
+    buy: () => { S.own.soldier = true; },
+  },
+  {
+    name: 'Soldaten-Tempo', tierNames: ['alle 4 s', 'alle 3 s'], prices: [25, 80],
+    text: 'Soldaten kommen schneller aus der Burg.',
+    level: () => S.solLv,
+    buy: () => { S.solLv++; },
+    requires: { met: () => S.own.soldier, label: 'Erst Soldat' },
+  },
+  weaponItem('dagger', 'Schaltet die Dolche als Waffe frei.'),
+  weaponItem('star', 'Schaltet den Morgenstern als Waffe frei.'),
+  weaponItem('bow', 'Schneller Fernschuss, stark gegen einzelne Gegner.'),
+  weaponItem('wand', 'Feuerbälle, die explodieren und Gegner in Brand setzen.'),
+  {
+    name: 'Heilung', tierNames: ['+2', '+3'], prices: [20, 32],
+    text: 'Leben, die die Burg nach jeder geschafften Welle zurückbekommt.',
+    level: () => S.heal - 1,
+    buy: () => { S.heal++; },
+  },
+  {
+    name: 'Mauer', tierNames: ['3 HP', '5 HP', '10 HP', '25 HP'], prices: [15, 30, 120, 300],
+    text: 'Fängt Treffer ab, bevor die Burg Leben verliert. Wird nur nach einer Niederlage repariert.',
+    level: () => S.wall,
+    buy: () => { S.wall++; },
+  },
 ];
-function renderShop(){
-  $('shopgold').textContent=S.gold+' Gold';const box=$('items');box.textContent='';
-  SHOP.forEach((it,i)=>{const row=document.createElement('div');row.className='item';const l=it.lv(),max=l>=it.t.length,c=it.t[l];
-    const tx=document.createElement('div'),b=document.createElement('b'),sp=document.createElement('span');
-    b.textContent=it.n+(it.tn?': '+it.tn[Math.min(l,it.t.length-1)]:'');sp.textContent=it.d;tx.append(b,sp);
-    const bt=document.createElement('button');bt.type='button';bt.id='buy-'+i;
-    if(max){bt.textContent=it.t.length>1?'Maximal':'Gekauft';bt.disabled=true;bt.className='own'}
-    else if(it.need&&!it.need()){bt.textContent=it.nt;bt.disabled=true}
-    else{bt.textContent=c+' Gold';bt.disabled=S.gold<c;
-      bt.addEventListener('click',()=>{if(S.gold<c||it.lv()!==l)return;snd(900,.08,'triangle',.05,300);S.gold-=c;it.buy();save();hud();renderShop()})}
-    row.append(tx,bt);box.appendChild(row)});
-}
-function openShop(){save();renderShop();$('shop').hidden=false;refresh()}
-function closeShop(){$('shop').hidden=true;S.wave=1;S.wallHp=WALL[S.wall];hp=MAXHP;cd=0;resetField(true);refresh();hud();save();toast('Welle 1')}
-function updSoldiers(dt){
-  if(S.own.soldier){solT-=dt;if(solT<=0){solT=SOLT[S.solLv];if(soldiers.length<4)soldiers.push({x:cx,y:cy+13*U,hp:3,atk:0,flash:0,swing:0,walk:0,face:1,ph:rnd(TAU),ga:rnd(.25,PI-.25)})}}
-  const SR=5.5*U;
-  for(const o of soldiers){o.flash-=dt;o.atk-=dt;o.swing-=dt;o.walk=0;
-    const e=nearest(o.x,o.y,260*U);
-    if(e){const q=dist(o.x,o.y,e.x,e.y);o.face=e.x<o.x?-1:1;
-      if(q>e.r+SR+2*U){const a=atan2(e.y-o.y,e.x-o.x);o.x+=cos(a)*48*U*dt;o.y+=sin(a)*48*U*dt;o.walk=1}
-      else{
-        if(e.freeze<=0&&e.stun<=0){e.blocked=.15;if(e.atk<=0){e.atk=1.2;o.hp--;o.flash=.15;puff(o.x,o.y-6*U,'#cfe3ff',4)}}
-        if(o.atk<=0){o.atk=.8;o.swing=.2;hurt(e,2*(1+.15*(S.wave-1)),{w:'soldier',c:'#cfe3ff'})}}
-    }else{const gx=cx+cos(o.ga)*64*U,gy=cy+20*U+sin(o.ga)*34*U,q=dist(o.x,o.y,gx,gy);
-      if(q>3*U){o.x+=(gx-o.x)/q*40*U*dt;o.y+=(gy-o.y)/q*40*U*dt;o.walk=1;o.face=gx<o.x?-1:1}}
-  }
-  soldiers=soldiers.filter(o=>o.hp>0);
-}
-function drawSoldier(o){
-  const u=U*.8,b=o.walk?Math.abs(sin(time*12+o.ph))*2*u:0,x=o.x,y=o.y-b;
-  ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(o.x,o.y+7*u,7*u,3*u,0,0,TAU);ctx.fill();
-  ctx.save();ctx.translate(x,y);ctx.scale(o.face,1);ctx.lineWidth=1.5*u;ctx.strokeStyle='#33283a';ctx.lineJoin='round';
-  ctx.fillStyle='#4a3b42';ctx.fillRect(-3.5*u,3*u,2.5*u,4*u);ctx.fillRect(1*u,3*u,2.5*u,4*u);
-  ctx.fillStyle=o.flash>0?'#fff':'#4f7fd6';ctx.beginPath();ctx.roundRect(-5*u,-4*u,10*u,8.5*u,2.5*u);ctx.fill();ctx.stroke();
-  ctx.fillStyle='#ffd9b3';ctx.beginPath();ctx.arc(0,-8*u,4.2*u,0,TAU);ctx.fill();ctx.stroke();
-  ctx.fillStyle='#b9c2cf';ctx.beginPath();ctx.arc(0,-8.6*u,4.6*u,PI,0);ctx.closePath();ctx.fill();ctx.stroke();
-  ctx.fillStyle='#33283a';ctx.beginPath();ctx.arc(1.8*u,-7.2*u,.8*u,0,TAU);ctx.fill();
-  drawSword(ctx,5*u,1*u,o.swing>0?.3:-1.1,13*u);
-  ctx.fillStyle='#e2574c';ctx.beginPath();ctx.arc(-4.5*u,1*u,3.2*u,0,TAU);ctx.fill();ctx.stroke();
-  ctx.restore();
-  for(let i=0;i<3;i++){ctx.fillStyle=i<o.hp?'#7ddc5a':'rgba(51,40,58,.45)';ctx.beginPath();ctx.arc(x-4*u+i*4*u,y-17*u,1.6*u,0,TAU);ctx.fill()}
+
+function renderShop() {
+  $('shopgold').textContent = S.gold + ' Gold';
+  const list = $('items');
+  list.textContent = '';
+  SHOP_ITEMS.forEach((item, index) => list.appendChild(shopRow(item, index)));
 }
 
-/* ---------- Ton, Menü, Pause, Fähigkeiten ---------- */
-function snd(f,d=.08,type='square',v=.05,slide=0){
-  if(DB.opts.mute)return;
-  try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();
-    const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);
-    if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);
-    g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}catch(e){}
+function shopRow(item, index) {
+  const level = item.level();
+  const soldOut = level >= item.prices.length;
+  const price = item.prices[level];
+
+  const row = document.createElement('div');
+  row.className = 'item';
+  const label = document.createElement('div');
+  const title = document.createElement('b');
+  const text = document.createElement('span');
+  // tiered items show the tier that is for sale next (or the last one when sold out)
+  title.textContent = item.name + (item.tierNames ? ': ' + item.tierNames[Math.min(level, item.prices.length - 1)] : '');
+  text.textContent = item.text;
+  label.append(title, text);
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.id = 'buy-' + index;
+  if (soldOut) {
+    button.textContent = item.prices.length > 1 ? 'Maximal' : 'Gekauft';
+    button.disabled = true;
+    button.className = 'own';
+  } else if (item.requires && !item.requires.met()) {
+    button.textContent = item.requires.label;
+    button.disabled = true;
+  } else {
+    button.textContent = price + ' Gold';
+    button.disabled = S.gold < price;
+    button.addEventListener('click', () => {
+      if (S.gold < price || item.level() !== level) return;   // guards against double taps
+      sound(900, 0.08, 'triangle', 0.05, 300);
+      S.gold -= price;
+      item.buy();
+      save();
+      renderHud();
+      renderShop();
+    });
+  }
+  row.append(label, button);
+  return row;
 }
-function vib(ms){if(DB.opts.vib&&started&&navigator.vibrate){try{navigator.vibrate(ms)}catch(e){}}}
-function zc(f){let n=0;for(const z of zones)if(z[f])n++;return n}
-const OVS=['menu','shop','pausep','abil'];
-function refresh(){paused=OVS.some(id=>!$(id).hidden);if(paused)holdPt=null}
-const slotInfo=d=>'Welle '+d.wave+' · '+d.gold+' Gold'+Object.keys(NAMES).filter(w=>w==='sword'||d.own[w]).map(w=>' · '+NAMES[w]+' '+d.lv[w]).join('');
-let slotMode='new',confirmSlot=-1;
-function showMenu(){
-  save();slot=-1;game.classList.add('inmenu');for(const id of OVS)$(id).hidden=id!=='menu';
-  $('m-main').hidden=false;$('m-slots').hidden=true;$('m-load').disabled=!DB.slots[0]&&!DB.slots[1];
-  enemies=[];projs=[];zones=[];timers=[];soldiers=[];fx=[];parts=[];texts=[];refresh();
+
+function openShop() {
+  save();
+  renderShop();
+  $('shop').hidden = false;
+  refreshPause();
 }
-function showSlots(mode){slotMode=mode;confirmSlot=-1;$('m-main').hidden=true;$('m-slots').hidden=false;
-  $('m-slottitle').textContent=mode==='new'?'Neues Spiel: Platz wählen':'Spielstand laden';renderSlots()}
-function renderSlots(){
-  const box=$('slotlist');box.textContent='';
-  [0,1].forEach(i=>{const d=DB.slots[i],b=document.createElement('button'),t=document.createElement('b'),sp=document.createElement('span');
-    b.type='button';b.id='slot-'+i;b.className='slot'+(confirmSlot===i?' warn':'');t.textContent='Spielstand '+(i+1);
-    sp.textContent=confirmSlot===i?'Überschreiben? Zum Bestätigen noch einmal tippen.':d?slotInfo(d):'Leer';
-    b.append(t,sp);if(slotMode==='load'&&!d)b.disabled=true;
-    b.addEventListener('click',()=>{if(slotMode==='new'&&d&&confirmSlot!==i){confirmSlot=i;renderSlots();return}startGame(i,slotMode==='new')});
-    box.appendChild(b)});
+
+function closeShop() {
+  $('shop').hidden = true;
+  continueAfterDefeat();
+  refreshPause();
+  renderHud();
+  save();
+  toast('Welle 1');
 }
-function startGame(i,fresh){
-  slot=i;const d=fresh||!DB.slots[i]?blank():clean(DB.slots[i]);for(const k in d)S[k]=d[k];
-  hp=MAXHP;cd=0;atkCount=0;cdMax=1;resetField(true);$('menu').hidden=true;game.classList.remove('inmenu');
-  started=!fresh;$('hint').style.opacity=fresh?1:0;document.querySelectorAll('.wp .cd').forEach(c=>c.style.setProperty('--p',0));
-  refresh();hud();save();toast('Welle '+S.wave);
+
+/* ===== 32-menus.js ===== */
+/*
+ * Overlays other than the shop: main menu with the save slots, pause menu and
+ * the ability overview. Also decides when the game is paused.
+ */
+
+const OVERLAY_IDS = ['menu', 'shop', 'pausep', 'abil'];
+const isOpen = id => !$(id).hidden;
+
+/** The game is paused exactly while any overlay is open. Call after showing or hiding one. */
+function refreshPause() {
+  session.paused = OVERLAY_IDS.some(isOpen);
+  if (session.paused) session.holdPoint = null;   // a finger that was down must not keep firing afterwards
 }
-function renderPause(){$('p-snd').textContent='Ton: '+(DB.opts.mute?'aus':'an');$('p-vib').textContent='Vibration: '+(DB.opts.vib?'an':'aus')}
-function openPause(){if(paused)return;renderPause();$('pausep').hidden=false;refresh()}
-function closePause(){$('pausep').hidden=true;refresh()}
-const BASEAB={sword:'Schwerthieb',dagger:'Wurfdolch',star:'Flächenschlag',bow:'Pfeilschuss',wand:'Feuerball'};
-function openAbil(w){
-  if(!$('menu').hidden||!$('shop').hidden||!$('pausep').hidden)return;
-  $('abiltitle').textContent=NAMES[w]+(owned(w)?' · Lvl '+S.lv[w]:' · gesperrt');const box=$('abillist');box.textContent='';
-  const rows=[[1,BASEAB[w]]].concat(Object.keys(MS[w]).map(l=>[+l,MS[w][l]]));
-  for(const[l,n]of rows){const r=document.createElement('div'),b=document.createElement('b'),sp=document.createElement('span');
-    r.className='ab'+(owned(w)&&S.lv[w]>=l?' on':'');b.textContent='Lvl '+l;sp.textContent=n;r.append(b,sp);box.appendChild(r)}
-  $('abil').hidden=false;refresh();
+
+/* The Android app injects `window.Android` (see MainActivity.java); in a browser there is no Exit. */
+const androidApp = window.Android;
+const canExit = !!(androidApp && androidApp.exit);
+
+/* ---------- Main menu and save slots ---------- */
+
+let slotMode = 'new';      // 'new' = pick a slot for a new game, 'load' = pick a slot to load
+let confirmSlot = -1;      // occupied slot that was tapped once and waits for the confirming tap
+
+function showMenu() {
+  save();
+  slot = -1;
+  game.classList.add('inmenu');
+  for (const id of OVERLAY_IDS) $(id).hidden = id !== 'menu';
+  showMenuPage('m-main');
+  $('m-load').disabled = !DB.slots[0] && !DB.slots[1];
+  clearField(true);
+  world.effects = [];
+  world.particles = [];
+  world.texts = [];
+  refreshPause();
 }
-$('m-start').addEventListener('click',()=>showSlots('new'));
-$('m-load').addEventListener('click',()=>showSlots('load'));
-$('m-back').addEventListener('click',()=>{$('m-slots').hidden=true;$('m-main').hidden=false});
-const AND=window.Android;
-if(AND&&AND.exit)$('m-exit').addEventListener('click',()=>AND.exit());else $('m-exit').hidden=true;
-$('b-pause').addEventListener('click',openPause);
-$('p-resume').addEventListener('click',closePause);
-$('p-snd').addEventListener('click',()=>{DB.opts.mute=!DB.opts.mute;save();renderPause();snd(700,.08,'triangle')});
-$('p-vib').addEventListener('click',()=>{DB.opts.vib=!DB.opts.vib;save();renderPause();vib(40)});
-$('p-menu').addEventListener('click',showMenu);
-$('abil-close').addEventListener('click',()=>{$('abil').hidden=true;refresh()});
-$('b-speed').addEventListener('click',()=>{DB.opts.speed=DB.opts.speed===2?1:2;save();hud()});
-$('b-hold').addEventListener('click',()=>{S.hold=!S.hold;save();hud()});
-window.__back=()=>{
-  if(!$('abil').hidden){$('abil').hidden=true;refresh()}
-  else if(!$('pausep').hidden)closePause();
-  else if(!$('shop').hidden){}
-  else if(!$('menu').hidden){if(!$('m-slots').hidden){$('m-slots').hidden=true;$('m-main').hidden=false}else if(AND&&AND.exit)AND.exit()}
-  else openPause();
+
+function showMenuPage(id) {
+  $('m-main').hidden = id !== 'm-main';
+  $('m-slots').hidden = id !== 'm-slots';
+}
+
+function showSlots(mode) {
+  slotMode = mode;
+  confirmSlot = -1;
+  showMenuPage('m-slots');
+  $('m-slottitle').textContent = mode === 'new' ? 'Neues Spiel: Platz wählen' : 'Spielstand laden';
+  renderSlots();
+}
+
+/** One-line summary of a save for the slot buttons. */
+function slotSummary(data) {
+  const weapons = WEAPON_IDS.filter(id => id === 'sword' || data.own[id]).map(id => ' · ' + WEAPONS[id].name + ' ' + data.lv[id]);
+  return 'Welle ' + data.wave + ' · ' + data.gold + ' Gold' + weapons.join('');
+}
+
+function renderSlots() {
+  const list = $('slotlist');
+  list.textContent = '';
+  [0, 1].forEach(index => {
+    const data = DB.slots[index];
+    const button = document.createElement('button');
+    const title = document.createElement('b');
+    const info = document.createElement('span');
+    button.type = 'button';
+    button.id = 'slot-' + index;
+    button.className = 'slot' + (confirmSlot === index ? ' warn' : '');
+    title.textContent = 'Spielstand ' + (index + 1);
+    info.textContent = confirmSlot === index ? 'Überschreiben? Zum Bestätigen noch einmal tippen.' : data ? slotSummary(data) : 'Leer';
+    button.append(title, info);
+    if (slotMode === 'load' && !data) button.disabled = true;
+    button.addEventListener('click', () => {
+      // starting a new game on an occupied slot needs a second tap
+      if (slotMode === 'new' && data && confirmSlot !== index) {
+        confirmSlot = index;
+        renderSlots();
+        return;
+      }
+      startGame(index, slotMode === 'new');
+    });
+    list.appendChild(button);
+  });
+}
+
+/** Leaves the menu and starts playing slot `index`; `fresh` starts a new game there. */
+function startGame(index, fresh) {
+  loadSlotIntoState(index, fresh);
+  castle.hp = MAX_HP;
+  combat.cooldown = 0;
+  combat.cooldownMax = 1;
+  combat.attackCount = 0;
+  restartWave(true);
+  $('menu').hidden = true;
+  game.classList.remove('inmenu');
+  session.started = !fresh;                      // a new game shows the "tap to attack" hint
+  $('hint').style.opacity = fresh ? 1 : 0;
+  clearCooldownRings();
+  refreshPause();
+  renderHud();
+  save();
+  toast('Welle ' + S.wave);
+}
+
+/* ---------- Pause menu ---------- */
+
+function renderPause() {
+  $('p-snd').textContent = 'Ton: ' + (DB.opts.mute ? 'aus' : 'an');
+  $('p-vib').textContent = 'Vibration: ' + (DB.opts.vib ? 'an' : 'aus');
+}
+function openPause() {
+  if (session.paused) return;
+  renderPause();
+  $('pausep').hidden = false;
+  refreshPause();
+}
+function closePause() {
+  $('pausep').hidden = true;
+  refreshPause();
+}
+
+/* ---------- Ability overview (long press on a weapon) ---------- */
+
+function openAbilities(id) {
+  if (isOpen('menu') || isOpen('shop') || isOpen('pausep')) return;
+  const weapon = WEAPONS[id], has = owned(id);
+  $('abiltitle').textContent = weapon.name + (has ? ' · Lvl ' + S.lv[id] : ' · gesperrt');
+  const list = $('abillist');
+  list.textContent = '';
+  const rows = [[1, weapon.baseAbility]].concat(Object.keys(weapon.milestones).map(level => [+level, weapon.milestones[level]]));
+  for (const [level, name] of rows) {
+    const row = document.createElement('div');
+    const levelEl = document.createElement('b');
+    const nameEl = document.createElement('span');
+    row.className = 'ab' + (has && S.lv[id] >= level ? ' on' : '');
+    levelEl.textContent = 'Lvl ' + level;
+    nameEl.textContent = name;
+    row.append(levelEl, nameEl);
+    list.appendChild(row);
+  }
+  $('abil').hidden = false;
+  refreshPause();
+}
+function closeAbilities() {
+  $('abil').hidden = true;
+  refreshPause();
+}
+
+/* ---------- Back button ---------- */
+
+/** Called by the Android back button: closes the topmost thing, or exits from the main menu. */
+window.__back = () => {
+  if (isOpen('abil')) closeAbilities();
+  else if (isOpen('pausep')) closePause();
+  else if (isOpen('shop')) { /* the shop can only be left with its own button */ }
+  else if (isOpen('menu')) {
+    if (isOpen('m-slots')) showMenuPage('m-main');
+    else if (canExit) androidApp.exit();
+  } else openPause();
 };
 
-/* ---------- Eingabe, Größe, Start ---------- */
-const ptr=ev=>{const r=cv.getBoundingClientRect();return {x:ev.clientX-r.left,y:ev.clientY-r.top}};
-cv.addEventListener('pointerdown',ev=>{ev.preventDefault();if(paused)return;holdPt=ptr(ev);attack(holdPt.x,holdPt.y,true)});
-cv.addEventListener('pointermove',ev=>{if(holdPt)holdPt=ptr(ev)});
-for(const n of['pointerup','pointercancel','pointerleave'])cv.addEventListener(n,()=>{holdPt=null});
-game.addEventListener('contextmenu',ev=>ev.preventDefault());
-let lpT=0,lpDone=false;
-for(const b of document.querySelectorAll('.wp')){
-  b.addEventListener('pointerdown',()=>{lpDone=false;clearTimeout(lpT);lpT=setTimeout(()=>{lpDone=true;openAbil(b.dataset.w)},450)});
-  for(const n of['pointerup','pointercancel','pointerleave'])b.addEventListener(n,()=>clearTimeout(lpT));
+/* ---------- Button wiring ---------- */
+
+$('m-start').addEventListener('click', () => showSlots('new'));
+$('m-load').addEventListener('click', () => showSlots('load'));
+$('m-back').addEventListener('click', () => showMenuPage('m-main'));
+if (canExit) $('m-exit').addEventListener('click', () => androidApp.exit());
+else $('m-exit').hidden = true;
+
+$('b-pause').addEventListener('click', openPause);
+$('p-resume').addEventListener('click', closePause);
+$('p-menu').addEventListener('click', showMenu);
+$('p-snd').addEventListener('click', () => {
+  DB.opts.mute = !DB.opts.mute;
+  save();
+  renderPause();
+  sound(700, 0.08, 'triangle');
+});
+$('p-vib').addEventListener('click', () => {
+  DB.opts.vib = !DB.opts.vib;
+  save();
+  renderPause();
+  vibrate(40);
+});
+$('abil-close').addEventListener('click', closeAbilities);
+$('shopgo').addEventListener('click', closeShop);
+
+$('b-speed').addEventListener('click', () => {
+  DB.opts.speed = DB.opts.speed === 2 ? 1 : 2;
+  save();
+  renderHud();
+});
+$('b-hold').addEventListener('click', () => {
+  S.hold = !S.hold;
+  save();
+  renderHud();
+});
+$('wdown').addEventListener('click', () => setWave(S.wave - 1));
+$('wup').addEventListener('click', () => setWave(S.wave + 1));
+
+/* ===== 40-main.js ===== */
+/*
+ * Main loop, attacking, drawing the frame, input and start-up.
+ */
+
+/* ---------- Attacking ---------- */
+
+/**
+ * Attacks at (x, y) with the active weapon if its cooldown is over.
+ * `tapped` is true for a fresh tap (not auto-fire): only then a blocked attack gives feedback.
+ */
+function attack(x, y, tapped) {
+  if (session.paused) return;
+  if (combat.cooldown > 0) {
+    if (tapped) ring(cx, cy + 11 * U, 40 * U, '233,82,79', 0.25);   // red "not ready" pulse
+    return;
+  }
+  if (!session.started) {
+    session.started = true;
+    $('hint').style.opacity = 0;
+  }
+  combat.attackCount++;
+  combat.cooldownMax = cooldownOf(S.active);
+  combat.cooldown = combat.cooldownMax;
+  WEAPONS[S.active].attack(x, y);
+  sound(...ATTACK_SOUNDS[S.active]);
 }
-for(const b of document.querySelectorAll('.wp'))b.addEventListener('click',()=>{
-  const w=b.dataset.w;if(lpDone){lpDone=false;return}
-  if(!owned(w)){toast(NAMES[w]+' ist gesperrt','Im Shop nach einer Niederlage');return}
-  if(S.active===w)return;
-  document.querySelectorAll('.wp .cd').forEach(c=>c.style.setProperty('--p',0));
-  S.active=w;cdMax=Math.max(cdMax,cd,.01);hud();save()});
-$('wdown').addEventListener('click',()=>setWave(S.wave-1));
-$('wup').addEventListener('click',()=>setWave(S.wave+1));
-$('shopgo').addEventListener('click',closeShop);
-function drawBow(c,x,y,a,r){c.save();c.translate(x,y);c.rotate(a);c.lineCap='round';c.lineJoin='round';
-  c.strokeStyle='#33283a';c.lineWidth=r*.3;c.beginPath();c.arc(0,0,r,-1.25,1.25);c.stroke();c.strokeStyle='#b9793f';c.lineWidth=r*.17;c.beginPath();c.arc(0,0,r,-1.25,1.25);c.stroke();
-  c.strokeStyle='#eef4ff';c.lineWidth=r*.06;c.beginPath();c.moveTo(cos(-1.25)*r,sin(-1.25)*r);c.lineTo(-r*.25,0);c.lineTo(cos(1.25)*r,sin(1.25)*r);c.stroke();c.restore()}
-function drawArrow(c,x,y,a,len,col='#f3e3c0',tip='#dfe6ee'){c.save();c.translate(x,y);c.rotate(a);c.lineCap='round';
-  c.strokeStyle='#33283a';c.lineWidth=len*.16;c.beginPath();c.moveTo(-len*.5,0);c.lineTo(len*.4,0);c.stroke();c.strokeStyle=col;c.lineWidth=len*.08;c.beginPath();c.moveTo(-len*.5,0);c.lineTo(len*.4,0);c.stroke();
-  c.fillStyle=tip;c.strokeStyle='#33283a';c.lineWidth=len*.05;c.beginPath();c.moveTo(len*.55,0);c.lineTo(len*.28,-len*.13);c.lineTo(len*.28,len*.13);c.closePath();c.fill();c.stroke();
-  c.fillStyle='#e2574c';c.beginPath();c.moveTo(-len*.5,0);c.lineTo(-len*.62,-len*.12);c.lineTo(-len*.4,0);c.lineTo(-len*.62,len*.12);c.closePath();c.fill();c.restore()}
-function drawFlame(c,x,y,r,t=0){const g=c.createRadialGradient(x,y,r*.1,x,y,r);g.addColorStop(0,'#fff3b0');g.addColorStop(.45,'#ffb03a');g.addColorStop(1,'rgba(255,80,20,0)');
-  c.fillStyle=g;c.beginPath();c.moveTo(x-r*.7,y+r*.3);c.quadraticCurveTo(x-r*.9,y-r*.5,x+sin(t)*r*.2,y-r*1.5);c.quadraticCurveTo(x+r*.9,y-r*.5,x+r*.7,y+r*.3);c.arc(x,y+r*.3,r*.7,0,PI);c.fill()}
-function icons(){
-  for(const w in NAMES){const c=$('wp-'+w).querySelector('canvas'),g=c.getContext('2d');g.clearRect(0,0,72,72);
-    if(w==='sword')drawSword(g,16,56,-PI/4,58);
-    else if(w==='dagger'){drawSword(g,10,44,-.5,36,'#dff3ff','#2f8f7a');drawSword(g,24,62,-.9,36,'#dff3ff','#2f8f7a')}
-    else if(w==='star'){g.strokeStyle='#8f97a6';g.lineWidth=4;g.setLineDash([6,4]);g.beginPath();g.moveTo(10,64);g.lineTo(38,32);g.stroke();g.setLineDash([]);drawBall(g,44,26,15,.3)}
-    else if(w==='bow'){drawBow(g,30,36,-PI/4,26);drawArrow(g,36,36,-PI/4,50)}
-    else{g.lineCap='round';g.strokeStyle='#33283a';g.lineWidth=9;g.beginPath();g.moveTo(14,62);g.lineTo(44,26);g.stroke();g.strokeStyle='#8a5a3c';g.lineWidth=5;g.beginPath();g.moveTo(14,62);g.lineTo(44,26);g.stroke();drawFlame(g,48,24,15)}}
+
+function selectWeapon(id) {
+  if (!owned(id)) {
+    toast(WEAPONS[id].name + ' ist gesperrt', 'Im Shop nach einer Niederlage');
+    return;
+  }
+  if (S.active === id) return;
+  clearCooldownRings();
+  S.active = id;
+  // The running cooldown carries over; keep the ring's scale valid for it.
+  combat.cooldownMax = Math.max(combat.cooldownMax, combat.cooldown, 0.01);
+  renderHud();
+  save();
 }
-function resize(){
-  const r=game.getBoundingClientRect();W=Math.max(200,r.width);H=Math.max(300,r.height);DPR=Math.min(2.5,window.devicePixelRatio||1);
-  cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);
-  const bar=$('bar').offsetHeight||80;U=Math.max(.75,Math.min(1.7,Math.min(W,H-bar)/400));
-  cx=W/2;cy=96+(H-bar-112)/2;CR=24*U*K;makeGround();
+
+/* ---------- Update ---------- */
+
+/** Advances the game by `dt` seconds. Never called while paused. */
+function update(dt) {
+  session.time += dt;
+  combat.cooldown -= dt;
+  combat.chainBooms = 0;
+  if (session.holdPoint && combat.cooldown <= 0) attack(session.holdPoint.x, session.holdPoint.y, false);   // auto-fire
+  session.shake = Math.max(0, session.shake - dt * 40);
+  castle.flash = Math.max(0, castle.flash - dt);
+
+  runTimers(dt);
+  updateWave(dt);
+  updateEnemies(dt);
+  updateCombo(dt);
+  updateSoldiers(dt);
+  updateProjectiles(dt);
+  updateZones(dt);
+  updateVisuals(dt);
+
+  world.enemies = world.enemies.filter(e => !e.dead);
+  world.projectiles = world.projectiles.filter(p => !p.dead);
+
+  if (castle.fallen) handleDefeat();
+  updateHudMeters();
 }
-addEventListener('resize',resize);
-let last=0;
-function frame(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;if(!paused)for(let i=0;i<DB.opts.speed&&!paused;i++)update(dt);draw();requestAnimationFrame(frame)}
-resize();icons();buildWave();hud();showMenu();
-setInterval(save,5000);
-window.__bw={S,DB,SHOP,WALL,VERSION,startGame,showMenu,slot:()=>slot,dmgOf,hold:p=>{holdPt=p},hud,save,need,cdOf,waveCount,gap:()=>spawnGap,state:()=>({t:time,shake,castleFlash,combo:comboN,hp,enemies:enemies.length,projs:projs.length,zones:zones.length,fx:fx.length,cd,atkCount,paused,queue:queue.length,soldiers:soldiers.length,pause}),
-  step(t){for(let i=0;i<t*60&&!paused;i++)update(1/60)},ready(){cd=0},spawn,setHp(n){hp=n;hud()},ens:()=>enemies,sols:()=>soldiers,prj:()=>projs,
-  clear(){for(const e of enemies.slice())hurt(e,1e9,{w:'sword'});queue.length=0},attack,pos:()=>({cx,cy,W,H,U})};
+
+function runTimers(dt) {
+  // Index loop: a timer's callback may schedule further timers.
+  for (let i = 0; i < world.timers.length; i++) {
+    const timer = world.timers[i];
+    timer.t -= dt;
+    if (timer.t <= 0) {
+      timer.done = true;
+      timer.fn();
+    }
+  }
+  world.timers = world.timers.filter(timer => !timer.done);
+}
+
+function updateCombo(dt) {
+  if (combo.timer > 0) {
+    combo.timer -= dt;
+    if (combo.timer <= 0) combo.count = 0;
+  }
+  combo.punch = Math.max(0, combo.punch - dt * 5);
+}
+
+function updateZones(dt) {
+  for (const zone of world.zones) {
+    zone.t += dt;
+    if (zone.t < zone.dur) zone.update(zone, dt);
+  }
+  world.zones = world.zones.filter(zone => zone.t < zone.dur);
+}
+
+function updateVisuals(dt) {
+  for (const effect of world.effects) effect.t += dt;
+  world.effects = world.effects.filter(effect => effect.t < effect.dur);
+
+  for (const p of world.particles) {
+    p.life -= dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 260 * U * dt;   // gravity
+  }
+  world.particles = world.particles.filter(p => p.life > 0);
+
+  for (const text of world.texts) {
+    text.t += dt;
+    text.y -= 28 * U * dt;
+  }
+  world.texts = world.texts.filter(text => text.t < textLifetime(text));
+}
+const textLifetime = text => (text.big ? 1.4 : 0.7);
+
+/* ---------- Draw ---------- */
+
+function draw() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (session.shake > 0 && !REDUCED_MOTION) {
+    ctx.translate(rnd(-session.shake, session.shake) * 0.5, rnd(-session.shake, session.shake) * 0.5);
+  }
+  ctx.drawImage(ground, 0, 0, W, H);
+
+  // ground layer
+  for (const zone of world.zones) if (zone.under) zone.draw(zone);
+  for (const effect of world.effects) if (effect.under) effect.draw(effect.t / effect.dur);
+
+  drawActors();
+  drawCooldownRing();
+
+  // air layer
+  for (const p of world.projectiles) if (!p.dead) drawProjectile(p);
+  for (const zone of world.zones) if (!zone.under) zone.draw(zone);
+  for (const effect of world.effects) if (!effect.under) effect.draw(effect.t / effect.dur);
+  drawParticles();
+  drawTexts();
+  drawCombo();
+}
+
+/** Castle, wall, enemies and soldiers, sorted by y so nearer things overlap farther ones. */
+function drawActors() {
+  const actors = [{ y: cy, draw() { drawWall(false); drawCastle(); drawWall(true); } }];
+  for (const e of world.enemies) if (!e.dead) actors.push({ y: e.y, draw: () => drawEnemy(e) });
+  for (const soldier of world.soldiers) actors.push({ y: soldier.y, draw: () => drawSoldier(soldier) });
+  actors.sort((a, b) => a.y - b.y);
+  for (const actor of actors) actor.draw();
+}
+
+/** Ring on the ground around the castle that fills up while the cooldown runs. */
+function drawCooldownRing() {
+  const ready = combat.cooldownMax ? 1 - Math.max(0, combat.cooldown) / combat.cooldownMax : 1;
+  const ringPath = (from, to) => {
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 11 * U, 32 * U, 14 * U, 0, from, to);
+    ctx.stroke();
+  };
+  ctx.lineWidth = 4 * U;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(51,40,58,.35)';
+  ringPath(0, TAU);
+  ctx.strokeStyle = ready >= 1 ? '#f5b93a' : '#fff6df';
+  ringPath(-PI / 2, -PI / 2 + TAU * ready);
+  ctx.lineCap = 'butt';
+}
+
+function drawParticles() {
+  for (const p of world.particles) {
+    ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+    ctx.fillStyle = p.color;
+    fillCircle(ctx, p.x, p.y, p.size);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawTexts() {
+  ctx.textAlign = 'center';
+  ctx.lineJoin = 'round';
+  for (const text of world.texts) {
+    ctx.globalAlpha = Math.max(0, 1 - text.t / textLifetime(text));
+    ctx.font = `${(text.big ? 19 : 14) * U}px ${DISPLAY_FONT}`;
+    ctx.lineWidth = 3 * U;
+    ctx.strokeStyle = INK;
+    ctx.strokeText(text.text, text.x, text.y);
+    ctx.fillStyle = text.color;
+    ctx.fillText(text.text, text.x, text.y);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** Kill streak counter ("×23") below the top bar, shown from 5 kills in a row. */
+function drawCombo() {
+  if (combo.count < 5) return;
+  const label = '×' + combo.count, scale = 1 + combo.punch * 0.35;
+  ctx.save();
+  ctx.translate(cx, 182);
+  ctx.scale(scale, scale);
+  ctx.font = `${22 * U}px ${DISPLAY_FONT}`;
+  ctx.globalAlpha = Math.min(1, combo.timer * 2);
+  ctx.lineWidth = 4 * U;
+  ctx.strokeStyle = INK;
+  ctx.strokeText(label, 0, 0);
+  ctx.fillStyle = combo.count >= 50 ? '#ff7a4a' : combo.count >= 20 ? '#ffd24a' : '#fff6df';
+  ctx.fillText(label, 0, 0);
+  ctx.restore();
+}
+
+/* ---------- Input ---------- */
+
+const pointerPos = ev => {
+  const rect = canvas.getBoundingClientRect();
+  return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+};
+
+// Field: tap to attack, keep the finger down for auto-fire at the finger's position.
+canvas.addEventListener('pointerdown', ev => {
+  ev.preventDefault();
+  if (session.paused) return;
+  session.holdPoint = pointerPos(ev);
+  attack(session.holdPoint.x, session.holdPoint.y, true);
+});
+canvas.addEventListener('pointermove', ev => {
+  if (session.holdPoint) session.holdPoint = pointerPos(ev);
+});
+for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+  canvas.addEventListener(type, () => { session.holdPoint = null; });
+}
+game.addEventListener('contextmenu', ev => ev.preventDefault());   // no browser menu on long press
+
+// Weapon buttons: tap selects, a long press (450 ms) opens the ability overview instead.
+let longPressTimer = 0, longPressFired = false;
+for (const button of document.querySelectorAll('.wp')) {
+  const id = button.dataset.w;
+  button.addEventListener('pointerdown', () => {
+    longPressFired = false;
+    clearTimeout(longPressTimer);
+    longPressTimer = setTimeout(() => {
+      longPressFired = true;
+      openAbilities(id);
+    }, 450);
+  });
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+    button.addEventListener(type, () => clearTimeout(longPressTimer));
+  }
+  button.addEventListener('click', () => {
+    if (longPressFired) { longPressFired = false; return; }   // the click that ends a long press
+    selectWeapon(id);
+  });
+}
+
+/* ---------- Layout and start-up ---------- */
+
+/** Recomputes the view metrics (see 01-core.js) and the ground for the current screen size. */
+function resize() {
+  const rect = game.getBoundingClientRect();
+  W = Math.max(200, rect.width);
+  H = Math.max(300, rect.height);
+  DPR = Math.min(2.5, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  const barHeight = $('bar').offsetHeight || 80;
+  U = clamp(Math.min(W, H - barHeight) / 400, 0.75, 1.7);
+  cx = W / 2;
+  cy = 96 + (H - barHeight - 112) / 2;   // centred between the top bar and the weapon bar
+  makeGround();
+}
+addEventListener('resize', resize);
+
+let lastFrameTime = 0;
+function frame(now) {
+  const dt = Math.min(0.05, (now - lastFrameTime) / 1000 || 0);   // clamp long pauses (tab in background)
+  lastFrameTime = now;
+  // x2 speed runs the simulation twice per frame instead of doubling dt, which keeps collisions exact
+  for (let i = 0; i < DB.opts.speed && !session.paused; i++) update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+resize();
+drawWeaponIcons();
+buildWave();
+renderHud();
+showMenu();
+setInterval(save, 5000);
 requestAnimationFrame(frame);
+
+/* ===== 99-debug.js ===== */
+/*
+ * Hooks for the automated tests in ../tests (and for poking at the game from
+ * the browser console). Nothing in the game itself uses window.__bw.
+ */
+window.__bw = {
+  S, DB, VERSION,
+  SHOP: SHOP_ITEMS.map(item => ({ t: item.prices })),   // prices per item, in shop order
+  WALL: WALL_TIERS,
+  startGame, showMenu,
+  slot: () => slot,
+  dmgOf: damageOf, cdOf: cooldownOf, need: xpNeeded, waveCount,
+  hud: renderHud, save,
+  gap: () => wave.spawnGap,
+  pos: () => ({ cx, cy, W, H, U }),
+
+  /** Snapshot of the runtime state. */
+  state: () => ({
+    t: session.time, shake: session.shake, castleFlash: castle.flash, combo: combo.count,
+    hp: castle.hp, enemies: world.enemies.length, projs: world.projectiles.length,
+    zones: world.zones.length, fx: world.effects.length,
+    cd: combat.cooldown, atkCount: combat.attackCount, paused: session.paused,
+    queue: wave.queue.length, soldiers: world.soldiers.length, pause: wave.pause,
+  }),
+
+  /** Simulates `seconds` of game time at 60 steps per second (stops when an overlay opens). */
+  step(seconds) {
+    for (let i = 0; i < seconds * 60 && !session.paused; i++) update(1 / 60);
+  },
+  ready() { combat.cooldown = 0; },
+  hold(point) { session.holdPoint = point; },
+  attack,
+  spawn: spawnEnemy,
+  setHp(n) { castle.hp = n; renderHud(); },
+  ens: () => world.enemies,
+  sols: () => world.soldiers,
+  prj: () => world.projectiles.map(p => ({ k: p.kind })),
+  /** Kills every enemy on the field and empties the spawn queue. */
+  clear() {
+    for (const e of world.enemies.slice()) hurt(e, 1e9, { weapon: 'sword' });
+    wave.queue.length = 0;
+  },
+};
 })();
 </script>
 </body></html>
