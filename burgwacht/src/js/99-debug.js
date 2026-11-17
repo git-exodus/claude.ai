@@ -30,6 +30,10 @@ window.__bw = {
   ready() { combat.cooldown = 0; },
   hold(point) { session.holdPoint = point; },
   attack, aimLine,
+  queue: () => wave.queue.slice(),
+  bossFor, ENEMY_TYPES,
+  knight: () => ({ ...knight }),
+  music: () => ({ track: music.track, playing: !!music.bus, audio: audioContext ? audioContext.state : 'none' }),
   /** Colours of the pre-rendered ground at a few fixed points, to tell worlds apart without screenshots. */
   groundSample() {
     const g = ground.getContext('2d');

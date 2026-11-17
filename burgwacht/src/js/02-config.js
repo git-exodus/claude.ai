@@ -3,7 +3,7 @@
  * the place to tune the game.
  */
 
-const VERSION = '0.7';
+const VERSION = '0.8';
 const SAVE_KEY = 'burgwacht-v3';
 const LEGACY_SAVE_KEY = 'burgwacht-v2';   // single-save format from before the start menu
 
@@ -29,7 +29,7 @@ const MAX_ENEMIES_ALIVE = 260;     // further enemies wait off-screen until ther
 
 /*
  * Weapons, in the order of the weapon bar.
- *   price        gold needed in the shop (the sword is owned from the start)
+ *   price        gold needed in the shop (STARTER_WEAPON is owned from the start)
  *   baseDamage   damage of one basic hit at level 1
  *   cooldown     [seconds at level 1, seconds at ABILITY_CAP], linear in between
  *   milestones   level -> name of the ability unlocked there; abilities stack
@@ -37,13 +37,13 @@ const MAX_ENEMIES_ALIVE = 260;     // further enemies wait off-screen until ther
  * The attack code lives in 10-weapon-*.js and is attached as WEAPONS[id].attack.
  */
 const WEAPONS = {
-  sword: {
-    name: 'Schwert', price: 0, baseDamage: 10, cooldown: [3.5, 0.5], baseAbility: 'Schwerthieb',
-    milestones: { 5: 'Doppelschwert', 10: 'Dreier-Fächer', 15: 'Echo-Hieb', 25: 'Kreisende Schwerter', 30: 'Klingenwelle', 40: 'Geisterschwert', 50: 'Riesenschwert', 60: 'Schwertsplitter', 70: 'Zeitriss', 80: 'Spiegelhieb', 90: 'Kettenblitz', 100: 'Schwertregen' },
-  },
   dagger: {
-    name: 'Dolche', price: 5, baseDamage: 9, cooldown: [2, 0.3], baseAbility: 'Wurfdolch', aimLine: true,
+    name: 'Dolche', price: 0, baseDamage: 9, cooldown: [2, 0.3], baseAbility: 'Wurfdolch', aimLine: true,
     milestones: { 5: 'Dolchfächer', 10: 'Abpraller', 15: 'Durchbohren', 25: 'Ansteckendes Gift', 30: 'Schattenklon', 40: 'Splitterdolche', 50: 'Bumerang', 60: 'Giftwolke', 70: 'Dolchfallen', 80: 'Zielsuchend', 90: 'Dolchwirbel', 100: 'Kettenreaktion' },
+  },
+  sword: {
+    name: 'Schwert', price: 5, baseDamage: 10, cooldown: [3.5, 0.5], baseAbility: 'Schwerthieb',
+    milestones: { 5: 'Doppelschwert', 10: 'Dreier-Fächer', 15: 'Echo-Hieb', 25: 'Kreisende Schwerter', 30: 'Klingenwelle', 40: 'Geisterschwert', 50: 'Riesenschwert', 60: 'Schwertsplitter', 70: 'Zeitriss', 80: 'Spiegelhieb', 90: 'Kettenblitz', 100: 'Schwertregen' },
   },
   star: {
     name: 'Morgenstern', price: 10, baseDamage: 16, cooldown: [5, 1], baseAbility: 'Flächenschlag',
@@ -59,6 +59,7 @@ const WEAPONS = {
   },
 };
 const WEAPON_IDS = Object.keys(WEAPONS);
+const STARTER_WEAPON = 'dagger';
 
 /*
  * XP needed to go from `level` to `level + 1`.
@@ -78,13 +79,29 @@ const xpNeeded = level => Math.round(4 + 6.4 * Math.pow(level, 1.4));
  *   ranged      stops at ARCHER_RANGE and shoots the castle instead of walking into it
  */
 const ENEMY_TYPES = {
-  slime:  { r: 13, hp: 3, hpStep: 1, sp: 20, xp: 1, color: '#59c36a' },
-  bat:    { r: 10, hp: 1, hpStep: 1, sp: 38, xp: 1, color: '#9a6bd6' },
-  ogre:   { r: 19, hp: 14, hpStep: 3, sp: 13, xp: 3, color: '#4f9aa8' },
-  shield: { r: 14, hp: 14, hpStep: 1, sp: 16, xp: 2, color: '#8793b8', shielded: true },
-  archer: { r: 11, hp: 4, hpStep: 1, sp: 22, xp: 2, color: '#c9787f', ranged: true },
-  boss:   { r: 30, hp: 90, hpStep: 15, sp: 9, xp: 20, color: '#e07a3f' },
+  slime:      { name: 'Schleim', r: 13, hp: 3, hpStep: 1, sp: 20, xp: 1, color: '#59c36a' },
+  bat:        { name: 'Fledermaus', r: 10, hp: 1, hpStep: 1, sp: 38, xp: 1, color: '#9a6bd6' },
+  koboldSlow: { name: 'Kobold', r: 11, hp: 7, hpStep: 2, sp: 10, xp: 2, color: '#b58a4a' },
+  koboldFast: { name: 'Flinker Kobold', r: 9, hp: 2, hpStep: 1, sp: 50, xp: 1, color: '#c8cf4a' },
+  wolf:       { name: 'Wolf', r: 11, hp: 3, hpStep: 1, sp: 46, xp: 1, color: '#8a8f99' },
+  ogre:       { name: 'Oger', r: 19, hp: 14, hpStep: 3, sp: 13, xp: 3, color: '#4f9aa8' },
+  orcClub:    { name: 'Ork mit Keule', r: 18, hp: 22, hpStep: 4, sp: 14, xp: 4, color: '#6f8f3a', club: true },
+  orcAxe:     { name: 'Ork mit Axt', r: 17, hp: 16, hpStep: 3, sp: 21, xp: 4, color: '#82a046', siege: 2 },
+  shield:     { name: 'Schildträger', r: 14, hp: 14, hpStep: 1, sp: 16, xp: 2, color: '#8793b8', shielded: true },
+  archer:     { name: 'Armbrustschütze', r: 11, hp: 4, hpStep: 1, sp: 22, xp: 2, color: '#c9787f', ranged: true },
+  // bosses
+  boss:       { name: 'Schleimkönig', r: 30, hp: 90, hpStep: 15, sp: 9, xp: 20, color: '#e07a3f', boss: true },
+  wolfAlpha:  { name: 'Wolfsalpha', r: 22, hp: 70, hpStep: 12, sp: 26, xp: 20, color: '#5d6270', boss: true },
+  orcKing:    { name: 'Orkkönig', r: 31, hp: 120, hpStep: 20, sp: 8, xp: 25, color: '#4f7a2a', boss: true, club: true, siege: 3 },
 };
+/*
+ * Extra fields above:
+ *   boss    counts as a boss (statistics, knockback resistance, crown)
+ *   club    hits soldiers for 2 and knocks them back (orcs with clubs)
+ *   siege   damage to wall or castle when it gets there (default 1)
+ */
+const BOSS_ROTATION = ['boss', 'wolfAlpha', 'orcKing'];   // wave 5, 10, 15, then again from the start
+const WOLF_PACK = 4;                                      // wolves always come in packs; the alpha brings one
 const BOSS_EVERY = 5;        // a boss joins every 5th wave
 const SHIELD_BLOCK = 0.25;   // share of projectile damage that gets through a shield
 const ARCHER_RANGE = 105;    // distance from the castle (in U) at which archers stop
@@ -147,25 +164,41 @@ const WORLDS = {
     enemyHp: (type, w) => meadowHp(type, LAVA_UNLOCK_WAVE) * (1 + 0.15 * (w - 1) + 0.008 * (w - 1) * (w - 1)),
     speedFactor: () => 1.5,
     goldMult: 3, xpMult: 3, splitSlimes: true,
-    colors: { slime: '#f0702a', bat: '#ffb23e', ogre: '#7a5560', shield: '#a8553a', archer: '#d94a3a', boss: '#c22b2b' },
+    colors: { slime: '#f0702a', bat: '#ffb23e', ogre: '#7a5560', shield: '#a8553a', archer: '#d94a3a', boss: '#c22b2b',
+      koboldSlow: '#a5603a', koboldFast: '#ffcf4a', wolf: '#5a4a48', orcClub: '#8a4a2a', orcAxe: '#a65a2a', wolfAlpha: '#3a2a2a', orcKing: '#6a2a1a' },
   },
 };
 
-/** Random type for one regular enemy. Bats come from wave 2, ogres from 3, shield bearers from 8, archers from 12. */
+/*
+ * Share of each regular enemy type per wave: [type, first wave, share per wave, maximum share].
+ * Whatever is left over are slimes. 'wolf' means a whole pack of WOLF_PACK wolves.
+ */
+const ENEMY_SHARES = [
+  ['bat', 2, 0.05, 0.22],
+  ['ogre', 3, 0.03, 0.18],
+  ['koboldFast', 4, 0.02, 0.10],
+  ['koboldSlow', 4, 0.015, 0.08],
+  ['wolf', 6, 0.01, 0.05],
+  ['shield', 8, 0.008, 0.07],
+  ['orcClub', 10, 0.008, 0.08],
+  ['archer', 12, 0.004, 0.05],
+  ['orcAxe', 15, 0.006, 0.07],
+];
+
+/** Random type for one regular enemy of the wave. */
 function rollEnemyType(waveNo) {
   let roll = Math.random();
-  const shares = [
-    ['ogre', waveNo >= 3 ? Math.min(0.25, 0.04 * waveNo) : 0],
-    ['bat', waveNo >= 2 ? Math.min(0.3, 0.06 * waveNo) : 0],
-    ['shield', waveNo >= 8 ? Math.min(0.1, 0.01 * waveNo) : 0],
-    ['archer', waveNo >= 12 ? Math.min(0.05, 0.004 * waveNo) : 0],
-  ];
-  for (const [type, share] of shares) {
+  for (const [type, from, perWave, max] of ENEMY_SHARES) {
+    if (waveNo < from) continue;
+    const share = Math.min(max, perWave * waveNo);
     if (roll < share) return type;
     roll -= share;
   }
   return 'slime';
 }
 
+/** Boss of a boss wave: slime king, wolf alpha and orc king take turns. */
+const bossFor = waveNo => BOSS_ROTATION[(Math.floor(waveNo / BOSS_EVERY) - 1) % BOSS_ROTATION.length];
+
 /* Tests set window.__bwQuiet before the game loads so rewards do not disturb what they measure. */
-const debugFlags = { achievements: !window.__bwQuiet, chests: !window.__bwQuiet };
+const debugFlags = { achievements: !window.__bwQuiet, chests: !window.__bwQuiet, skillHint: !window.__bwQuiet, chestAnimation: !window.__bwQuiet, music: !window.__bwQuiet };

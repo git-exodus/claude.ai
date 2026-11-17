@@ -4,10 +4,10 @@
  */
 
 /** An enemy reached the wall: it loses one hit point. */
-function wallHit(x, y) {
+function wallHit(x, y, damage = 1) {
   sound(160, 0.12, 'square', 0.05, -60);
   vibrate(25);
-  S.wallHp--;
+  S.wallHp = Math.max(0, S.wallHp - damage);
   session.shake = Math.max(session.shake, 4);
   puff(x, y, '#b9b4ad', 7);
   renderHud();
@@ -18,10 +18,10 @@ function wallHit(x, y) {
 }
 
 /** An enemy reached the castle: it loses one life; at zero the battle is lost. */
-function castleHit() {
+function castleHit(damage = 1) {
   sound(90, 0.2, 'sawtooth', 0.07);
   vibrate(60);
-  castle.hp--;
+  castle.hp = Math.max(0, castle.hp - damage);
   castle.flash = 0.3;
   session.shake = Math.max(session.shake, 10);
   puff(cx, cy, '#efe7d4', 8);
@@ -81,8 +81,13 @@ function updateSoldiers(dt) {
       enemy.blocked = 0.15;   // refreshed every frame while in contact
       if (enemy.attackCd <= 0) {
         enemy.attackCd = ENEMY_HIT_INTERVAL;
-        soldier.hp--;
+        soldier.hp -= enemy.club ? 2 : 1;          // clubs hit twice as hard and throw the soldier back
         soldier.flash = 0.15;
+        if (enemy.club) {
+          const away = atan2(soldier.y - enemy.y, soldier.x - enemy.x);
+          soldier.x += cos(away) * 14 * U;
+          soldier.y += sin(away) * 14 * U;
+        }
         puff(soldier.x, soldier.y - 6 * U, '#cfe3ff', 4);
       }
     }
@@ -160,6 +165,167 @@ function drawArcher(post) {
   ctx.stroke();
   ctx.restore();
   drawBow(ctx, post.x + side * 5 * u, post.y - 2 * u, side > 0 ? 0 : PI, 6 * u);
+}
+
+/* ---------- Knight on horseback ---------- */
+
+/*
+ * The knight (shop, 300 gold) rides circles around the castle. When an enemy
+ * comes close to the castle he charges it, tramples everything in his way and
+ * returns to his circle. He never leaves the castle's surroundings and cannot
+ * be hurt.
+ */
+const KNIGHT = {
+  circle: 78,        // radius of his patrol circle, in U
+  alarm: 150,        // enemies closer than this to the castle are charged
+  leash: 175,        // he never rides further from the castle than this
+  patrolSpeed: 95,   // U per second
+  chargeSpeed: 230,
+  hitRadius: 15,
+  hitDelay: 0.6,     // seconds before the same enemy can be trampled again
+  damageShare: 1.2,  // per trample: this share of a hit of the weapon in hand
+};
+const knight = { x: 0, y: 0, angle: PI / 2, facing: 1, hops: 0, charging: false, active: false };
+
+function resetKnight() {
+  knight.angle = PI / 2;
+  knight.x = cx;
+  knight.y = cy + KNIGHT.circle * U * 0.85;
+  knight.active = false;
+}
+
+function updateKnight(dt) {
+  if (!S.own.knight) return;
+  if (!knight.active) { resetKnight(); knight.active = true; }
+  const target = nearestEnemyToCastle(KNIGHT.alarm * U);
+  let goalX, goalY, speed;
+  if (target) {
+    goalX = target.x; goalY = target.y; speed = KNIGHT.chargeSpeed;
+  } else {
+    // patrol: keep moving the point on the circle ahead of him
+    knight.angle += KNIGHT.patrolSpeed / KNIGHT.circle * dt;
+    goalX = cx + cos(knight.angle) * KNIGHT.circle * U;
+    goalY = cy + sin(knight.angle) * KNIGHT.circle * U * 0.85;
+    speed = KNIGHT.patrolSpeed;
+  }
+  knight.charging = !!target;
+  const d = dist(knight.x, knight.y, goalX, goalY);
+  if (d > 1) {
+    const step = Math.min(d, speed * U * dt);
+    knight.facing = goalX < knight.x ? -1 : 1;
+    knight.x += (goalX - knight.x) / d * step;
+    knight.y += (goalY - knight.y) / d * step;
+  }
+  // stay on the leash
+  const fromCastle = dist(knight.x, knight.y, cx, cy), leash = KNIGHT.leash * U;
+  if (fromCastle > leash) {
+    knight.x = cx + (knight.x - cx) / fromCastle * leash;
+    knight.y = cy + (knight.y - cy) / fromCastle * leash;
+  }
+  if (!target) knight.angle = atan2((knight.y - cy) / 0.85, knight.x - cx);   // rejoin the circle where he is
+  knight.hops += dt * (knight.charging ? 16 : 10);
+  trample();
+}
+
+/** Closest living enemy to the castle within `range`. */
+function nearestEnemyToCastle(range) {
+  let best = null, bestDist = range;
+  for (const e of world.enemies) {
+    if (e.dead) continue;
+    const d = dist(e.x, e.y, cx, cy);
+    if (d < bestDist) { bestDist = d; best = e; }
+  }
+  return best;
+}
+
+function trample() {
+  const damage = damageOf(S.active) * KNIGHT.damageShare;
+  for (const e of world.enemies) {
+    if (e.dead || e.knightCd > session.time || dist(knight.x, knight.y, e.x, e.y) >= KNIGHT.hitRadius * U + e.r) continue;
+    e.knightCd = session.time + KNIGHT.hitDelay;
+    knockback(e, 160);
+    hurt(e, damage, { weapon: 'knight', color: '#ffe9b0' });
+  }
+}
+
+/** Knight in silver armour with a red plume on a brown horse, galloping. */
+function drawKnight() {
+  const u = U * 0.9, gallop = sin(knight.hops), x = knight.x, y = knight.y - Math.abs(gallop) * 2 * u;
+  ctx.fillStyle = 'rgba(0,0,0,.22)';
+  fillEllipse(ctx, knight.x, knight.y + 8 * u, 15 * u, 4 * u);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(knight.facing, 1);
+  ctx.lineWidth = 1.6 * u;
+  ctx.strokeStyle = INK;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  // legs
+  ctx.strokeStyle = '#5a3a22';
+  ctx.lineWidth = 2.4 * u;
+  ctx.beginPath();
+  for (const [lx, ph] of [[-8, 1], [-5, -1], [6, -1], [9, 1]]) {
+    ctx.moveTo(lx * u, 2 * u);
+    ctx.lineTo(lx * u + gallop * ph * 3 * u, 9 * u);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 1.6 * u;
+  // horse body, neck, head, tail
+  ctx.fillStyle = '#8a5a34';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 12 * u, 5.5 * u, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(8 * u, -2 * u);
+  ctx.lineTo(13 * u, -10 * u);
+  ctx.lineTo(18 * u, -8 * u);
+  ctx.lineTo(16 * u, -5 * u);
+  ctx.lineTo(11 * u, 2 * u);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#3a2618';
+  ctx.beginPath();
+  ctx.moveTo(-11 * u, -2 * u);
+  ctx.quadraticCurveTo(-17 * u, -1 * u + gallop * 2 * u, -16 * u, 6 * u);
+  ctx.lineTo(-12 * u, 1 * u);
+  ctx.fill();
+  ctx.fillRect(10 * u, -11 * u, 3 * u, 6 * u);   // mane
+  // rider: armour, helmet, plume, lance
+  ctx.fillStyle = '#c9d1dc';
+  ctx.beginPath();
+  ctx.roundRect(-4 * u, -14 * u, 8 * u, 10 * u, 2.5 * u);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, -17 * u, 4 * u, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = INK;
+  ctx.fillRect(0.5 * u, -18 * u, 3.5 * u, 1.2 * u);   // visor slit
+  ctx.fillStyle = '#e2574c';
+  ctx.beginPath();
+  ctx.moveTo(-1 * u, -21 * u);
+  ctx.quadraticCurveTo(-7 * u, -24 * u, -8 * u, -17 * u);
+  ctx.quadraticCurveTo(-4 * u, -20 * u, -1 * u, -19 * u);
+  ctx.fill();
+  ctx.strokeStyle = '#7a5530';
+  ctx.lineWidth = 2 * u;
+  ctx.beginPath();
+  const lance = knight.charging ? 0.05 : -0.45;
+  ctx.moveTo(-2 * u, -8 * u);
+  ctx.lineTo(-2 * u + cos(lance) * 26 * u, -8 * u + sin(lance) * 26 * u);
+  ctx.stroke();
+  ctx.fillStyle = '#e2574c';   // shield
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 1.6 * u;
+  ctx.beginPath();
+  ctx.arc(-4 * u, -8 * u, 3.6 * u, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
 }
 
 function walkToGuardPost(soldier, dt) {

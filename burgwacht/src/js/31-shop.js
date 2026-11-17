@@ -48,7 +48,7 @@ const forgeOffer = id => ({
 });
 
 const SHOP_ITEMS = [
-  weaponOffer('dagger', 'Schnelle Würfe mit Gift und Abprallern.'),
+  weaponOffer('sword', 'Kräftige Hiebe direkt am Finger, später mit Schwertregen.'),
   weaponOffer('star', 'Langsame, wuchtige Flächenschläge.'),
   weaponOffer('bow', 'Schneller Fernschuss, stark gegen einzelne Gegner.'),
   weaponOffer('wand', 'Feuerbälle, die explodieren und Gegner in Brand setzen.'),
@@ -87,6 +87,7 @@ const SHOP_ITEMS = [
     buy: () => { S.solLv++; },
     requires: needsSoldier,
   },
+  unlockOffer('knight', 'troops', 'Ritter', 300, 'Reitet um die Burg und stürmt auf Gegner, die ihr zu nahe kommen. Unverwundbar.'),
   unlockOffer('armor', 'troops', 'Rüstung', 50, 'Soldaten halten 5 statt 3 Schläge aus.', needsSoldier),
   {
     id: 'soldierCap', tab: 'troops', name: 'Mehr Soldaten', prices: SOLDIER_CAP_PRICES,

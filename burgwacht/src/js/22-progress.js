@@ -144,11 +144,163 @@ function offerChest(waveNo) {
   const pool = BOONS.filter(boon => !boon.available || boon.available());
   const choices = [];
   while (choices.length < 3 && pool.length) choices.push(pool.splice(Math.floor(rnd(pool.length)), 1)[0]);
-  showDialog({
+  const showChoice = () => showDialog({
     title: 'Schatztruhe',
     text: 'Wähle einen Bonus.',
     body: [chestInfoBox()],
     dismissable: false,
     buttons: choices.map(boon => ({ label: boon.name, detail: boon.text, action: () => takeBoon(boon) })),
   });
+  if (debugFlags.chestAnimation) playChestAnimation(showChoice);
+  else showChoice();
+}
+
+/* ---------- Chest opening animation ---------- */
+
+const CHEST_ANIMATION = 2.1;     // seconds until the choice appears
+const CHEST_SKIPPABLE = 0.4;     // a tap skips the rest after this many seconds
+
+/*
+ * Timeline (seconds): 0-0.45 the chest drops in and bounces, 0.45-1.25 it
+ * shakes harder and harder, 1.25-2.1 the lid flies open with light rays and
+ * sparkles. Runs on its own canvas while the game is paused underneath.
+ */
+function playChestAnimation(onDone) {
+  const overlay = $('chestfx'), cv = overlay.querySelector('canvas'), g = cv.getContext('2d');
+  const width = game.clientWidth, height = game.clientHeight, ratio = Math.min(2.5, window.devicePixelRatio || 1);
+  cv.width = Math.round(width * ratio);
+  cv.height = Math.round(height * ratio);
+  overlay.hidden = false;
+  refreshPause();
+  const start = performance.now();
+  let finished = false, frameId = 0;
+  sound(180, 0.25, 'triangle', 0.06, -60);
+
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    cancelAnimationFrame(frameId);
+    overlay.hidden = true;
+    overlay.onclick = null;
+    refreshPause();
+    onDone();
+  };
+  overlay.onclick = () => { if ((performance.now() - start) / 1000 >= CHEST_SKIPPABLE) finish(); };
+
+  let creaked = false;
+  const frame = now => {
+    const t = (now - start) / 1000;
+    if (t >= CHEST_ANIMATION) { finish(); return; }
+    if (t > 1.25 && !creaked) { creaked = true; sound(520, 0.35, 'triangle', 0.06, 500); vibrate(40); }
+    drawChestFrame(g, ratio, width, height, t);
+    frameId = requestAnimationFrame(frame);
+  };
+  frameId = requestAnimationFrame(frame);
+}
+
+function drawChestFrame(g, ratio, width, height, t) {
+  g.setTransform(ratio, 0, 0, ratio, 0, 0);
+  g.clearRect(0, 0, width, height);
+  const size = Math.min(width, height) * 0.32, x = width / 2, groundY = height * 0.5 + size * 0.3;
+  const easeOut = k => 1 - Math.pow(1 - k, 3);
+
+  // drop with one bounce
+  let y = groundY;
+  if (t < 0.32) y = groundY - (1 - easeOut(t / 0.32)) * height * 0.6;
+  else if (t < 0.45) y = groundY - sin((t - 0.32) / 0.13 * PI) * size * 0.12;
+  // shaking, stronger towards the opening
+  const shake = t > 0.45 && t < 1.25 ? sin(t * 60) * (t - 0.45) * 0.12 : 0;
+  // lid angle: closed, a short peek, then wide open
+  const open = t < 1.25 ? (t > 0.9 ? sin((t - 0.9) / 0.35 * PI) * 0.15 : 0) : Math.min(1, (t - 1.25) / 0.35);
+
+  if (t > 1.25) drawChestLight(g, x, y - size * 0.35, size, Math.min(1, (t - 1.25) / 0.3), t);
+
+  g.save();
+  g.translate(x, y);
+  g.rotate(shake);
+  g.lineJoin = 'round';
+  g.strokeStyle = INK;
+  g.lineWidth = size * 0.035;
+  g.fillStyle = 'rgba(0,0,0,.25)';
+  fillEllipse(g, 0, size * 0.04, size * 0.62, size * 0.1);
+  // box
+  const w = size, h = size * 0.55;
+  g.fillStyle = '#8a5a34';
+  g.beginPath();
+  g.roundRect(-w / 2, -h, w, h, size * 0.05);
+  g.fill();
+  g.stroke();
+  g.fillStyle = 'rgba(0,0,0,.15)';
+  for (let i = 1; i < 3; i++) g.fillRect(-w / 2, -h + i * h / 3, w, size * 0.015);   // planks
+  chestBands(g, w, -h, h, size);
+  if (open > 0.3) {   // the open chest: dark inside, heaped with glowing gold
+    g.fillStyle = '#3a2416';
+    fillEllipse(g, 0, -h, w * 0.46, size * 0.08);
+    for (let i = 0; i < 9; i++) {
+      g.fillStyle = i % 3 ? '#f5b93a' : '#ffe08a';
+      fillCircle(g, (i - 4) * w * 0.09, -h - size * (0.03 + 0.05 * sin(i * 1.3) ** 2), size * 0.05);
+    }
+  }
+  // lid, hinged at the back edge
+  g.save();
+  g.translate(0, -h);
+  g.scale(1, cos(open * PI * 0.62));
+  g.fillStyle = '#9b6a3e';
+  g.beginPath();
+  g.moveTo(-w / 2, 0);
+  g.lineTo(-w / 2, -size * 0.18);
+  g.quadraticCurveTo(0, -size * 0.42, w / 2, -size * 0.18);
+  g.lineTo(w / 2, 0);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  chestBands(g, w, -size * 0.3, size * 0.3, size);
+  g.restore();
+  // lock
+  if (open < 0.2) {
+    g.fillStyle = '#f5b93a';
+    g.beginPath();
+    g.roundRect(-size * 0.07, -h - size * 0.06, size * 0.14, size * 0.16, size * 0.03);
+    g.fill();
+    g.stroke();
+  }
+  g.restore();
+}
+
+/** Two golden metal bands across the chest or lid. */
+function chestBands(g, w, top, h, size) {
+  g.fillStyle = '#f5b93a';
+  for (const bx of [-w * 0.32, w * 0.24]) {
+    g.fillRect(bx, top, size * 0.08, h);
+    g.strokeRect(bx, top, size * 0.08, h);
+  }
+}
+
+/** Light pouring out of the open chest: rotating rays and rising sparkles. */
+function drawChestLight(g, x, y, size, strength, t) {
+  g.save();
+  g.translate(x, y);
+  g.globalAlpha = strength;
+  for (let i = 0; i < 12; i++) {
+    const a = -PI / 2 + (i - 5.5) * 0.17 + sin(t * 2 + i) * 0.03;
+    const reach = size * (1.6 + 0.3 * sin(t * 5 + i * 1.7));
+    const ray = g.createLinearGradient(0, 0, cos(a) * reach, sin(a) * reach);
+    ray.addColorStop(0, 'rgba(255,236,170,.85)');
+    ray.addColorStop(1, 'rgba(255,236,170,0)');
+    g.fillStyle = ray;
+    g.beginPath();
+    g.moveTo(-size * 0.05, 0);
+    g.lineTo(cos(a - 0.05) * reach, sin(a - 0.05) * reach);
+    g.lineTo(cos(a + 0.05) * reach, sin(a + 0.05) * reach);
+    g.lineTo(size * 0.05, 0);
+    g.fill();
+  }
+  for (let i = 0; i < 14; i++) {   // sparkles rise and fade
+    const k = ((t - 1.25) * 0.9 + i / 14) % 1;
+    const sx = sin(i * 2.3) * size * 0.45, sy = -k * size * 1.3;
+    g.globalAlpha = strength * (1 - k);
+    g.fillStyle = i % 2 ? '#fff6c8' : '#f5b93a';
+    fillCircle(g, sx, sy, size * 0.025 * (1 - k * 0.5));
+  }
+  g.restore();
 }

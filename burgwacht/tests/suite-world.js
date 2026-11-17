@@ -13,7 +13,7 @@ await p.goto(url);await E(()=>localStorage.clear());await p.goto(url);await p.wa
 let r=await E(()=>[1,2,5,6,15,16,30,31,50,51,100].map(w=>__bw.waveCount(w)));
 ok(JSON.stringify(r)==='[8,11,20,25,70,80,220,235,520,540,1520]','Gegnerzahl: +3 bis Welle 5, +5 bis 15, +10 bis 30, +15 bis 50, +20 danach',r.join(', '));
 r=await E(()=>{const g=__bw,o=[];for(const w of[1,5,15,30,50,100]){g.S.cleared=w;g.S.wave=w;g.showMenu();g.startGame(0,false);o.push([w,g.state().queue,+g.gap().toFixed(3)])}g.S.cleared=0;g.S.wave=1;g.save();g.showMenu();g.startGame(0,true);return o});
-ok(r[0][1]===8&&r[1][1]===21&&r[5][1]===1521,'Wellen enthalten die neue Gegnerzahl (plus Boss in 5er-Wellen)',r.map(x=>x[1]).join(', '));
+ok(r[0][1]===8&&r[1][1]===21&&r[5][1]===1525,'Wellen enthalten die Gegnerzahl plus Boss (Welle 100: Wolfsalpha mit Rudel)',r.map(x=>x[1]).join(', '));
 ok(r.every((x,i)=>i===0||x[2]<=r[i-1][2])&&r[0][2]===1.5&&r[5][2]<0.06,'Gegner kommen einzeln, mit jeder Welle in kürzerem Abstand',r.map(x=>'W'+x[0]+': '+x[2]+' s').join(' · '));
 // Größe
 r=await E(()=>{const g=__bw;g.step(2);g.spawn('slime');const e=g.ens()[g.ens().length-1];return +(e.r/g.pos().U).toFixed(2)});ok(r===7.8,'Gegner auf 60 % verkleinert (Schleim-Radius 13 → 7,8)',r);
@@ -23,7 +23,7 @@ r=await lose();ok(r.paused&&r.shake===0&&r.castleFlash===0,'Im Shop wackelt die 
 const px=()=>p.screenshot({clip:{x:120,y:250,width:120,height:120}});const a1=await px();await p.waitForTimeout(250);const a2=await px();ok(a1.equals(a2),'Burg-Bild im Shop bleibt über 250 ms identisch');
 // Shop: Soldaten-Tempo und Mauer
 r=await E(()=>({cost:__bw.SHOP.map(i=>i.t.reduce((a,c)=>a+c,0)),sum:__bw.SHOP.reduce((a,i)=>a+i.t.reduce((x,c)=>x+c,0),0),inc:Array.from({length:100},(_,i)=>2+3*Math.floor(i/10)).reduce((a,c)=>a+c,0)}));
-ok(r.sum===6054&&r.inc===1550,'Gold-Rechnung: alle festen Käufe 6.054, Welle 1–100 einmal geschafft bringt 1.550',r.cost.join('+')+' = '+r.sum);
+ok(r.sum===6354&&r.inc===1550,'Gold-Rechnung: alle festen Käufe 6.354, Welle 1–100 einmal geschafft bringt 1.550',r.cost.join('+')+' = '+r.sum);
 await E(()=>{__bw.S.gold=1000;__bw.save()});await E(()=>{document.getElementById('shopgo').click()});await dismiss();await lose();
 r=await shopList();
 ok(r.includes('troops: Soldat → 2 Gold | Soldaten-Tempo: alle 4 s → Erst Soldat(aus)')&&r.includes('castle: Heilung: +2 → 20 Gold | Mauer: 3 HP → 15 Gold'),'Shop-Liste mit Stufen',r.replace(/\n/g,' // '));
@@ -53,7 +53,7 @@ r=await E(()=>{const g=__bw,S=g.S;S.own.dagger=S.own.star=S.own.bow=S.own.wand=S
   let mx=0,t0=performance.now(),n=0,spawned=0;const tot=g.state().queue;
   for(let i=0;i<60*30;i++){if(g.state().paused)break;const en=g.ens();g.setHp(10);S.wallHp=25;const t=en[(i*13)%Math.max(1,en.length)];if(i>600)g.hold(t?{x:t.x,y:t.y}:null);g.step(1/60);n++;mx=Math.max(mx,g.state().enemies)}
   g.hold(null);return {tot,mx,left:g.state().queue,ms:(performance.now()-t0)/n,n}});
-ok(r.tot===1521&&r.mx<=260&&r.mx>100&&r.ms<6,'Welle 100: 1.521 Gegner, viele gleichzeitig, Logik bleibt schnell',`bis zu ${r.mx} gleichzeitig, ${r.ms.toFixed(2)} ms pro Bild`);
+ok(r.tot===1525&&r.mx<=260&&r.mx>100&&r.ms<6,'Welle 100: 1.525 Gegner, viele gleichzeitig, Logik bleibt schnell',`bis zu ${r.mx} gleichzeitig, ${r.ms.toFixed(2)} ms pro Bild`);
 await E(()=>{const g=__bw;g.S.active='star';g.hud();for(let i=0;i<300;i++){g.setHp(10);g.S.wallHp=25;g.step(1/60)}});
 const f=await p.evaluate(()=>new Promise(res=>{let n=0,t0=performance.now();const g=__bw;const tick=()=>{g.setHp(10);g.S.wallHp=25;n++;if(performance.now()-t0<2500)requestAnimationFrame(tick);else res([n/2.5,g.state().enemies])};requestAnimationFrame(tick)}));
 ok(f[0]>30,'Bildrate in Welle 100 ohne Angriff (Emulator ohne Grafikkarte)',f[0].toFixed(0)+' Bilder/s bei '+f[1]+' Gegnern');

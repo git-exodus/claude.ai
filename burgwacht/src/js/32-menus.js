@@ -3,7 +3,7 @@
  * the ability overview. Also decides when the game is paused.
  */
 
-const OVERLAY_IDS = ['menu', 'shop', 'pausep', 'abil', 'dialog'];
+const OVERLAY_IDS = ['menu', 'shop', 'pausep', 'abil', 'dialog', 'chestfx'];
 const isOpen = id => !$(id).hidden;
 
 /** The game is paused exactly while any overlay is open. Call after showing or hiding one. */
@@ -33,6 +33,7 @@ function showMenu() {
   world.particles = [];
   world.texts = [];
   refreshPause();
+  playMusic('menu');
 }
 
 function showMenuPage(id) {
@@ -101,6 +102,7 @@ function startGame(index, fresh) {
   renderHud();
   save();
   toast('Welle ' + S.wave);
+  playMusic('game');
 }
 
 /* ---------- Pause menu ---------- */
@@ -108,6 +110,7 @@ function startGame(index, fresh) {
 function renderPause() {
   $('p-snd').textContent = 'Ton: ' + (DB.opts.mute ? 'aus' : 'an');
   $('p-vib').textContent = 'Vibration: ' + (DB.opts.vib ? 'an' : 'aus');
+  $('p-music').textContent = 'Musik: ' + (DB.opts.music ? 'an' : 'aus');
 }
 function openPause() {
   if (session.paused) return;
@@ -170,7 +173,7 @@ function closeDialog() {
 function showIntro() {
   showDialog({
     title: 'Sire!',
-    text: 'Sire, die Monster greifen an. Nehmt Euer Schwert. Wir müssen uns aufrüsten!',
+    text: 'Sire, die Monster greifen an. Nehmt Eure Dolche. Wir müssen uns aufrüsten!',
     buttons: [{ label: 'Zu den Waffen!' }],
   });
 }
@@ -183,6 +186,18 @@ function showWaveHintOnce() {
   showDialog({
     title: 'Tipp',
     text: 'Oben links wählst du mit den Pfeilen die Welle selbst. Ist eine Welle zu schwer, geh ein paar Wellen zurück: Dort gibt es auch Gold, und deine Waffen leveln weiter.',
+    buttons: [{ label: 'Verstanden' }],
+  });
+}
+
+/** One-time hint after wave 2: long press on a weapon shows its abilities. */
+function showSkillHintOnce() {
+  if (S.hints.skills || !debugFlags.skillHint) return;
+  S.hints.skills = true;
+  save();
+  showDialog({
+    title: 'Tipp',
+    text: 'Halte eine Waffe unten gedrückt, um alle ihre Fähigkeiten zu sehen – auch die, die erst mit höherem Level kommen.',
     buttons: [{ label: 'Verstanden' }],
   });
 }
@@ -262,6 +277,12 @@ $('p-snd').addEventListener('click', () => {
   save();
   renderPause();
   sound(700, 0.08, 'triangle');
+});
+$('p-music').addEventListener('click', () => {
+  DB.opts.music = !DB.opts.music;
+  save();
+  renderPause();
+  playMusic(musicForScreen());
 });
 $('p-vib').addEventListener('click', () => {
   DB.opts.vib = !DB.opts.vib;

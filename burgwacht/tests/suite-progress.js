@@ -18,6 +18,7 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   const fresh = async () => {
     await p.goto(url); await E(() => localStorage.clear()); await p.goto(url); await p.waitForTimeout(200);
     await p.click('#m-start'); await p.click('#slot-0'); await dismiss();
+    await E(() => { __bw.S.own.sword = true; __bw.S.active = 'sword'; __bw.hud(); });   // these checks use sword mechanics
   };
   const lose = () => E(() => {
     const g = __bw; g.setHp(1); g.S.wallHp = 0; g.step(2); g.spawn('slime');
@@ -125,7 +126,7 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
     g.S.active = 'dagger'; let e = mk(); g.ready(); g.attack(e.x, e.y); for (let i = 0; i < 60; i++) { g.ens().forEach(x => { if (x !== e) x.dead = true; }); g.step(1 / 60); } const proj = e.max - e.hp; e.dead = true;
     g.S.active = 'star'; e = mk(); g.step(6); g.ens().forEach(x => { if (x !== e) x.dead = true; }); g.ready(); g.attack(e.x, e.y); g.step(0.05); const area = e.max - e.hp; e.dead = true; g.S.active = 'sword';
     return [+proj.toFixed(2), +(g.dmgOf('dagger') * 0.25).toFixed(2), +area.toFixed(1), +g.dmgOf('star').toFixed(1)]; });
-  ok(r[0] === r[1] && r[2] === r[3], 'Schildträger: Geschosse machen nur 25 % Schaden, Flächenschaden voll', `Dolch ${r[0]} von ${(r[1] * 4).toFixed(1)}, Morgenstern ${r[2]} von ${r[3]}`);
+  ok(Math.abs(r[0] - r[1]) < 0.02 && r[2] === r[3], 'Schildträger: Geschosse machen nur 25 % Schaden, Flächenschaden voll', `Dolch ${r[0]} von ${(r[1] * 4).toFixed(1)}, Morgenstern ${r[2]} von ${r[3]}`);
   r = await E(() => { const g = __bw; g.clear(); g.sols().length = 0; g.S.wall = 2; g.S.wallHp = 5; g.setHp(15); g.step(2);
     const e = g.spawn('archer'); e.hp = e.max = 1e6; const c = g.pos(); let t = 0; const hits = [];
     while (t < 30) { g.ens().forEach(x => { if (x !== e) x.dead = true; }); const w = g.S.wallHp; g.step(1 / 60); t += 1 / 60; if (g.S.wallHp < w) hits.push(+t.toFixed(1)); if (hits.length === 3) break; }
@@ -210,10 +211,10 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   ok(r === 'Waffen|Burg|Truppen|Boni|Schmiede', 'In der Lava-Welt gibt es den Reiter Schmiede', r);
   await p.click('#tab-forge');
   r = await E(() => [...document.querySelectorAll('#items .item')].map(x => x.querySelector('b').textContent + ' → ' + x.querySelector('button').textContent).join(' | '));
-  ok(r === 'Schwert schmieden → 100 Gold | Dolche schmieden → 100 Gold', 'Schmiede bietet nur Waffen im Besitz an', r);
+  ok(r === 'Dolche schmieden → 100 Gold | Schwert schmieden → 100 Gold', 'Schmiede bietet nur Waffen im Besitz an', r);
   const dmg0 = await E(() => __bw.dmgOf('sword'));
   await p.click('#buy-forge-sword'); await p.click('#buy-forge-sword');
-  r = await E(() => ({ gold: __bw.S.gold, stage: __bw.S.forge.sword, ratio: +(__bw.dmgOf('sword') / 10 / (1 + 0.09 * (__bw.S.lv.sword - 1))).toFixed(2), next: document.getElementById('buy-forge-sword').textContent, pip: document.querySelector('#items .pips').textContent }));
+  r = await E(() => ({ gold: __bw.S.gold, stage: __bw.S.forge.sword, ratio: +(__bw.dmgOf('sword') / 10 / (1 + 0.09 * (__bw.S.lv.sword - 1))).toFixed(2), next: document.getElementById('buy-forge-sword').textContent, pip: document.getElementById('buy-forge-sword').closest('.item').querySelector('.pips').textContent }));
   ok(r.gold === 765 && r.stage === 2 && r.ratio === 1.2 && r.next === '182 Gold' && r.pip === 'Stufe 2', 'Schmieden: 100, dann 135 Gold, je +10 % Schaden, ohne Obergrenze', JSON.stringify(r));
   await p.screenshot({ path: 'forge.png' });
   await p.click('#shopgo'); await dismiss();

@@ -12,7 +12,7 @@ function blankSave() {
     lv: perWeapon(1),          // weapon levels
     xp: perWeapon(0),          // XP towards the next level
     forge: perWeapon(0),       // forge stages per weapon (lava world shop), +10 % damage each
-    active: 'sword',           // weapon selected in the bar
+    active: STARTER_WEAPON,    // weapon selected in the bar
     world: 'meadow',           // world being played, key of WORLDS
     wave: 1,                   // wave currently being played in that world
     cleared: 0,                // highest wave ever cleared there (limits the wave arrows, pays gold once)
@@ -29,10 +29,10 @@ function blankSave() {
     goldLv: 0,                 // gold bonus tier, index into BONUS_TIERS
     xpLv: 0,                   // XP bonus tier, index into BONUS_TIERS
     // one-time purchases
-    own: { dagger: false, star: false, bow: false, wand: false, soldier: false, armor: false },
+    own: { sword: false, dagger: false, star: false, bow: false, wand: false, soldier: false, armor: false, knight: false },
     // things that last until the next defeat: chest boons (id -> times taken) and chests already opened ("world:wave")
     run: { boons: {}, chests: [] },
-    hints: { waves: false },   // one-time hint windows already shown
+    hints: { waves: false, skills: false },   // one-time hint windows already shown
     stats: { kills: 0, bosses: 0, bestCombo: 0, defeats: 0, goldEarned: 0 },
     ach: {},                   // achievement id -> true once rewarded
   };
@@ -59,6 +59,8 @@ function sanitizeSave(data) {
   save.goldLv = toCount(data.goldLv, BONUS_TIERS.length - 1);
   save.xpLv = toCount(data.xpLv, BONUS_TIERS.length - 1);
   for (const key in save.own) save.own[key] = !!data.own?.[key];
+  // Until 0.7 everybody started with the sword, so older saves always own it.
+  if (data.own && data.own.sword === undefined) save.own.sword = true;
   // 0.7 replaced the single "squad" upgrade by tiers and the tower archer by up to ten archers
   save.solCapLv = toCount(data.solCapLv ?? (data.own?.squad ? 1 : 0), SOLDIER_CAP_PRICES.length);
   save.archers = toCount(data.archers ?? (data.own?.tower ? 1 : 0), ARCHER_PRICES.length);
@@ -68,18 +70,19 @@ function sanitizeSave(data) {
   save.wave = clamp(data.wave | 0 || 1, 1, save.cleared + 1);
   save.parked.cleared = toCount(data.parked?.cleared);
   save.parked.wave = clamp(data.parked?.wave | 0 || 1, 1, save.parked.cleared + 1);
-  if (data.active === 'sword' || save.own[data.active]) save.active = data.active;
+  if (data.active === STARTER_WEAPON || save.own[data.active]) save.active = data.active;
 
   for (const id in data.run?.boons || {}) save.run.boons[id] = toCount(data.run.boons[id], 99);
   if (Array.isArray(data.run?.chests)) save.run.chests = data.run.chests.filter(key => typeof key === 'string').slice(0, 500);
   save.hints.waves = !!data.hints?.waves;
+  save.hints.skills = !!data.hints?.skills;
   for (const key in save.stats) save.stats[key] = toCount(data.stats?.[key]);
   for (const id in data.ach || {}) if (data.ach[id]) save.ach[id] = true;
   return save;
 }
 
 const S = blankSave();
-const DB = { slots: [null, null], opts: { mute: false, vib: true, speed: 1 } };
+const DB = { slots: [null, null], opts: { mute: false, music: true, vib: true, speed: 1 } };
 let slot = -1;   // index of the slot being played, -1 while in the main menu
 
 /** Reads slots and options from localStorage; storage may be unavailable, then defaults stay. */
@@ -90,6 +93,7 @@ function loadDatabase() {
       DB.slots = [0, 1].map(i => (stored.slots?.[i] ? sanitizeSave(stored.slots[i]) : null));
       DB.opts.mute = !!stored.opts?.mute;
       DB.opts.vib = stored.opts?.vib !== false;
+      DB.opts.music = stored.opts?.music !== false;
       DB.opts.speed = stored.opts?.speed === 2 ? 2 : 1;
     } else {
       const legacy = JSON.parse(localStorage.getItem(LEGACY_SAVE_KEY) || 'null');
@@ -114,7 +118,7 @@ function loadSlotIntoState(index, fresh) {
 
 /* ---------- Values derived from the save ---------- */
 
-const owned = id => id === 'sword' || S.own[id];
+const owned = id => id === STARTER_WEAPON || S.own[id];
 const currentWorld = () => WORLDS[S.world];
 
 /** Highest meadow wave cleared, no matter which world is being played. */

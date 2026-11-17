@@ -8,13 +8,15 @@ const shopList=()=>p.evaluate(()=>['weapons','castle','troops','boni'].map(t=>{d
 const buy=async(tab,id)=>{await p.click('#tab-'+tab);await p.click('#buy-'+id)};
 const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
 const url='file://'+require('path').resolve(__dirname,'../android/app/src/main/assets/index.html');const E=f=>p.evaluate(f);
-const fresh=async()=>{await p.goto(url);await E(()=>localStorage.clear());await p.goto(url);await p.waitForTimeout(200);await p.click('#m-start');await p.click('#slot-0');await dismiss()};
-await fresh();
+// Most checks below test sword mechanics, so fresh() hands out the sword (new games start with daggers).
+const fresh=async(giveSword=true)=>{await p.goto(url);await E(()=>localStorage.clear());await p.goto(url);await p.waitForTimeout(200);await p.click('#m-start');await p.click('#slot-0');await dismiss();if(giveSword)await E(()=>{__bw.S.own.sword=true;__bw.S.active='sword';__bw.hud()})};
+await fresh(false);
 // T1 start
 let r=await E(()=>({g:__bw.S.gold,l:[...document.querySelectorAll('.wp.locked')].map(x=>x.dataset.w),t:document.getElementById('gold').textContent}));
-ok(r.g===0&&r.t==='0','Start: 0 Gold');ok(r.l.join()==='dagger,star,bow,wand','Start: alle Waffen außer dem Schwert gesperrt',r.l);
-await p.click('#wp-dagger');ok(await E(()=>__bw.S.active)==='sword','Gesperrte Waffe lässt sich nicht wählen');
+ok(r.g===0&&r.t==='0','Start: 0 Gold');ok(r.l.join()==='sword,star,bow,wand','Start: alle Waffen außer den Dolchen gesperrt',r.l);ok(await E(()=>__bw.S.active)==='dagger','Neues Spiel beginnt mit den Dolchen');
+await p.click('#wp-sword');ok(await E(()=>__bw.S.active)==='dagger','Gesperrte Waffe lässt sich nicht wählen');
 ok(await E(()=>document.getElementById('wdown').disabled&&document.getElementById('wup').disabled),'Start: beide Pfeile deaktiviert');
+await E(()=>{__bw.S.own.sword=true;__bw.S.active='sword';__bw.hud()});
 // T2 cooldown
 await p.mouse.click(100,300);let a1=await E(()=>__bw.state().atkCount);await p.mouse.click(120,300);let a2=await E(()=>__bw.state().atkCount);
 await E(()=>__bw.step(3.6));await p.mouse.click(120,300);let a3=await E(()=>__bw.state().atkCount);
@@ -64,7 +66,7 @@ const lose=()=>E(()=>{const g=__bw;g.setHp(1);g.step(2);g.spawn('slime');for(let
 ok(await lose(),'Niederlage pausiert das Spiel');await E(()=>{__bw.S.gold=3});   // the tabs below re-render the shop with this amount
 ok(await E(()=>!document.getElementById('shop').hidden),'Shop öffnet sich nach Niederlage');
 r=await shopList();
-ok(r==='weapons: Dolche → 5 Gold(aus) | Morgenstern → 10 Gold(aus) | Bogen → 40 Gold(aus) | Feuerstab → 75 Gold(aus)\ncastle: Heilung: +2 → 20 Gold(aus) | Mauer: 3 HP → 15 Gold(aus) | Burg-Leben: 12 Leben → 60 Gold(aus) | Bogenschützen: 1 von 10 → 60 Gold(aus)\ntroops: Soldat → 2 Gold | Soldaten-Tempo: alle 4 s → Erst Soldat(aus) | Rüstung → Erst Soldat(aus) | Mehr Soldaten: bis 6 → Erst Soldat(aus)\nboni: Goldbonus: +25 % → 80 Gold(aus) | XP-Bonus: +25 % → 60 Gold(aus)','Shop-Preise und Sperren bei 3 Gold in allen vier Reitern',r.replace(/\n/g,' // '));
+ok(r==='weapons: Schwert → Gekauft(aus) | Morgenstern → 10 Gold(aus) | Bogen → 40 Gold(aus) | Feuerstab → 75 Gold(aus)\ncastle: Heilung: +2 → 20 Gold(aus) | Mauer: 3 HP → 15 Gold(aus) | Burg-Leben: 12 Leben → 60 Gold(aus) | Bogenschützen: 1 von 10 → 60 Gold(aus)\ntroops: Soldat → 2 Gold | Soldaten-Tempo: alle 4 s → Erst Soldat(aus) | Ritter → 300 Gold(aus) | Rüstung → Erst Soldat(aus) | Mehr Soldaten: bis 6 → Erst Soldat(aus)\nboni: Goldbonus: +25 % → 80 Gold(aus) | XP-Bonus: +25 % → 60 Gold(aus)','Shop-Preise und Sperren bei 3 Gold in allen vier Reitern',r.replace(/\n/g,' // '));
 await p.screenshot({path:'shop.png'});
 await buy('troops','soldier');r=await E(()=>({g:__bw.S.gold,s:__bw.S.own.soldier,t:document.getElementById('buy-soldier').textContent}));ok(r.g===1&&r.s&&r.t==='Gekauft','Soldat gekauft für 2 Gold',JSON.stringify(r));
 let ac=await E(()=>__bw.state().atkCount);await E(()=>{__bw.ready();__bw.attack(100,300)});ok(await E(()=>__bw.state().atkCount)===ac,'Kein Angriff, solange der Shop offen ist');
@@ -81,10 +83,10 @@ r=await E(()=>{const g=__bw;g.clear();g.sols().length=1;g.S.own.soldier=false;co
 ok(r.blocked&&r.moved<1,'Gegner bleibt am Soldaten stehen',r.moved.toFixed(2));ok(r.hits===3&&r.life>2&&r.life<3,'Soldat fällt nach genau 3 Schlägen',r.hits+' Treffer in '+r.life.toFixed(1)+' s');
 ok(r.dmg>0&&r.dmg<30,'Soldat macht nur minimalen Schaden',r.dmg.toFixed(1));ok(r.free>2,'Ohne Soldat läuft der Gegner weiter',r.free.toFixed(1));
 // T8 shop full purchase + heal
-await E(()=>{__bw.S.gold=70;__bw.clear()});ok(await lose(),'Zweite Niederlage');
-await buy('weapons','dagger');await buy('weapons','star');await p.click('#tab-castle');r=await E(()=>document.querySelectorAll('#items .item b')[0].textContent);ok(r==='Heilung: +2','Heilung zeigt zuerst Stufe +2',r);
+await E(()=>{__bw.S.gold=70;__bw.S.own.sword=false;__bw.S.active='dagger';__bw.clear()});ok(await lose(),'Zweite Niederlage');
+await buy('weapons','sword');await buy('weapons','star');await p.click('#tab-castle');r=await E(()=>document.querySelectorAll('#items .item b')[0].textContent);ok(r==='Heilung: +2','Heilung zeigt zuerst Stufe +2',r);
 await p.click('#buy-heal');await p.click('#buy-heal');ok(await E(()=>document.getElementById('buy-heal').textContent)==='Maximal','Heilung nach +3 ausgereizt');r=await E(()=>({g:__bw.S.gold,o:__bw.S.own,h:__bw.S.heal}));
-ok(r.g===5&&r.o.dagger&&r.o.star&&r.h===3,'Dolche 5, Morgenstern 10, Heilung 20 und 32 abgezogen (+2 Gold für die Welle davor)',JSON.stringify(r));
+ok(r.g===5&&r.o.sword&&r.o.star&&r.h===3,'Schwert 5, Morgenstern 10, Heilung 20 und 32 abgezogen (+2 Gold für die Welle davor)',JSON.stringify(r));
 await p.click('#shopgo');ok(await E(()=>document.getElementById('dialog').hidden),'Der Hinweis erscheint nur einmal');ok(await E(()=>[...document.querySelectorAll('.wp.locked')].map(x=>x.dataset.w).join())==='bow,wand','Gekaufte Waffen entsperrt, Bogen und Feuerstab noch nicht');
 await p.click('#wp-dagger');ok(await E(()=>__bw.S.active)==='dagger','Dolche wählbar');await p.click('#wp-star');ok(await E(()=>__bw.S.active)==='star','Morgenstern wählbar');
 await E(()=>__bw.setHp(4));r=await win();ok(r.hp===7,'Heilung +3 nach Welle',r.hp);

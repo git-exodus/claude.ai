@@ -5,6 +5,17 @@
 
 let audioContext = null;   // created lazily: browsers only allow audio after a user gesture
 
+/** The shared AudioContext for sounds and music, or null if the device has none. */
+function getAudio() {
+  try {
+    audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioContext.state === 'suspended') audioContext.resume();
+    return audioContext;
+  } catch (e) {
+    return null;
+  }
+}
+
 /**
  * Plays one tone.
  *   freq   start frequency in Hz
@@ -15,9 +26,9 @@ let audioContext = null;   // created lazily: browsers only allow audio after a 
  */
 function sound(freq, dur = 0.08, type = 'square', volume = 0.05, slide = 0) {
   if (DB.opts.mute) return;
+  const audioContext = getAudio();
+  if (!audioContext) return;
   try {
-    audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioContext.state === 'suspended') audioContext.resume();
     const now = audioContext.currentTime;
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();

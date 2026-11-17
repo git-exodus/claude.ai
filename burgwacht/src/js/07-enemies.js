@@ -31,7 +31,9 @@ function spawnEnemy(type, { at = spawnPoint(), mini = false } = {}) {
 
   const enemy = {
     type,
-    boss: type === 'boss',
+    boss: !!base.boss,
+    club: !!base.club,
+    siege: base.siege || 1,                   // damage to wall or castle
     shielded: !!base.shielded,
     ranged: !!base.ranged,
     mini,
@@ -53,6 +55,7 @@ function spawnEnemy(type, { at = spawnPoint(), mini = false } = {}) {
     burn: 0, burnDps: 0, burnTick: 0,
     orbitCd: 0,                               // re-hit delay for things that circle through enemies
     attackCd: 0,                              // delay between hits on a soldier
+    knightCd: 0,                              // game time before the knight can trample it again
   };
   world.enemies.push(enemy);
   return enemy;
@@ -258,10 +261,10 @@ function checkCastleContact(e) {
     if (nx * nx + ny * ny >= 1) return;
     e.dead = true;
     puff(e.x, e.y, e.color, 6);
-    wallHit(e.x, e.y);
+    wallHit(e.x, e.y, e.siege);
   } else if (dist(e.x, e.y, cx, cy) < castleRadius() + e.r) {
     e.dead = true;
     puff(e.x, e.y, e.color, 6);
-    castleHit();
+    castleHit(e.siege);
   }
 }

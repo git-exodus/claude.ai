@@ -16,19 +16,19 @@ await p.screenshot({path:'menu.png'});
 let t0=await E(()=>__bw.state().t);await p.waitForTimeout(400);ok(await E(()=>__bw.state().t)===t0,'Im Menü läuft keine Spielzeit');
 await p.click('#m-start');r=await E(()=>[...document.querySelectorAll('.slot span')].map(x=>x.textContent).join('|'));ok(r==='Leer|Leer','Platzwahl zeigt zwei leere Plätze',r);
 await p.click('#m-back');ok(await vis('m-main'),'Zurück führt ins Hauptmenü');
-await p.click('#m-start');await p.click('#slot-0');r=await E(()=>({d:!document.getElementById('dialog').hidden,t:document.getElementById('dlg-text').textContent,p:__bw.state().paused}));ok(r.d&&r.p&&r.t==='Sire, die Monster greifen an. Nehmt Euer Schwert. Wir müssen uns aufrüsten!','Neues Spiel beginnt mit dem Begrüßungsfenster',r.t);await p.click('#dlg-0');ok(!(await vis('menu'))&&await E(()=>__bw.slot()===0&&!__bw.state().paused),'Neues Spiel in Platz 1 läuft');
+await p.click('#m-start');await p.click('#slot-0');r=await E(()=>({d:!document.getElementById('dialog').hidden,t:document.getElementById('dlg-text').textContent,p:__bw.state().paused}));ok(r.d&&r.p&&r.t==='Sire, die Monster greifen an. Nehmt Eure Dolche. Wir müssen uns aufrüsten!','Neues Spiel beginnt mit dem Begrüßungsfenster',r.t);await p.click('#dlg-0');ok(!(await vis('menu'))&&await E(()=>__bw.slot()===0&&!__bw.state().paused),'Neues Spiel in Platz 1 läuft');
 // Waffenfenster
-r=await E(()=>[...document.getElementById('winfo').children].map(x=>x.textContent).join('|'));ok(r==='Schwert Lvl 1|Schaden 10|alle 3,5 s|Neu ab Lvl 5','Infozeile: Waffe, Schaden, Tempo, nächste Fähigkeit',r);
+r=await E(()=>[...document.getElementById('winfo').children].map(x=>x.textContent).join('|'));ok(r==='Dolche Lvl 1|Schaden 9|alle 2,0 s|Neu ab Lvl 5','Infozeile: Waffe, Schaden, Tempo, nächste Fähigkeit',r);
 r=await E(()=>{const w=document.getElementById('winfo'),b=document.getElementById('bar').getBoundingClientRect(),i=w.getBoundingClientRect(),k=document.querySelector('.wps').getBoundingClientRect();return [i.top>k.bottom,w.scrollWidth<=w.clientWidth+1,parseFloat(getComputedStyle(w).fontSize)]});ok(r[0]&&r[1]&&r[2]>=11,'Infozeile steht unter den Waffen, passt in die Breite und ist lesbar groß',r[2]+' px');
-r=await E(()=>['dagger','star','bow','wand'].map(w=>document.querySelector('#wp-'+w+' .badge').textContent).join('|'));ok(r==='5|10|40|75','Gesperrte Waffen zeigen ihren Preis',r);
+r=await E(()=>['sword','star','bow','wand'].map(w=>document.querySelector('#wp-'+w+' .badge').textContent).join('|'));ok(r==='5|10|40|75','Gesperrte Waffen zeigen ihren Preis',r);
 // Angriffsgeschwindigkeit
 r=await E(()=>{const S=__bw.S,o={};for(const w of['sword','dagger','star']){o[w]=[1,50.5,100].map(l=>{S.lv[w]=l;return +__bw.cdOf(w).toFixed(3)});S.lv[w]=1}return o});
 ok(JSON.stringify(r)==='{"sword":[3.5,2,0.5],"dagger":[2,1.15,0.3],"star":[5,3,1]}','Tempo linear: Schwert 3,5→0,5 · Dolche 2,0→0,3 · Morgenstern 5,0→1,0',JSON.stringify(r));
 r=await E(()=>{const S=__bw.S;let good=true,prev=9;for(let l=1;l<=100;l++){S.lv.dagger=l;const c=__bw.cdOf('dagger');if(!(c<prev))good=false;prev=c}S.lv.dagger=1;return good});ok(r,'Tempo wird mit jedem Level stetig schneller');
-r=await E(()=>{const g=__bw;g.S.lv.sword=100;g.hud();const t=[...document.getElementById('winfo').children].map(x=>x.textContent).join('|');g.S.lv.sword=1;g.hud();return t});ok(r==='Schwert Lvl 100|Schaden 99|alle 0,5 s|MAX','Infozeile auf Lvl 100',r);
+r=await E(()=>{const g=__bw;g.S.lv.dagger=100;g.hud();const t=[...document.getElementById('winfo').children].map(x=>x.textContent).join('|');g.S.lv.dagger=1;g.hud();return t});ok(r==='Dolche Lvl 100|Schaden 89|alle 0,3 s|MAX','Infozeile auf Lvl 100',r);
 // Dauerfeuer
 r=await E(()=>{const g=__bw;g.ready();const a=g.state().atkCount;g.hold({x:100,y:300});g.step(8);const n=g.state().atkCount-a;g.hold(null);g.step(8);return [n,g.state().atkCount-a]});
-ok(r[0]===3&&r[1]===3,'Finger halten: Dauerfeuer im Takt des Cooldowns, Loslassen stoppt',r);
+ok(r[0]===4&&r[1]===4,'Finger halten: Dauerfeuer im Takt des Cooldowns (Dolche alle 2 s), Loslassen stoppt',r);
 await p.mouse.move(120,330);await p.mouse.down();await p.waitForTimeout(150);r=await E(()=>__bw.state().atkCount);await p.mouse.up();ok(r>=4,'Echter Finger-Druck löst Angriff aus',r);
 // Pause
 await p.click('#b-pause');ok(await vis('pausep')&&await E(()=>__bw.state().paused),'Pause-Knopf hält das Spiel an');
@@ -50,14 +50,14 @@ r=await win();ok(r.w===1&&r.gold===4,'Welle halten: Wiederholung gibt wieder Gol
 ok(await E(()=>!document.getElementById('wup').disabled),'Pfeil hoch nach gehaltener Welle frei');
 await p.click('#b-hold');r=await win();ok(r.w===2,'Welle halten aus: es geht wieder weiter',r.w);
 // Fähigkeiten-Übersicht
-await E(()=>{__bw.S.lv.sword=27;__bw.hud()});
-const bb=await p.locator('#wp-sword').boundingBox();await p.mouse.move(bb.x+20,bb.y+20);await p.mouse.down();await p.waitForTimeout(650);await p.mouse.up();
+await E(()=>{__bw.S.lv.dagger=27;__bw.hud()});
+const bb=await p.locator('#wp-dagger').boundingBox();await p.mouse.move(bb.x+20,bb.y+20);await p.mouse.down();await p.waitForTimeout(650);await p.mouse.up();
 r=await E(()=>({v:!document.getElementById('abil').hidden,n:document.querySelectorAll('.ab').length,on:document.querySelectorAll('.ab.on').length,t:document.getElementById('abiltitle').textContent,p:__bw.state().paused}));
 ok(r.v&&r.n===13&&r.on===5&&r.p,'Lange drücken zeigt 13 Stufen, 5 davon frei bei Lvl 27',JSON.stringify(r));await p.screenshot({path:'abil.png'});
 await p.click('#abil-close');ok(!(await vis('abil'))&&await E(()=>!__bw.state().paused),'Übersicht schließen setzt fort');
-const bd=await p.locator('#wp-dagger').boundingBox();await p.mouse.move(bd.x+20,bd.y+20);await p.mouse.down();await p.waitForTimeout(650);await p.mouse.up();
-r=await E(()=>({on:document.querySelectorAll('.ab.on').length,a:__bw.S.active,t:document.getElementById('abiltitle').textContent}));ok(r.on===0&&r.a==='sword'&&r.t==='Dolche · gesperrt','Übersicht auch für gesperrte Waffe, ohne sie zu wählen',JSON.stringify(r));await p.click('#abil-close');
-await p.click('#wp-sword');ok(!(await vis('abil')),'Kurzes Tippen öffnet die Übersicht nicht');
+const bd=await p.locator('#wp-sword').boundingBox();await p.mouse.move(bd.x+20,bd.y+20);await p.mouse.down();await p.waitForTimeout(650);await p.mouse.up();
+r=await E(()=>({on:document.querySelectorAll('.ab.on').length,a:__bw.S.active,t:document.getElementById('abiltitle').textContent}));ok(r.on===0&&r.a==='dagger'&&r.t==='Schwert · gesperrt','Übersicht auch für gesperrte Waffe, ohne sie zu wählen',JSON.stringify(r));await p.click('#abil-close');
+await p.click('#wp-dagger');ok(!(await vis('abil')),'Kurzes Tippen öffnet die Übersicht nicht');
 // Zurück-Taste
 await E(()=>__back());ok(await vis('pausep'),'Zurück-Taste im Spiel öffnet Pause');await E(()=>__back());ok(!(await vis('pausep')),'Zurück-Taste in der Pause setzt fort');
 // Spielstände
@@ -74,7 +74,7 @@ await E(()=>__bw.showMenu());await p.click('#m-start');await p.click('#slot-0');
 await p.goto(url);await p.waitForTimeout(200);r=await E(()=>({a:__bw.DB.slots.map(x=>x&&x.gold),v:__bw.DB.opts.vib}));ok(JSON.stringify(r.a)==='[0,3]'&&r.v===false,'Beide Spielstände und Einstellungen überstehen einen Neustart',JSON.stringify(r));
 // Migration
 await E(()=>{localStorage.clear();localStorage.setItem('burgwacht-v2',JSON.stringify({lv:{sword:9,dagger:2,star:1},xp:{sword:1,dagger:0,star:0},wave:3,active:'sword',gold:4,cleared:3,heal:1,own:{dagger:true,star:false,soldier:true}}))});
-await p.goto(url);await p.waitForTimeout(200);await p.click('#m-load');r=await E(()=>document.querySelector('#slot-0 span').textContent);ok(r==='Welle 3 · 4 Gold · Schwert 9 · Dolche 2','Alter Spielstand wandert in Platz 1',r);
+await p.goto(url);await p.waitForTimeout(200);await p.click('#m-load');r=await E(()=>document.querySelector('#slot-0 span').textContent);ok(r==='Welle 3 · 4 Gold · Dolche 2 · Schwert 9','Alter Spielstand wandert in Platz 1 und behält das Schwert',r);
 // Exit in der App
 const p2=await ctx.newPage();await p2.addInitScript(()=>{window.__exited=0;window.Android={exit(){window.__exited++}}});await p2.goto(url);await p2.waitForTimeout(200);
 ok(await p2.evaluate(()=>!document.getElementById('m-exit').hidden),'In der App ist Exit sichtbar');await p2.click('#m-exit');ok(await p2.evaluate(()=>window.__exited)===1,'Exit ruft das Schließen der App auf');

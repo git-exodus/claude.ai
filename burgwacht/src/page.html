@@ -15,7 +15,7 @@
   <div id="toast" role="status"></div>
   <div id="hint">Tippen oder halten, um anzugreifen</div>
   <div id="bar">
-    <div class="wps"><button class="wp" id="wp-sword" data-w="sword" type="button" aria-pressed="true"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-dagger" data-w="dagger" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-star" data-w="star" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-bow" data-w="bow" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-wand" data-w="wand" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button></div>
+    <div class="wps"><button class="wp" id="wp-dagger" data-w="dagger" type="button" aria-pressed="true"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-sword" data-w="sword" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-star" data-w="star" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-bow" data-w="bow" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-wand" data-w="wand" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button></div>
     <div id="winfo"></div>
     <div id="wxp"><i></i></div>
   </div>
@@ -34,6 +34,7 @@
       <h2 id="pausetitle">Pause</h2>
       <button class="big" id="p-resume" type="button">Weiter</button>
       <button class="big alt" id="p-snd" type="button">Ton: an</button>
+      <button class="big alt" id="p-music" type="button">Musik: an</button>
       <button class="big alt" id="p-vib" type="button">Vibration: an</button>
       <button class="big alt" id="p-stats" type="button">Statistik &amp; Erfolge</button>
       <button class="big alt" id="p-menu" type="button">Hauptmenü</button>
@@ -47,6 +48,7 @@
       <button class="big" id="abil-close" type="button">Schließen</button>
     </div>
   </div>
+  <div id="chestfx" class="ov" hidden><canvas></canvas><p>Tippen zum Öffnen</p></div>
   <div id="dialog" class="ov" hidden>
     <div class="shopcard" role="dialog" aria-labelledby="dlg-title">
       <h2 id="dlg-title"></h2>
@@ -67,6 +69,6 @@
       <div id="slotlist" class="mcol" style="margin:0;width:100%"></div>
       <button class="big alt" id="m-back" type="button">Zurück</button>
     </div>
-    <div id="credit">@made by Brownii (Claude.ai) · v0.7</div>
+    <div id="credit">@made by Brownii (Claude.ai) · v0.8</div>
   </div>
 </div>

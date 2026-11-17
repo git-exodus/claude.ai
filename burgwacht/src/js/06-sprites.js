@@ -351,6 +351,15 @@ function drawEnemy(e) {
   ctx.lineJoin = 'round';
   ctx.fillStyle = e.flash > 0 ? '#fff' : e.freeze > 0 ? '#bfe9ff' : e.slow > 0 ? '#9fd0ee' : e.color;
 
+  // newer enemy types bring their own complete drawing (body, eyes, weapon)
+  const customDraw = ENEMY_DRAWERS[e.type];
+  if (customDraw) {
+    customDraw(e, r, squash, moving, t);
+    ctx.restore();
+    drawEnemyStatus(e, x, y);
+    return;
+  }
+
   if (e.type === 'bat') {
     const flap = moving ? sin(t * 22 + e.phase) * 0.6 : 0;
     for (const side of [-1, 1]) {
@@ -456,6 +465,229 @@ function drawEnemy(e) {
 
   drawEnemyStatus(e, x, y);
 }
+
+/* ---------- Kobolds, wolves and orcs ---------- */
+
+/** Pair of eyes at (±dx, y); `angry` adds slanted brows. Coordinates are in the enemy's local space. */
+function enemyEyes(dx, y, size, iris = INK, angry = false) {
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(-dx, y, size, 0, TAU);
+  ctx.arc(dx, y, size, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = iris;
+  ctx.beginPath();
+  ctx.arc(-dx, y + size * 0.2, size * 0.5, 0, TAU);
+  ctx.arc(dx, y + size * 0.2, size * 0.5, 0, TAU);
+  ctx.fill();
+  if (!angry) return;
+  ctx.beginPath();
+  ctx.moveTo(-dx - size * 1.1, y - size * 1.5);
+  ctx.lineTo(-dx + size * 0.9, y - size * 0.8);
+  ctx.moveTo(dx + size * 1.1, y - size * 1.5);
+  ctx.lineTo(dx - size * 0.9, y - size * 0.8);
+  ctx.stroke();
+}
+const towardsCastle = e => (cx >= e.x ? 1 : -1);
+
+/** Kobolds: big head, long ears. The slow one carries a heavy sack, the quick one a knife. */
+function drawKobold(e, r, squash, moving, t) {
+  const side = towardsCastle(e), fast = e.type === 'koboldFast', body = ctx.fillStyle;
+  if (fast) ctx.rotate(side * 0.18);           // leans forward while running
+  ctx.scale(2 - squash, squash);
+  if (!fast) {                                  // sack on the back
+    ctx.fillStyle = '#8a6a44';
+    ctx.beginPath();
+    ctx.ellipse(-side * r * 0.75, r * 0.05, r * 0.6, r * 0.7, -side * 0.3, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = body;
+  }
+  const stride = moving ? sin(t * (fast ? 26 : 8) + e.phase) * r * 0.25 : 0;
+  ctx.lineWidth = 2.2 * U;
+  ctx.beginPath();                              // legs
+  ctx.moveTo(-r * 0.25, r * 0.6);
+  ctx.lineTo(-r * 0.3 + stride, r * 1.05);
+  ctx.moveTo(r * 0.25, r * 0.6);
+  ctx.lineTo(r * 0.3 - stride, r * 1.05);
+  ctx.stroke();
+  ctx.lineWidth = 2 * U;
+  ctx.beginPath();                              // body
+  ctx.ellipse(0, r * 0.35, r * 0.55, r * 0.5, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();                              // ears
+  for (const s of [-1, 1]) {
+    ctx.moveTo(s * r * 0.45, -r * 0.55);
+    ctx.lineTo(s * r * 1.35, -r * 0.95);
+    ctx.lineTo(s * r * 0.55, -r * 0.2);
+  }
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();                              // head
+  ctx.arc(0, -r * 0.4, r * 0.62, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(120,60,30,.45)';        // nose
+  fillCircle(ctx, side * r * 0.2, -r * 0.22, r * 0.17);
+  enemyEyes(r * 0.24, -r * 0.48, r * 0.15, '#c0392b', fast);
+  if (fast) drawSword(ctx, side * r * 0.55, r * 0.35, side > 0 ? -0.5 : PI + 0.5, r * 1.1, '#dfe6ee', '#5b4636');
+}
+
+/** Wolves in side view, running towards the castle. The alpha is bigger, with a white mane. */
+function drawWolf(e, r, squash, moving, t) {
+  const side = towardsCastle(e), alpha = e.type === 'wolfAlpha', body = ctx.fillStyle;
+  ctx.scale(side, 1);
+  const gallop = moving ? sin(t * 20 + e.phase) : 0;
+  ctx.translate(0, -Math.abs(gallop) * r * 0.12);
+  ctx.lineWidth = 2.4 * U;                      // legs
+  ctx.beginPath();
+  for (const [lx, phase] of [[-0.7, 1], [-0.45, -1], [0.55, -1], [0.8, 1]]) {
+    ctx.moveTo(lx * r, r * 0.2);
+    ctx.lineTo(lx * r + gallop * phase * r * 0.3, r * 0.85);
+  }
+  ctx.stroke();
+  ctx.lineWidth = 2 * U;
+  ctx.beginPath();                              // tail
+  ctx.moveTo(-r * 1.0, -r * 0.1);
+  ctx.quadraticCurveTo(-r * 1.6, -r * (0.2 + gallop * 0.15), -r * 1.55, -r * 0.65);
+  ctx.quadraticCurveTo(-r * 1.3, -r * 0.3, -r * 0.95, r * 0.15);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();                              // body
+  ctx.ellipse(0, 0, r * 1.1, r * 0.55, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  if (alpha) {                                  // mane
+    ctx.fillStyle = '#e8e8f0';
+    ctx.beginPath();
+    ctx.ellipse(r * 0.6, -r * 0.2, r * 0.55, r * 0.6, 0.3, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = body;
+  }
+  ctx.beginPath();                              // ears
+  ctx.moveTo(r * 0.8, -r * 0.65);
+  ctx.lineTo(r * 0.92, -r * 1.2);
+  ctx.lineTo(r * 1.12, -r * 0.7);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();                              // head and snout
+  ctx.arc(r * 1.05, -r * 0.4, r * 0.45, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(r * 1.5, -r * 0.25, r * 0.32, r * 0.2, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = INK;
+  fillCircle(ctx, r * 1.78, -r * 0.3, r * 0.08);   // nose tip
+  ctx.fillStyle = alpha ? '#ff4a3a' : '#ffd24a';
+  fillCircle(ctx, r * 1.12, -r * 0.48, r * 0.1);   // eye
+  if (alpha) drawCrown(r * 1.02, -r * 0.82, r * 0.5);
+}
+
+/** Orcs: broad green body with tusks; club, axe or (king) crown, cape and a spiked club. */
+function drawOrc(e, r, squash, moving, t) {
+  const side = towardsCastle(e), king = e.type === 'orcKing', body = ctx.fillStyle;
+  ctx.scale(2 - squash, squash);
+  if (king) {                                   // cape behind the body
+    ctx.fillStyle = '#9b2a2a';
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.8, -r * 0.5);
+    ctx.lineTo(-r * 1.05, r * 0.95);
+    ctx.lineTo(r * 1.05, r * 0.95);
+    ctx.lineTo(r * 0.8, -r * 0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = body;
+  }
+  ctx.beginPath();                              // body
+  ctx.roundRect(-r * 0.85, -r * 0.55, r * 1.7, r * 1.45, r * 0.45);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#6b4a2e';                    // belt
+  ctx.fillRect(-r * 0.85, r * 0.35, r * 1.7, r * 0.18);
+  ctx.fillStyle = body;
+  ctx.beginPath();                              // head
+  ctx.arc(0, -r * 0.7, r * 0.55, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#f2ead8';                    // tusks
+  ctx.beginPath();
+  for (const s of [-1, 1]) {
+    ctx.moveTo(s * r * 0.3, -r * 0.45);
+    ctx.lineTo(s * r * 0.36, -r * 0.82);
+    ctx.lineTo(s * r * 0.12, -r * 0.5);
+  }
+  ctx.fill();
+  ctx.stroke();
+  enemyEyes(r * 0.22, -r * 0.82, r * 0.13, '#c0392b', true);
+  if (king) drawCrown(0, -r * 1.22, r * 0.75);
+
+  // weapon in the hand towards the castle, swinging a little while walking
+  const swing = moving ? sin(t * 6 + e.phase) * 0.25 : 0;
+  ctx.save();
+  ctx.translate(side * r * 0.9, r * 0.05);
+  ctx.rotate(side * (-0.9 + swing));
+  if (e.type === 'orcAxe') {
+    ctx.fillStyle = '#7a5530';
+    ctx.fillRect(-r * 0.07, -r * 1.25, r * 0.14, r * 1.4);
+    ctx.strokeRect(-r * 0.07, -r * 1.25, r * 0.14, r * 1.4);
+    ctx.fillStyle = '#cfd6de';
+    ctx.beginPath();
+    ctx.moveTo(r * 0.05, -r * 1.2);
+    ctx.quadraticCurveTo(r * 0.75, -r * 1.05, r * 0.6, -r * 0.55);
+    ctx.lineTo(r * 0.05, -r * 0.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#8a5a34';
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.08, r * 0.1);
+    ctx.lineTo(-r * 0.22, -r * 1.2);
+    ctx.lineTo(r * 0.22, -r * 1.2);
+    ctx.lineTo(r * 0.08, r * 0.1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    if (king) {                                 // iron spikes on the king's club
+      ctx.fillStyle = '#cfd6de';
+      for (const sy of [-1.05, -0.75]) for (const s of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(s * r * 0.18, sy * r - r * 0.1);
+        ctx.lineTo(s * r * 0.4, sy * r);
+        ctx.lineTo(s * r * 0.16, sy * r + r * 0.1);
+        ctx.fill();
+      }
+    }
+  }
+  ctx.restore();
+}
+
+/** Golden crown centred at (x, y), `w` wide. */
+function drawCrown(x, y, w) {
+  ctx.fillStyle = '#f5b93a';
+  ctx.beginPath();
+  ctx.moveTo(x - w / 2, y + w * 0.3);
+  ctx.lineTo(x - w / 2, y - w * 0.15);
+  ctx.lineTo(x - w / 4, y + w * 0.08);
+  ctx.lineTo(x, y - w * 0.3);
+  ctx.lineTo(x + w / 4, y + w * 0.08);
+  ctx.lineTo(x + w / 2, y - w * 0.15);
+  ctx.lineTo(x + w / 2, y + w * 0.3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
+const ENEMY_DRAWERS = {
+  koboldSlow: drawKobold, koboldFast: drawKobold,
+  wolf: drawWolf, wolfAlpha: drawWolf,
+  orcClub: drawOrc, orcAxe: drawOrc, orcKing: drawOrc,
+};
 
 /** Shield bearer: armoured body with a big shield held towards the castle. */
 function drawShieldBearerBody(e, r, squash) {

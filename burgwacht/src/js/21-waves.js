@@ -8,8 +8,19 @@ function buildWave() {
   const waveNo = S.wave;
   const count = currentWorld().count(waveNo);
   wave.queue = [];
-  for (let i = 0; i < count; i++) wave.queue.push(rollEnemyType(waveNo));
-  if (waveNo % BOSS_EVERY === 0) wave.queue.splice(Math.floor(wave.queue.length / 2), 0, 'boss');   // boss arrives mid-wave
+  // A wolf pack is queued as a leader entry 'wolf+' plus followers; spawnFromQueue() brings them in together.
+  const pack = leader => [leader, ...Array(WOLF_PACK - (leader === 'wolf+' ? 1 : 0)).fill('wolf')];
+  for (let i = 0; i < count;) {
+    const type = rollEnemyType(waveNo);
+    if (type === 'wolf' && count - i >= WOLF_PACK) { wave.queue.push(...pack('wolf+')); i += WOLF_PACK; }
+    else { wave.queue.push(type === 'wolf' ? 'slime' : type); i++; }   // no room left for a whole pack
+  }
+  if (waveNo % BOSS_EVERY === 0) {   // the boss arrives mid-wave; the wolf alpha brings a pack
+    const boss = bossFor(waveNo);
+    let at = Math.floor(wave.queue.length / 2);
+    while (wave.queue[at] === 'wolf') at++;   // never split a pack: insert before the next non-follower
+    wave.queue.splice(at, 0, ...(boss === 'wolfAlpha' ? pack(boss) : [boss]));
+  }
   wave.spawnGap = spawnGapFor(count);
   wave.spawnTimer = 0;
   wave.total = wave.queue.length;
@@ -18,6 +29,7 @@ function buildWave() {
 /** Clears the field and starts the current wave over. `all` also removes the soldiers. */
 function restartWave(all) {
   clearField(all);
+  if (all) resetKnight();
   wave.pause = 1.5;
   buildWave();
 }
@@ -31,11 +43,26 @@ function updateWave(dt) {
     // three spawns behind, so the backlog arrives quickly once there is room.
     wave.spawnTimer = Math.max(wave.spawnTimer - dt, -wave.spawnGap * 3);
     while (wave.spawnTimer <= 0 && wave.queue.length && world.enemies.length < MAX_ENEMIES_ALIVE) {
-      spawnEnemy(wave.queue.shift());
+      spawnFromQueue();
       wave.spawnTimer += wave.spawnGap;
     }
   } else if (!world.enemies.length) {
     completeWave();
+  }
+}
+
+/** Spawns the next queue entry; a pack leader takes its wolves along, close beside it. */
+function spawnFromQueue() {
+  let type = wave.queue.shift();
+  const leads = type === 'wolf+' || type === 'wolfAlpha';
+  if (type === 'wolf+') type = 'wolf';
+  const leader = spawnEnemy(type);
+  if (!leads) return;
+  let k = 0;
+  while (wave.queue[0] === 'wolf') {
+    wave.queue.shift();
+    const a = (k++ / WOLF_PACK) * TAU;
+    spawnEnemy('wolf', { at: { x: leader.x + cos(a) * 16 * U, y: leader.y + sin(a) * 16 * U } });
   }
 }
 
@@ -59,6 +86,7 @@ function completeWave() {
   save();
   renderHud();
   if (waveNo % CHEST_EVERY === 0) offerChest(waveNo);
+  else if (waveNo === 2) showSkillHintOnce();
 }
 
 /** Wave arrows: jump to any wave up to the first one not cleared yet. Resets the enemies. */

@@ -107,6 +107,10 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
 .stat b{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
 .stat.wide{flex-direction:column;gap:2px}.stat.wide b{white-space:normal;color:var(--gold)}
 .stat.open{color:var(--dim)}.stat.done b{color:var(--ok)}
+/* chest opening animation: full-screen canvas, the game is paused underneath */
+#chestfx{background:radial-gradient(circle at 50% 46%,rgba(255,210,120,.18),rgba(6,8,12,.72) 60%);cursor:pointer}
+#chestfx canvas{position:absolute;inset:0;width:100%;height:100%}
+#chestfx p{position:absolute;left:0;right:0;bottom:22%;margin:0;text-align:center;font-weight:800;font-size:13px;color:var(--dim)}
 /* info panel in the chest window */
 .infobox{display:grid;gap:4px;padding:10px 12px;border-radius:12px;background:rgba(90,180,255,.12);border:1px solid rgba(90,180,255,.45);font-size:12.5px;line-height:1.35;font-weight:700;color:var(--dim)}
 .infobox b{color:var(--xp);font-size:13.5px}
@@ -149,7 +153,7 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
   <div id="toast" role="status"></div>
   <div id="hint">Tippen oder halten, um anzugreifen</div>
   <div id="bar">
-    <div class="wps"><button class="wp" id="wp-sword" data-w="sword" type="button" aria-pressed="true"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-dagger" data-w="dagger" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-star" data-w="star" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-bow" data-w="bow" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-wand" data-w="wand" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button></div>
+    <div class="wps"><button class="wp" id="wp-dagger" data-w="dagger" type="button" aria-pressed="true"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-sword" data-w="sword" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-star" data-w="star" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-bow" data-w="bow" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button><button class="wp" id="wp-wand" data-w="wand" type="button" aria-pressed="false"><canvas width="72" height="72"></canvas><span class="cd"></span><span class="badge"></span></button></div>
     <div id="winfo"></div>
     <div id="wxp"><i></i></div>
   </div>
@@ -168,6 +172,7 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
       <h2 id="pausetitle">Pause</h2>
       <button class="big" id="p-resume" type="button">Weiter</button>
       <button class="big alt" id="p-snd" type="button">Ton: an</button>
+      <button class="big alt" id="p-music" type="button">Musik: an</button>
       <button class="big alt" id="p-vib" type="button">Vibration: an</button>
       <button class="big alt" id="p-stats" type="button">Statistik &amp; Erfolge</button>
       <button class="big alt" id="p-menu" type="button">Hauptmenü</button>
@@ -181,6 +186,7 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
       <button class="big" id="abil-close" type="button">Schließen</button>
     </div>
   </div>
+  <div id="chestfx" class="ov" hidden><canvas></canvas><p>Tippen zum Öffnen</p></div>
   <div id="dialog" class="ov" hidden>
     <div class="shopcard" role="dialog" aria-labelledby="dlg-title">
       <h2 id="dlg-title"></h2>
@@ -201,7 +207,7 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
       <div id="slotlist" class="mcol" style="margin:0;width:100%"></div>
       <button class="big alt" id="m-back" type="button">Zurück</button>
     </div>
-    <div id="credit">@made by Brownii (Claude.ai) · v0.7</div>
+    <div id="credit">@made by Brownii (Claude.ai) · v0.8</div>
   </div>
 </div>
 
@@ -269,7 +275,7 @@ function fillEllipse(c, x, y, rx, ry) {
  * the place to tune the game.
  */
 
-const VERSION = '0.7';
+const VERSION = '0.8';
 const SAVE_KEY = 'burgwacht-v3';
 const LEGACY_SAVE_KEY = 'burgwacht-v2';   // single-save format from before the start menu
 
@@ -295,7 +301,7 @@ const MAX_ENEMIES_ALIVE = 260;     // further enemies wait off-screen until ther
 
 /*
  * Weapons, in the order of the weapon bar.
- *   price        gold needed in the shop (the sword is owned from the start)
+ *   price        gold needed in the shop (STARTER_WEAPON is owned from the start)
  *   baseDamage   damage of one basic hit at level 1
  *   cooldown     [seconds at level 1, seconds at ABILITY_CAP], linear in between
  *   milestones   level -> name of the ability unlocked there; abilities stack
@@ -303,13 +309,13 @@ const MAX_ENEMIES_ALIVE = 260;     // further enemies wait off-screen until ther
  * The attack code lives in 10-weapon-*.js and is attached as WEAPONS[id].attack.
  */
 const WEAPONS = {
-  sword: {
-    name: 'Schwert', price: 0, baseDamage: 10, cooldown: [3.5, 0.5], baseAbility: 'Schwerthieb',
-    milestones: { 5: 'Doppelschwert', 10: 'Dreier-Fächer', 15: 'Echo-Hieb', 25: 'Kreisende Schwerter', 30: 'Klingenwelle', 40: 'Geisterschwert', 50: 'Riesenschwert', 60: 'Schwertsplitter', 70: 'Zeitriss', 80: 'Spiegelhieb', 90: 'Kettenblitz', 100: 'Schwertregen' },
-  },
   dagger: {
-    name: 'Dolche', price: 5, baseDamage: 9, cooldown: [2, 0.3], baseAbility: 'Wurfdolch', aimLine: true,
+    name: 'Dolche', price: 0, baseDamage: 9, cooldown: [2, 0.3], baseAbility: 'Wurfdolch', aimLine: true,
     milestones: { 5: 'Dolchfächer', 10: 'Abpraller', 15: 'Durchbohren', 25: 'Ansteckendes Gift', 30: 'Schattenklon', 40: 'Splitterdolche', 50: 'Bumerang', 60: 'Giftwolke', 70: 'Dolchfallen', 80: 'Zielsuchend', 90: 'Dolchwirbel', 100: 'Kettenreaktion' },
+  },
+  sword: {
+    name: 'Schwert', price: 5, baseDamage: 10, cooldown: [3.5, 0.5], baseAbility: 'Schwerthieb',
+    milestones: { 5: 'Doppelschwert', 10: 'Dreier-Fächer', 15: 'Echo-Hieb', 25: 'Kreisende Schwerter', 30: 'Klingenwelle', 40: 'Geisterschwert', 50: 'Riesenschwert', 60: 'Schwertsplitter', 70: 'Zeitriss', 80: 'Spiegelhieb', 90: 'Kettenblitz', 100: 'Schwertregen' },
   },
   star: {
     name: 'Morgenstern', price: 10, baseDamage: 16, cooldown: [5, 1], baseAbility: 'Flächenschlag',
@@ -325,6 +331,7 @@ const WEAPONS = {
   },
 };
 const WEAPON_IDS = Object.keys(WEAPONS);
+const STARTER_WEAPON = 'dagger';
 
 /*
  * XP needed to go from `level` to `level + 1`.
@@ -344,13 +351,29 @@ const xpNeeded = level => Math.round(4 + 6.4 * Math.pow(level, 1.4));
  *   ranged      stops at ARCHER_RANGE and shoots the castle instead of walking into it
  */
 const ENEMY_TYPES = {
-  slime:  { r: 13, hp: 3, hpStep: 1, sp: 20, xp: 1, color: '#59c36a' },
-  bat:    { r: 10, hp: 1, hpStep: 1, sp: 38, xp: 1, color: '#9a6bd6' },
-  ogre:   { r: 19, hp: 14, hpStep: 3, sp: 13, xp: 3, color: '#4f9aa8' },
-  shield: { r: 14, hp: 14, hpStep: 1, sp: 16, xp: 2, color: '#8793b8', shielded: true },
-  archer: { r: 11, hp: 4, hpStep: 1, sp: 22, xp: 2, color: '#c9787f', ranged: true },
-  boss:   { r: 30, hp: 90, hpStep: 15, sp: 9, xp: 20, color: '#e07a3f' },
+  slime:      { name: 'Schleim', r: 13, hp: 3, hpStep: 1, sp: 20, xp: 1, color: '#59c36a' },
+  bat:        { name: 'Fledermaus', r: 10, hp: 1, hpStep: 1, sp: 38, xp: 1, color: '#9a6bd6' },
+  koboldSlow: { name: 'Kobold', r: 11, hp: 7, hpStep: 2, sp: 10, xp: 2, color: '#b58a4a' },
+  koboldFast: { name: 'Flinker Kobold', r: 9, hp: 2, hpStep: 1, sp: 50, xp: 1, color: '#c8cf4a' },
+  wolf:       { name: 'Wolf', r: 11, hp: 3, hpStep: 1, sp: 46, xp: 1, color: '#8a8f99' },
+  ogre:       { name: 'Oger', r: 19, hp: 14, hpStep: 3, sp: 13, xp: 3, color: '#4f9aa8' },
+  orcClub:    { name: 'Ork mit Keule', r: 18, hp: 22, hpStep: 4, sp: 14, xp: 4, color: '#6f8f3a', club: true },
+  orcAxe:     { name: 'Ork mit Axt', r: 17, hp: 16, hpStep: 3, sp: 21, xp: 4, color: '#82a046', siege: 2 },
+  shield:     { name: 'Schildträger', r: 14, hp: 14, hpStep: 1, sp: 16, xp: 2, color: '#8793b8', shielded: true },
+  archer:     { name: 'Armbrustschütze', r: 11, hp: 4, hpStep: 1, sp: 22, xp: 2, color: '#c9787f', ranged: true },
+  // bosses
+  boss:       { name: 'Schleimkönig', r: 30, hp: 90, hpStep: 15, sp: 9, xp: 20, color: '#e07a3f', boss: true },
+  wolfAlpha:  { name: 'Wolfsalpha', r: 22, hp: 70, hpStep: 12, sp: 26, xp: 20, color: '#5d6270', boss: true },
+  orcKing:    { name: 'Orkkönig', r: 31, hp: 120, hpStep: 20, sp: 8, xp: 25, color: '#4f7a2a', boss: true, club: true, siege: 3 },
 };
+/*
+ * Extra fields above:
+ *   boss    counts as a boss (statistics, knockback resistance, crown)
+ *   club    hits soldiers for 2 and knocks them back (orcs with clubs)
+ *   siege   damage to wall or castle when it gets there (default 1)
+ */
+const BOSS_ROTATION = ['boss', 'wolfAlpha', 'orcKing'];   // wave 5, 10, 15, then again from the start
+const WOLF_PACK = 4;                                      // wolves always come in packs; the alpha brings one
 const BOSS_EVERY = 5;        // a boss joins every 5th wave
 const SHIELD_BLOCK = 0.25;   // share of projectile damage that gets through a shield
 const ARCHER_RANGE = 105;    // distance from the castle (in U) at which archers stop
@@ -413,28 +436,44 @@ const WORLDS = {
     enemyHp: (type, w) => meadowHp(type, LAVA_UNLOCK_WAVE) * (1 + 0.15 * (w - 1) + 0.008 * (w - 1) * (w - 1)),
     speedFactor: () => 1.5,
     goldMult: 3, xpMult: 3, splitSlimes: true,
-    colors: { slime: '#f0702a', bat: '#ffb23e', ogre: '#7a5560', shield: '#a8553a', archer: '#d94a3a', boss: '#c22b2b' },
+    colors: { slime: '#f0702a', bat: '#ffb23e', ogre: '#7a5560', shield: '#a8553a', archer: '#d94a3a', boss: '#c22b2b',
+      koboldSlow: '#a5603a', koboldFast: '#ffcf4a', wolf: '#5a4a48', orcClub: '#8a4a2a', orcAxe: '#a65a2a', wolfAlpha: '#3a2a2a', orcKing: '#6a2a1a' },
   },
 };
 
-/** Random type for one regular enemy. Bats come from wave 2, ogres from 3, shield bearers from 8, archers from 12. */
+/*
+ * Share of each regular enemy type per wave: [type, first wave, share per wave, maximum share].
+ * Whatever is left over are slimes. 'wolf' means a whole pack of WOLF_PACK wolves.
+ */
+const ENEMY_SHARES = [
+  ['bat', 2, 0.05, 0.22],
+  ['ogre', 3, 0.03, 0.18],
+  ['koboldFast', 4, 0.02, 0.10],
+  ['koboldSlow', 4, 0.015, 0.08],
+  ['wolf', 6, 0.01, 0.05],
+  ['shield', 8, 0.008, 0.07],
+  ['orcClub', 10, 0.008, 0.08],
+  ['archer', 12, 0.004, 0.05],
+  ['orcAxe', 15, 0.006, 0.07],
+];
+
+/** Random type for one regular enemy of the wave. */
 function rollEnemyType(waveNo) {
   let roll = Math.random();
-  const shares = [
-    ['ogre', waveNo >= 3 ? Math.min(0.25, 0.04 * waveNo) : 0],
-    ['bat', waveNo >= 2 ? Math.min(0.3, 0.06 * waveNo) : 0],
-    ['shield', waveNo >= 8 ? Math.min(0.1, 0.01 * waveNo) : 0],
-    ['archer', waveNo >= 12 ? Math.min(0.05, 0.004 * waveNo) : 0],
-  ];
-  for (const [type, share] of shares) {
+  for (const [type, from, perWave, max] of ENEMY_SHARES) {
+    if (waveNo < from) continue;
+    const share = Math.min(max, perWave * waveNo);
     if (roll < share) return type;
     roll -= share;
   }
   return 'slime';
 }
 
+/** Boss of a boss wave: slime king, wolf alpha and orc king take turns. */
+const bossFor = waveNo => BOSS_ROTATION[(Math.floor(waveNo / BOSS_EVERY) - 1) % BOSS_ROTATION.length];
+
 /* Tests set window.__bwQuiet before the game loads so rewards do not disturb what they measure. */
-const debugFlags = { achievements: !window.__bwQuiet, chests: !window.__bwQuiet };
+const debugFlags = { achievements: !window.__bwQuiet, chests: !window.__bwQuiet, skillHint: !window.__bwQuiet, chestAnimation: !window.__bwQuiet, music: !window.__bwQuiet };
 
 /* ===== 03-state.js ===== */
 /*
@@ -451,7 +490,7 @@ function blankSave() {
     lv: perWeapon(1),          // weapon levels
     xp: perWeapon(0),          // XP towards the next level
     forge: perWeapon(0),       // forge stages per weapon (lava world shop), +10 % damage each
-    active: 'sword',           // weapon selected in the bar
+    active: STARTER_WEAPON,    // weapon selected in the bar
     world: 'meadow',           // world being played, key of WORLDS
     wave: 1,                   // wave currently being played in that world
     cleared: 0,                // highest wave ever cleared there (limits the wave arrows, pays gold once)
@@ -468,10 +507,10 @@ function blankSave() {
     goldLv: 0,                 // gold bonus tier, index into BONUS_TIERS
     xpLv: 0,                   // XP bonus tier, index into BONUS_TIERS
     // one-time purchases
-    own: { dagger: false, star: false, bow: false, wand: false, soldier: false, armor: false },
+    own: { sword: false, dagger: false, star: false, bow: false, wand: false, soldier: false, armor: false, knight: false },
     // things that last until the next defeat: chest boons (id -> times taken) and chests already opened ("world:wave")
     run: { boons: {}, chests: [] },
-    hints: { waves: false },   // one-time hint windows already shown
+    hints: { waves: false, skills: false },   // one-time hint windows already shown
     stats: { kills: 0, bosses: 0, bestCombo: 0, defeats: 0, goldEarned: 0 },
     ach: {},                   // achievement id -> true once rewarded
   };
@@ -498,6 +537,8 @@ function sanitizeSave(data) {
   save.goldLv = toCount(data.goldLv, BONUS_TIERS.length - 1);
   save.xpLv = toCount(data.xpLv, BONUS_TIERS.length - 1);
   for (const key in save.own) save.own[key] = !!data.own?.[key];
+  // Until 0.7 everybody started with the sword, so older saves always own it.
+  if (data.own && data.own.sword === undefined) save.own.sword = true;
   // 0.7 replaced the single "squad" upgrade by tiers and the tower archer by up to ten archers
   save.solCapLv = toCount(data.solCapLv ?? (data.own?.squad ? 1 : 0), SOLDIER_CAP_PRICES.length);
   save.archers = toCount(data.archers ?? (data.own?.tower ? 1 : 0), ARCHER_PRICES.length);
@@ -507,18 +548,19 @@ function sanitizeSave(data) {
   save.wave = clamp(data.wave | 0 || 1, 1, save.cleared + 1);
   save.parked.cleared = toCount(data.parked?.cleared);
   save.parked.wave = clamp(data.parked?.wave | 0 || 1, 1, save.parked.cleared + 1);
-  if (data.active === 'sword' || save.own[data.active]) save.active = data.active;
+  if (data.active === STARTER_WEAPON || save.own[data.active]) save.active = data.active;
 
   for (const id in data.run?.boons || {}) save.run.boons[id] = toCount(data.run.boons[id], 99);
   if (Array.isArray(data.run?.chests)) save.run.chests = data.run.chests.filter(key => typeof key === 'string').slice(0, 500);
   save.hints.waves = !!data.hints?.waves;
+  save.hints.skills = !!data.hints?.skills;
   for (const key in save.stats) save.stats[key] = toCount(data.stats?.[key]);
   for (const id in data.ach || {}) if (data.ach[id]) save.ach[id] = true;
   return save;
 }
 
 const S = blankSave();
-const DB = { slots: [null, null], opts: { mute: false, vib: true, speed: 1 } };
+const DB = { slots: [null, null], opts: { mute: false, music: true, vib: true, speed: 1 } };
 let slot = -1;   // index of the slot being played, -1 while in the main menu
 
 /** Reads slots and options from localStorage; storage may be unavailable, then defaults stay. */
@@ -529,6 +571,7 @@ function loadDatabase() {
       DB.slots = [0, 1].map(i => (stored.slots?.[i] ? sanitizeSave(stored.slots[i]) : null));
       DB.opts.mute = !!stored.opts?.mute;
       DB.opts.vib = stored.opts?.vib !== false;
+      DB.opts.music = stored.opts?.music !== false;
       DB.opts.speed = stored.opts?.speed === 2 ? 2 : 1;
     } else {
       const legacy = JSON.parse(localStorage.getItem(LEGACY_SAVE_KEY) || 'null');
@@ -553,7 +596,7 @@ function loadSlotIntoState(index, fresh) {
 
 /* ---------- Values derived from the save ---------- */
 
-const owned = id => id === 'sword' || S.own[id];
+const owned = id => id === STARTER_WEAPON || S.own[id];
 const currentWorld = () => WORLDS[S.world];
 
 /** Highest meadow wave cleared, no matter which world is being played. */
@@ -730,6 +773,17 @@ function clearField(all) {
 
 let audioContext = null;   // created lazily: browsers only allow audio after a user gesture
 
+/** The shared AudioContext for sounds and music, or null if the device has none. */
+function getAudio() {
+  try {
+    audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioContext.state === 'suspended') audioContext.resume();
+    return audioContext;
+  } catch (e) {
+    return null;
+  }
+}
+
 /**
  * Plays one tone.
  *   freq   start frequency in Hz
@@ -740,9 +794,9 @@ let audioContext = null;   // created lazily: browsers only allow audio after a 
  */
 function sound(freq, dur = 0.08, type = 'square', volume = 0.05, slide = 0) {
   if (DB.opts.mute) return;
+  const audioContext = getAudio();
+  if (!audioContext) return;
   try {
-    audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioContext.state === 'suspended') audioContext.resume();
     const now = audioContext.currentTime;
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
@@ -772,6 +826,315 @@ const ATTACK_SOUNDS = {
   bow: [700, 0.07, 'triangle', 0.05, -350],
   wand: [260, 0.16, 'sawtooth', 0.05, 240],
 };
+
+/* ===== 05-music.js ===== */
+/*
+ * Background music, synthesised live with the Web Audio API (no audio files).
+ *
+ *   'menu'  "Burghof": lute melody over a drone, D dorian, 16 bars in 3/4
+ *   'game'  "Wachtposten": flute folk tune in 6/8 with frame drum and plucked bass
+ *
+ * A track is a list of bars; bar(i) returns that bar's notes as
+ * [instrument, startBeat, midiNote, lengthInBeats, velocity]. The player
+ * schedules one bar at a time slightly ahead of the audio clock, which keeps
+ * the timing exact even when the game's frames stutter.
+ */
+
+const MUSIC_VOLUME = 0.42;
+const MUSIC_LOOKAHEAD = 0.3;   // seconds of music scheduled in advance
+
+const music = {
+  bus: null,        // gain node all notes of the current piece go through; replaced to cut a piece off
+  hall: null,       // reverb send of the current bus
+  noise: null,      // shared white-noise buffer for drums and breath
+  track: null,      // id of the piece that should play, or null
+  bar: 0,
+  nextBarTime: 0,
+  timer: 0,
+};
+
+const midiHz = midi => 440 * Math.pow(2, (midi - 69) / 12);
+
+/** New output chain: bus -> compressor -> speakers, plus a convolution hall. */
+function buildMusicBus(ac) {
+  const comp = ac.createDynamicsCompressor();
+  comp.threshold.value = -18;
+  comp.ratio.value = 3;
+  comp.connect(ac.destination);
+  const bus = ac.createGain();
+  bus.gain.value = 0;
+  bus.gain.linearRampToValueAtTime(MUSIC_VOLUME, ac.currentTime + 1.2);   // fade in
+  bus.connect(comp);
+  // hall: exponentially decaying noise as impulse response
+  const length = Math.floor(ac.sampleRate * 2.2), impulse = ac.createBuffer(2, length, ac.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = impulse.getChannelData(ch);
+    for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 3.2);
+  }
+  const convolver = ac.createConvolver();
+  convolver.buffer = impulse;
+  const hall = ac.createGain();
+  hall.gain.value = 0.3;
+  hall.connect(convolver);
+  convolver.connect(bus);
+  music.bus = bus;
+  music.hall = hall;
+  if (!music.noise) {
+    music.noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+    const data = music.noise.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  }
+}
+
+/* ---------- Instruments: (ac, time, midi, seconds, velocity) ---------- */
+
+/** Gain stage of one note, feeding the bus and (by `send`) the hall. */
+function noteOut(ac, send) {
+  const gain = ac.createGain();
+  gain.gain.value = 0;
+  gain.connect(music.bus);
+  if (send) {
+    const s = ac.createGain();
+    s.gain.value = send;
+    gain.connect(s);
+    s.connect(music.hall);
+  }
+  return gain;
+}
+function tone(ac, type, freq, start, end, dest, detune = 0) {
+  const o = ac.createOscillator();
+  o.type = type;
+  o.frequency.value = freq;
+  o.detune.value = detune;
+  o.connect(dest);
+  o.start(start);
+  o.stop(end + 0.05);
+  return o;
+}
+function lowpass(ac, freq, q = 0.7) {
+  const f = ac.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.value = freq;
+  f.Q.value = q;
+  return f;
+}
+function noiseBurst(ac, start, end, dest) {
+  const n = ac.createBufferSource();
+  n.buffer = music.noise;
+  n.loop = true;
+  n.connect(dest);
+  n.start(start);
+  n.stop(end + 0.05);
+}
+
+const MUSIC_INSTRUMENTS = {
+  /** Plucked lute: bright attack, the filter closes quickly, long decay. */
+  lute(ac, t, m, dur, v) {
+    const len = Math.min(Math.max(dur * 1.6, 0.5), 1.8), out = noteOut(ac, 0.35), f = lowpass(ac, 3200, 1.2);
+    f.frequency.setValueAtTime(3200, t);
+    f.frequency.exponentialRampToValueAtTime(700, t + 0.35);
+    f.connect(out);
+    tone(ac, 'triangle', midiHz(m), t, t + len, f);
+    tone(ac, 'sawtooth', midiHz(m), t, t + len, f, 6);
+    out.gain.setValueAtTime(0, t);
+    out.gain.linearRampToValueAtTime(v * 0.32, t + 0.006);
+    out.gain.exponentialRampToValueAtTime(0.0008, t + len);
+  },
+  /** Soft sustained drone under the lute. */
+  drone(ac, t, m, dur, v) {
+    const out = noteOut(ac, 0.4), f = lowpass(ac, 520);
+    f.connect(out);
+    tone(ac, 'sawtooth', midiHz(m), t, t + dur + 0.6, f, -5);
+    tone(ac, 'sawtooth', midiHz(m), t, t + dur + 0.6, f, 5);
+    out.gain.setValueAtTime(0, t);
+    out.gain.linearRampToValueAtTime(v * 0.07, t + 0.5);
+    out.gain.setValueAtTime(v * 0.07, t + dur);
+    out.gain.linearRampToValueAtTime(0, t + dur + 0.6);
+  },
+  /** Flute: sine with a soft octave, vibrato and a little breath noise. */
+  flute(ac, t, m, dur, v) {
+    const end = t + dur, out = noteOut(ac, 0.4);
+    const octave = ac.createGain();
+    octave.gain.value = 0.12;
+    octave.connect(out);
+    const a = tone(ac, 'sine', midiHz(m), t, end + 0.1, out);
+    const b = tone(ac, 'triangle', midiHz(m) * 2, t, end + 0.1, octave);
+    const lfo = ac.createOscillator(), depth = ac.createGain();
+    lfo.frequency.value = 5.6;
+    depth.gain.setValueAtTime(0, t);
+    depth.gain.linearRampToValueAtTime(12, t + 0.3);
+    lfo.connect(depth);
+    depth.connect(a.detune);
+    depth.connect(b.detune);
+    lfo.start(t);
+    lfo.stop(end + 0.1);
+    const breath = ac.createGain(), band = ac.createBiquadFilter();
+    breath.gain.value = 0.05;
+    band.type = 'bandpass';
+    band.frequency.value = midiHz(m) * 2;
+    band.Q.value = 6;
+    band.connect(breath);
+    breath.connect(out);
+    noiseBurst(ac, t, end, band);
+    out.gain.setValueAtTime(0, t);
+    out.gain.linearRampToValueAtTime(v * 0.22, t + 0.045);
+    out.gain.setValueAtTime(v * 0.2, end - 0.03);
+    out.gain.linearRampToValueAtTime(0, end + 0.08);
+  },
+  /** Plucked bass. */
+  bass(ac, t, m, dur, v) {
+    const len = Math.min(dur, 0.9), out = noteOut(ac, 0.1), f = lowpass(ac, 800, 3);
+    f.frequency.setValueAtTime(900, t);
+    f.frequency.exponentialRampToValueAtTime(220, t + len);
+    f.connect(out);
+    tone(ac, 'square', midiHz(m), t, t + len, f);
+    tone(ac, 'triangle', midiHz(m), t, t + len, f);
+    out.gain.setValueAtTime(0, t);
+    out.gain.linearRampToValueAtTime(v * 0.3, t + 0.008);
+    out.gain.exponentialRampToValueAtTime(0.001, t + len);
+  },
+  /** Frame drum: falling sine plus a short thump of noise. */
+  drum(ac, t, m, dur, v) {
+    const out = noteOut(ac, 0.25), o = tone(ac, 'sine', midiHz(m) * 2.2, t, t + 0.5, out);
+    o.frequency.setValueAtTime(midiHz(m) * 2.2, t);
+    o.frequency.exponentialRampToValueAtTime(midiHz(m), t + 0.07);
+    out.gain.setValueAtTime(0, t);
+    out.gain.linearRampToValueAtTime(v * 0.75, t + 0.004);
+    out.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+    const thump = noteOut(ac, 0.15), f = lowpass(ac, 1100);
+    f.connect(thump);
+    noiseBurst(ac, t, t + 0.06, f);
+    thump.gain.setValueAtTime(v * 0.25, t);
+    thump.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+  },
+  /** Tambourine tick. */
+  tick(ac, t, m, dur, v) {
+    const out = noteOut(ac, 0.1), f = ac.createBiquadFilter();
+    f.type = 'highpass';
+    f.frequency.value = 6500;
+    f.connect(out);
+    noiseBurst(ac, t, t + 0.06, f);
+    out.gain.setValueAtTime(v * 0.3, t);
+    out.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  },
+};
+
+/* ---------- The two pieces ---------- */
+
+const MUSIC_CHORDS = { Dm: [50, 3], C: [48, 4], G: [43, 4], Am: [45, 3], F: [41, 4], D: [50, 4], Em: [52, 3] };
+/** [[midi|null, beats], ...] -> note events of one instrument from beat 0 of the bar. */
+function melodyLine(instrument, notes, velocity, transpose = 0) {
+  const events = [];
+  let beat = 0;
+  for (const [midi, length] of notes) {
+    if (midi !== null) events.push([instrument, beat, midi + transpose, length, velocity]);
+    beat += length;
+  }
+  return events;
+}
+/** Chord root moved into octave 2 (MIDI 36..47), for bass and drone. */
+const chordRootLow = name => 36 + ((MUSIC_CHORDS[name][0] - 36) % 12);
+
+const MUSIC_TRACKS = {
+  menu: {   // "Burghof"
+    bpm: 72, beats: 3, bars: 16,
+    melody: [
+      [[69, 2], [67, 1]], [[65, 1], [64, 1], [62, 1]], [[64, 2], [65, 1]], [[67, 3]],
+      [[69, 2], [72, 1]], [[71, 1], [69, 1], [67, 1]], [[69, 2], [65, 1]], [[64, 3]],
+      [[74, 2], [72, 1]], [[69, 1], [67, 1], [69, 1]], [[65, 1], [67, 1], [64, 1]], [[62, 3]],
+      [[65, 1], [67, 1], [69, 1]], [[72, 2], [69, 1]], [[67, 1], [65, 1], [64, 1]], [[62, 3]],
+    ],
+    chords: ['Dm', 'Dm', 'C', 'G', 'Am', 'G', 'F', 'Am', 'Dm', 'Am', 'C', 'Dm', 'F', 'Am', 'C', 'Dm'],
+    bar(i) {
+      const [root, third] = MUSIC_CHORDS[this.chords[i]];
+      const events = melodyLine('lute', this.melody[i], 0.95);
+      // arpeggio in eighths: root, fifth, octave, tenth, octave, fifth
+      [0, 7, 12, 12 + third, 12, 7].forEach((step, k) => events.push(['lute', k * 0.5, root + step, 0.5, k === 0 ? 0.55 : 0.36]));
+      if (i % 2 === 0) events.push(['drone', 0, 38, 6, 1], ['drone', 0, 45, 6, 0.8]);
+      return events;
+    },
+  },
+  game: {   // "Wachtposten"; a beat is an eighth note of the 6/8 bar
+    bpm: 300, beats: 6, bars: 8,
+    melody: [
+      [[71, 2], [69, 1], [67, 2], [69, 1]], [[71, 1], [74, 1], [71, 1], [69, 2], [67, 1]],
+      [[64, 2], [66, 1], [67, 2], [69, 1]], [[71, 3], [69, 3]],
+      [[71, 2], [69, 1], [67, 2], [69, 1]], [[71, 1], [74, 1], [76, 1], [74, 2], [71, 1]],
+      [[69, 1], [71, 1], [69, 1], [67, 2], [66, 1]], [[64, 3], [null, 3]],
+    ],
+    chords: ['Em', 'G', 'Em', 'D', 'Em', 'G', 'D', 'Em'],
+    bar(i) {
+      const events = melodyLine('flute', this.melody[i], 0.85, 12);
+      const low = chordRootLow(this.chords[i]);
+      events.push(['bass', 0, low, 2, 0.8], ['bass', 3, low + 7, 2, 0.6]);
+      events.push(['drum', 0, 45, 1, 0.55], ['drum', 3, 45, 1, 0.38], ['tick', 2, 0, 0, 0.18], ['tick', 5, 0, 0, 0.18]);
+      if (i % 4 === 0) events.push(['drone', 0, 40, 24, 0.7]);
+      return events;
+    },
+  },
+};
+
+/* ---------- Player ---------- */
+
+function scheduleMusic() {
+  const ac = audioContext, track = MUSIC_TRACKS[music.track];
+  if (!ac || !track) return;
+  const secondsPerBeat = 60 / track.bpm;
+  while (music.nextBarTime < ac.currentTime + MUSIC_LOOKAHEAD) {
+    for (const [instrument, beat, midi, length, velocity] of track.bar(music.bar)) {
+      MUSIC_INSTRUMENTS[instrument](ac, music.nextBarTime + beat * secondsPerBeat, midi, length * secondsPerBeat, velocity);
+    }
+    music.nextBarTime += track.beats * secondsPerBeat;
+    music.bar = (music.bar + 1) % track.bars;
+  }
+}
+
+/** Cuts the current piece off quickly; notes already queued die with their bus. */
+function silenceMusic() {
+  clearInterval(music.timer);
+  const ac = audioContext, bus = music.bus;
+  if (ac && bus) {
+    bus.gain.cancelScheduledValues(ac.currentTime);
+    bus.gain.setValueAtTime(bus.gain.value, ac.currentTime);
+    bus.gain.linearRampToValueAtTime(0, ac.currentTime + 0.3);
+    setTimeout(() => bus.disconnect(), 400);
+  }
+  music.bus = null;
+}
+
+/**
+ * Plays piece `id` ('menu' or 'game') in a loop, or nothing for null.
+ * Calling it with the piece that already plays does nothing.
+ */
+function playMusic(id) {
+  const wanted = DB.opts.music && debugFlags.music ? id : null;
+  if (wanted === music.track && (music.bus || !wanted)) return;
+  silenceMusic();
+  music.track = wanted;
+  if (!wanted) return;
+  const ac = getAudio();
+  if (!ac) return;
+  buildMusicBus(ac);
+  music.bar = 0;
+  music.nextBarTime = ac.currentTime + 0.15;
+  scheduleMusic();
+  music.timer = setInterval(scheduleMusic, 50);
+}
+
+/** The piece that belongs to the current screen. */
+const musicForScreen = () => (slot < 0 ? 'menu' : 'game');
+
+/*
+ * Browsers only start audio after a user gesture, so the menu music begins
+ * with the first tap. In the background (app minimised, tab hidden) the
+ * audio clock is suspended so nothing plays.
+ */
+addEventListener('pointerdown', () => { if (!music.bus) playMusic(musicForScreen()); }, { capture: true });
+document.addEventListener('visibilitychange', () => {
+  if (!audioContext) return;
+  if (document.hidden) audioContext.suspend();
+  else audioContext.resume();
+});
 
 /* ===== 06-sprites.js ===== */
 /*
@@ -1127,6 +1490,15 @@ function drawEnemy(e) {
   ctx.lineJoin = 'round';
   ctx.fillStyle = e.flash > 0 ? '#fff' : e.freeze > 0 ? '#bfe9ff' : e.slow > 0 ? '#9fd0ee' : e.color;
 
+  // newer enemy types bring their own complete drawing (body, eyes, weapon)
+  const customDraw = ENEMY_DRAWERS[e.type];
+  if (customDraw) {
+    customDraw(e, r, squash, moving, t);
+    ctx.restore();
+    drawEnemyStatus(e, x, y);
+    return;
+  }
+
   if (e.type === 'bat') {
     const flap = moving ? sin(t * 22 + e.phase) * 0.6 : 0;
     for (const side of [-1, 1]) {
@@ -1232,6 +1604,229 @@ function drawEnemy(e) {
 
   drawEnemyStatus(e, x, y);
 }
+
+/* ---------- Kobolds, wolves and orcs ---------- */
+
+/** Pair of eyes at (±dx, y); `angry` adds slanted brows. Coordinates are in the enemy's local space. */
+function enemyEyes(dx, y, size, iris = INK, angry = false) {
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(-dx, y, size, 0, TAU);
+  ctx.arc(dx, y, size, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = iris;
+  ctx.beginPath();
+  ctx.arc(-dx, y + size * 0.2, size * 0.5, 0, TAU);
+  ctx.arc(dx, y + size * 0.2, size * 0.5, 0, TAU);
+  ctx.fill();
+  if (!angry) return;
+  ctx.beginPath();
+  ctx.moveTo(-dx - size * 1.1, y - size * 1.5);
+  ctx.lineTo(-dx + size * 0.9, y - size * 0.8);
+  ctx.moveTo(dx + size * 1.1, y - size * 1.5);
+  ctx.lineTo(dx - size * 0.9, y - size * 0.8);
+  ctx.stroke();
+}
+const towardsCastle = e => (cx >= e.x ? 1 : -1);
+
+/** Kobolds: big head, long ears. The slow one carries a heavy sack, the quick one a knife. */
+function drawKobold(e, r, squash, moving, t) {
+  const side = towardsCastle(e), fast = e.type === 'koboldFast', body = ctx.fillStyle;
+  if (fast) ctx.rotate(side * 0.18);           // leans forward while running
+  ctx.scale(2 - squash, squash);
+  if (!fast) {                                  // sack on the back
+    ctx.fillStyle = '#8a6a44';
+    ctx.beginPath();
+    ctx.ellipse(-side * r * 0.75, r * 0.05, r * 0.6, r * 0.7, -side * 0.3, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = body;
+  }
+  const stride = moving ? sin(t * (fast ? 26 : 8) + e.phase) * r * 0.25 : 0;
+  ctx.lineWidth = 2.2 * U;
+  ctx.beginPath();                              // legs
+  ctx.moveTo(-r * 0.25, r * 0.6);
+  ctx.lineTo(-r * 0.3 + stride, r * 1.05);
+  ctx.moveTo(r * 0.25, r * 0.6);
+  ctx.lineTo(r * 0.3 - stride, r * 1.05);
+  ctx.stroke();
+  ctx.lineWidth = 2 * U;
+  ctx.beginPath();                              // body
+  ctx.ellipse(0, r * 0.35, r * 0.55, r * 0.5, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();                              // ears
+  for (const s of [-1, 1]) {
+    ctx.moveTo(s * r * 0.45, -r * 0.55);
+    ctx.lineTo(s * r * 1.35, -r * 0.95);
+    ctx.lineTo(s * r * 0.55, -r * 0.2);
+  }
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();                              // head
+  ctx.arc(0, -r * 0.4, r * 0.62, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(120,60,30,.45)';        // nose
+  fillCircle(ctx, side * r * 0.2, -r * 0.22, r * 0.17);
+  enemyEyes(r * 0.24, -r * 0.48, r * 0.15, '#c0392b', fast);
+  if (fast) drawSword(ctx, side * r * 0.55, r * 0.35, side > 0 ? -0.5 : PI + 0.5, r * 1.1, '#dfe6ee', '#5b4636');
+}
+
+/** Wolves in side view, running towards the castle. The alpha is bigger, with a white mane. */
+function drawWolf(e, r, squash, moving, t) {
+  const side = towardsCastle(e), alpha = e.type === 'wolfAlpha', body = ctx.fillStyle;
+  ctx.scale(side, 1);
+  const gallop = moving ? sin(t * 20 + e.phase) : 0;
+  ctx.translate(0, -Math.abs(gallop) * r * 0.12);
+  ctx.lineWidth = 2.4 * U;                      // legs
+  ctx.beginPath();
+  for (const [lx, phase] of [[-0.7, 1], [-0.45, -1], [0.55, -1], [0.8, 1]]) {
+    ctx.moveTo(lx * r, r * 0.2);
+    ctx.lineTo(lx * r + gallop * phase * r * 0.3, r * 0.85);
+  }
+  ctx.stroke();
+  ctx.lineWidth = 2 * U;
+  ctx.beginPath();                              // tail
+  ctx.moveTo(-r * 1.0, -r * 0.1);
+  ctx.quadraticCurveTo(-r * 1.6, -r * (0.2 + gallop * 0.15), -r * 1.55, -r * 0.65);
+  ctx.quadraticCurveTo(-r * 1.3, -r * 0.3, -r * 0.95, r * 0.15);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();                              // body
+  ctx.ellipse(0, 0, r * 1.1, r * 0.55, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  if (alpha) {                                  // mane
+    ctx.fillStyle = '#e8e8f0';
+    ctx.beginPath();
+    ctx.ellipse(r * 0.6, -r * 0.2, r * 0.55, r * 0.6, 0.3, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = body;
+  }
+  ctx.beginPath();                              // ears
+  ctx.moveTo(r * 0.8, -r * 0.65);
+  ctx.lineTo(r * 0.92, -r * 1.2);
+  ctx.lineTo(r * 1.12, -r * 0.7);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();                              // head and snout
+  ctx.arc(r * 1.05, -r * 0.4, r * 0.45, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(r * 1.5, -r * 0.25, r * 0.32, r * 0.2, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = INK;
+  fillCircle(ctx, r * 1.78, -r * 0.3, r * 0.08);   // nose tip
+  ctx.fillStyle = alpha ? '#ff4a3a' : '#ffd24a';
+  fillCircle(ctx, r * 1.12, -r * 0.48, r * 0.1);   // eye
+  if (alpha) drawCrown(r * 1.02, -r * 0.82, r * 0.5);
+}
+
+/** Orcs: broad green body with tusks; club, axe or (king) crown, cape and a spiked club. */
+function drawOrc(e, r, squash, moving, t) {
+  const side = towardsCastle(e), king = e.type === 'orcKing', body = ctx.fillStyle;
+  ctx.scale(2 - squash, squash);
+  if (king) {                                   // cape behind the body
+    ctx.fillStyle = '#9b2a2a';
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.8, -r * 0.5);
+    ctx.lineTo(-r * 1.05, r * 0.95);
+    ctx.lineTo(r * 1.05, r * 0.95);
+    ctx.lineTo(r * 0.8, -r * 0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = body;
+  }
+  ctx.beginPath();                              // body
+  ctx.roundRect(-r * 0.85, -r * 0.55, r * 1.7, r * 1.45, r * 0.45);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#6b4a2e';                    // belt
+  ctx.fillRect(-r * 0.85, r * 0.35, r * 1.7, r * 0.18);
+  ctx.fillStyle = body;
+  ctx.beginPath();                              // head
+  ctx.arc(0, -r * 0.7, r * 0.55, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#f2ead8';                    // tusks
+  ctx.beginPath();
+  for (const s of [-1, 1]) {
+    ctx.moveTo(s * r * 0.3, -r * 0.45);
+    ctx.lineTo(s * r * 0.36, -r * 0.82);
+    ctx.lineTo(s * r * 0.12, -r * 0.5);
+  }
+  ctx.fill();
+  ctx.stroke();
+  enemyEyes(r * 0.22, -r * 0.82, r * 0.13, '#c0392b', true);
+  if (king) drawCrown(0, -r * 1.22, r * 0.75);
+
+  // weapon in the hand towards the castle, swinging a little while walking
+  const swing = moving ? sin(t * 6 + e.phase) * 0.25 : 0;
+  ctx.save();
+  ctx.translate(side * r * 0.9, r * 0.05);
+  ctx.rotate(side * (-0.9 + swing));
+  if (e.type === 'orcAxe') {
+    ctx.fillStyle = '#7a5530';
+    ctx.fillRect(-r * 0.07, -r * 1.25, r * 0.14, r * 1.4);
+    ctx.strokeRect(-r * 0.07, -r * 1.25, r * 0.14, r * 1.4);
+    ctx.fillStyle = '#cfd6de';
+    ctx.beginPath();
+    ctx.moveTo(r * 0.05, -r * 1.2);
+    ctx.quadraticCurveTo(r * 0.75, -r * 1.05, r * 0.6, -r * 0.55);
+    ctx.lineTo(r * 0.05, -r * 0.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#8a5a34';
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.08, r * 0.1);
+    ctx.lineTo(-r * 0.22, -r * 1.2);
+    ctx.lineTo(r * 0.22, -r * 1.2);
+    ctx.lineTo(r * 0.08, r * 0.1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    if (king) {                                 // iron spikes on the king's club
+      ctx.fillStyle = '#cfd6de';
+      for (const sy of [-1.05, -0.75]) for (const s of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(s * r * 0.18, sy * r - r * 0.1);
+        ctx.lineTo(s * r * 0.4, sy * r);
+        ctx.lineTo(s * r * 0.16, sy * r + r * 0.1);
+        ctx.fill();
+      }
+    }
+  }
+  ctx.restore();
+}
+
+/** Golden crown centred at (x, y), `w` wide. */
+function drawCrown(x, y, w) {
+  ctx.fillStyle = '#f5b93a';
+  ctx.beginPath();
+  ctx.moveTo(x - w / 2, y + w * 0.3);
+  ctx.lineTo(x - w / 2, y - w * 0.15);
+  ctx.lineTo(x - w / 4, y + w * 0.08);
+  ctx.lineTo(x, y - w * 0.3);
+  ctx.lineTo(x + w / 4, y + w * 0.08);
+  ctx.lineTo(x + w / 2, y - w * 0.15);
+  ctx.lineTo(x + w / 2, y + w * 0.3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
+const ENEMY_DRAWERS = {
+  koboldSlow: drawKobold, koboldFast: drawKobold,
+  wolf: drawWolf, wolfAlpha: drawWolf,
+  orcClub: drawOrc, orcAxe: drawOrc, orcKing: drawOrc,
+};
 
 /** Shield bearer: armoured body with a big shield held towards the castle. */
 function drawShieldBearerBody(e, r, squash) {
@@ -1561,7 +2156,9 @@ function spawnEnemy(type, { at = spawnPoint(), mini = false } = {}) {
 
   const enemy = {
     type,
-    boss: type === 'boss',
+    boss: !!base.boss,
+    club: !!base.club,
+    siege: base.siege || 1,                   // damage to wall or castle
     shielded: !!base.shielded,
     ranged: !!base.ranged,
     mini,
@@ -1583,6 +2180,7 @@ function spawnEnemy(type, { at = spawnPoint(), mini = false } = {}) {
     burn: 0, burnDps: 0, burnTick: 0,
     orbitCd: 0,                               // re-hit delay for things that circle through enemies
     attackCd: 0,                              // delay between hits on a soldier
+    knightCd: 0,                              // game time before the knight can trample it again
   };
   world.enemies.push(enemy);
   return enemy;
@@ -1788,11 +2386,11 @@ function checkCastleContact(e) {
     if (nx * nx + ny * ny >= 1) return;
     e.dead = true;
     puff(e.x, e.y, e.color, 6);
-    wallHit(e.x, e.y);
+    wallHit(e.x, e.y, e.siege);
   } else if (dist(e.x, e.y, cx, cy) < castleRadius() + e.r) {
     e.dead = true;
     puff(e.x, e.y, e.color, 6);
-    castleHit();
+    castleHit(e.siege);
   }
 }
 
@@ -3119,10 +3717,10 @@ KILL_HOOKS.push((enemy, source) => {
  */
 
 /** An enemy reached the wall: it loses one hit point. */
-function wallHit(x, y) {
+function wallHit(x, y, damage = 1) {
   sound(160, 0.12, 'square', 0.05, -60);
   vibrate(25);
-  S.wallHp--;
+  S.wallHp = Math.max(0, S.wallHp - damage);
   session.shake = Math.max(session.shake, 4);
   puff(x, y, '#b9b4ad', 7);
   renderHud();
@@ -3133,10 +3731,10 @@ function wallHit(x, y) {
 }
 
 /** An enemy reached the castle: it loses one life; at zero the battle is lost. */
-function castleHit() {
+function castleHit(damage = 1) {
   sound(90, 0.2, 'sawtooth', 0.07);
   vibrate(60);
-  castle.hp--;
+  castle.hp = Math.max(0, castle.hp - damage);
   castle.flash = 0.3;
   session.shake = Math.max(session.shake, 10);
   puff(cx, cy, '#efe7d4', 8);
@@ -3196,8 +3794,13 @@ function updateSoldiers(dt) {
       enemy.blocked = 0.15;   // refreshed every frame while in contact
       if (enemy.attackCd <= 0) {
         enemy.attackCd = ENEMY_HIT_INTERVAL;
-        soldier.hp--;
+        soldier.hp -= enemy.club ? 2 : 1;          // clubs hit twice as hard and throw the soldier back
         soldier.flash = 0.15;
+        if (enemy.club) {
+          const away = atan2(soldier.y - enemy.y, soldier.x - enemy.x);
+          soldier.x += cos(away) * 14 * U;
+          soldier.y += sin(away) * 14 * U;
+        }
         puff(soldier.x, soldier.y - 6 * U, '#cfe3ff', 4);
       }
     }
@@ -3277,6 +3880,167 @@ function drawArcher(post) {
   drawBow(ctx, post.x + side * 5 * u, post.y - 2 * u, side > 0 ? 0 : PI, 6 * u);
 }
 
+/* ---------- Knight on horseback ---------- */
+
+/*
+ * The knight (shop, 300 gold) rides circles around the castle. When an enemy
+ * comes close to the castle he charges it, tramples everything in his way and
+ * returns to his circle. He never leaves the castle's surroundings and cannot
+ * be hurt.
+ */
+const KNIGHT = {
+  circle: 78,        // radius of his patrol circle, in U
+  alarm: 150,        // enemies closer than this to the castle are charged
+  leash: 175,        // he never rides further from the castle than this
+  patrolSpeed: 95,   // U per second
+  chargeSpeed: 230,
+  hitRadius: 15,
+  hitDelay: 0.6,     // seconds before the same enemy can be trampled again
+  damageShare: 1.2,  // per trample: this share of a hit of the weapon in hand
+};
+const knight = { x: 0, y: 0, angle: PI / 2, facing: 1, hops: 0, charging: false, active: false };
+
+function resetKnight() {
+  knight.angle = PI / 2;
+  knight.x = cx;
+  knight.y = cy + KNIGHT.circle * U * 0.85;
+  knight.active = false;
+}
+
+function updateKnight(dt) {
+  if (!S.own.knight) return;
+  if (!knight.active) { resetKnight(); knight.active = true; }
+  const target = nearestEnemyToCastle(KNIGHT.alarm * U);
+  let goalX, goalY, speed;
+  if (target) {
+    goalX = target.x; goalY = target.y; speed = KNIGHT.chargeSpeed;
+  } else {
+    // patrol: keep moving the point on the circle ahead of him
+    knight.angle += KNIGHT.patrolSpeed / KNIGHT.circle * dt;
+    goalX = cx + cos(knight.angle) * KNIGHT.circle * U;
+    goalY = cy + sin(knight.angle) * KNIGHT.circle * U * 0.85;
+    speed = KNIGHT.patrolSpeed;
+  }
+  knight.charging = !!target;
+  const d = dist(knight.x, knight.y, goalX, goalY);
+  if (d > 1) {
+    const step = Math.min(d, speed * U * dt);
+    knight.facing = goalX < knight.x ? -1 : 1;
+    knight.x += (goalX - knight.x) / d * step;
+    knight.y += (goalY - knight.y) / d * step;
+  }
+  // stay on the leash
+  const fromCastle = dist(knight.x, knight.y, cx, cy), leash = KNIGHT.leash * U;
+  if (fromCastle > leash) {
+    knight.x = cx + (knight.x - cx) / fromCastle * leash;
+    knight.y = cy + (knight.y - cy) / fromCastle * leash;
+  }
+  if (!target) knight.angle = atan2((knight.y - cy) / 0.85, knight.x - cx);   // rejoin the circle where he is
+  knight.hops += dt * (knight.charging ? 16 : 10);
+  trample();
+}
+
+/** Closest living enemy to the castle within `range`. */
+function nearestEnemyToCastle(range) {
+  let best = null, bestDist = range;
+  for (const e of world.enemies) {
+    if (e.dead) continue;
+    const d = dist(e.x, e.y, cx, cy);
+    if (d < bestDist) { bestDist = d; best = e; }
+  }
+  return best;
+}
+
+function trample() {
+  const damage = damageOf(S.active) * KNIGHT.damageShare;
+  for (const e of world.enemies) {
+    if (e.dead || e.knightCd > session.time || dist(knight.x, knight.y, e.x, e.y) >= KNIGHT.hitRadius * U + e.r) continue;
+    e.knightCd = session.time + KNIGHT.hitDelay;
+    knockback(e, 160);
+    hurt(e, damage, { weapon: 'knight', color: '#ffe9b0' });
+  }
+}
+
+/** Knight in silver armour with a red plume on a brown horse, galloping. */
+function drawKnight() {
+  const u = U * 0.9, gallop = sin(knight.hops), x = knight.x, y = knight.y - Math.abs(gallop) * 2 * u;
+  ctx.fillStyle = 'rgba(0,0,0,.22)';
+  fillEllipse(ctx, knight.x, knight.y + 8 * u, 15 * u, 4 * u);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(knight.facing, 1);
+  ctx.lineWidth = 1.6 * u;
+  ctx.strokeStyle = INK;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  // legs
+  ctx.strokeStyle = '#5a3a22';
+  ctx.lineWidth = 2.4 * u;
+  ctx.beginPath();
+  for (const [lx, ph] of [[-8, 1], [-5, -1], [6, -1], [9, 1]]) {
+    ctx.moveTo(lx * u, 2 * u);
+    ctx.lineTo(lx * u + gallop * ph * 3 * u, 9 * u);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 1.6 * u;
+  // horse body, neck, head, tail
+  ctx.fillStyle = '#8a5a34';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 12 * u, 5.5 * u, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(8 * u, -2 * u);
+  ctx.lineTo(13 * u, -10 * u);
+  ctx.lineTo(18 * u, -8 * u);
+  ctx.lineTo(16 * u, -5 * u);
+  ctx.lineTo(11 * u, 2 * u);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#3a2618';
+  ctx.beginPath();
+  ctx.moveTo(-11 * u, -2 * u);
+  ctx.quadraticCurveTo(-17 * u, -1 * u + gallop * 2 * u, -16 * u, 6 * u);
+  ctx.lineTo(-12 * u, 1 * u);
+  ctx.fill();
+  ctx.fillRect(10 * u, -11 * u, 3 * u, 6 * u);   // mane
+  // rider: armour, helmet, plume, lance
+  ctx.fillStyle = '#c9d1dc';
+  ctx.beginPath();
+  ctx.roundRect(-4 * u, -14 * u, 8 * u, 10 * u, 2.5 * u);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, -17 * u, 4 * u, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = INK;
+  ctx.fillRect(0.5 * u, -18 * u, 3.5 * u, 1.2 * u);   // visor slit
+  ctx.fillStyle = '#e2574c';
+  ctx.beginPath();
+  ctx.moveTo(-1 * u, -21 * u);
+  ctx.quadraticCurveTo(-7 * u, -24 * u, -8 * u, -17 * u);
+  ctx.quadraticCurveTo(-4 * u, -20 * u, -1 * u, -19 * u);
+  ctx.fill();
+  ctx.strokeStyle = '#7a5530';
+  ctx.lineWidth = 2 * u;
+  ctx.beginPath();
+  const lance = knight.charging ? 0.05 : -0.45;
+  ctx.moveTo(-2 * u, -8 * u);
+  ctx.lineTo(-2 * u + cos(lance) * 26 * u, -8 * u + sin(lance) * 26 * u);
+  ctx.stroke();
+  ctx.fillStyle = '#e2574c';   // shield
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 1.6 * u;
+  ctx.beginPath();
+  ctx.arc(-4 * u, -8 * u, 3.6 * u, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
 function walkToGuardPost(soldier, dt) {
   const postX = cx + cos(soldier.guardAngle) * 64 * U;
   const postY = cy + 20 * U + sin(soldier.guardAngle) * 34 * U;
@@ -3303,8 +4067,19 @@ function buildWave() {
   const waveNo = S.wave;
   const count = currentWorld().count(waveNo);
   wave.queue = [];
-  for (let i = 0; i < count; i++) wave.queue.push(rollEnemyType(waveNo));
-  if (waveNo % BOSS_EVERY === 0) wave.queue.splice(Math.floor(wave.queue.length / 2), 0, 'boss');   // boss arrives mid-wave
+  // A wolf pack is queued as a leader entry 'wolf+' plus followers; spawnFromQueue() brings them in together.
+  const pack = leader => [leader, ...Array(WOLF_PACK - (leader === 'wolf+' ? 1 : 0)).fill('wolf')];
+  for (let i = 0; i < count;) {
+    const type = rollEnemyType(waveNo);
+    if (type === 'wolf' && count - i >= WOLF_PACK) { wave.queue.push(...pack('wolf+')); i += WOLF_PACK; }
+    else { wave.queue.push(type === 'wolf' ? 'slime' : type); i++; }   // no room left for a whole pack
+  }
+  if (waveNo % BOSS_EVERY === 0) {   // the boss arrives mid-wave; the wolf alpha brings a pack
+    const boss = bossFor(waveNo);
+    let at = Math.floor(wave.queue.length / 2);
+    while (wave.queue[at] === 'wolf') at++;   // never split a pack: insert before the next non-follower
+    wave.queue.splice(at, 0, ...(boss === 'wolfAlpha' ? pack(boss) : [boss]));
+  }
   wave.spawnGap = spawnGapFor(count);
   wave.spawnTimer = 0;
   wave.total = wave.queue.length;
@@ -3313,6 +4088,7 @@ function buildWave() {
 /** Clears the field and starts the current wave over. `all` also removes the soldiers. */
 function restartWave(all) {
   clearField(all);
+  if (all) resetKnight();
   wave.pause = 1.5;
   buildWave();
 }
@@ -3326,11 +4102,26 @@ function updateWave(dt) {
     // three spawns behind, so the backlog arrives quickly once there is room.
     wave.spawnTimer = Math.max(wave.spawnTimer - dt, -wave.spawnGap * 3);
     while (wave.spawnTimer <= 0 && wave.queue.length && world.enemies.length < MAX_ENEMIES_ALIVE) {
-      spawnEnemy(wave.queue.shift());
+      spawnFromQueue();
       wave.spawnTimer += wave.spawnGap;
     }
   } else if (!world.enemies.length) {
     completeWave();
+  }
+}
+
+/** Spawns the next queue entry; a pack leader takes its wolves along, close beside it. */
+function spawnFromQueue() {
+  let type = wave.queue.shift();
+  const leads = type === 'wolf+' || type === 'wolfAlpha';
+  if (type === 'wolf+') type = 'wolf';
+  const leader = spawnEnemy(type);
+  if (!leads) return;
+  let k = 0;
+  while (wave.queue[0] === 'wolf') {
+    wave.queue.shift();
+    const a = (k++ / WOLF_PACK) * TAU;
+    spawnEnemy('wolf', { at: { x: leader.x + cos(a) * 16 * U, y: leader.y + sin(a) * 16 * U } });
   }
 }
 
@@ -3354,6 +4145,7 @@ function completeWave() {
   save();
   renderHud();
   if (waveNo % CHEST_EVERY === 0) offerChest(waveNo);
+  else if (waveNo === 2) showSkillHintOnce();
 }
 
 /** Wave arrows: jump to any wave up to the first one not cleared yet. Resets the enemies. */
@@ -3554,13 +4346,165 @@ function offerChest(waveNo) {
   const pool = BOONS.filter(boon => !boon.available || boon.available());
   const choices = [];
   while (choices.length < 3 && pool.length) choices.push(pool.splice(Math.floor(rnd(pool.length)), 1)[0]);
-  showDialog({
+  const showChoice = () => showDialog({
     title: 'Schatztruhe',
     text: 'Wähle einen Bonus.',
     body: [chestInfoBox()],
     dismissable: false,
     buttons: choices.map(boon => ({ label: boon.name, detail: boon.text, action: () => takeBoon(boon) })),
   });
+  if (debugFlags.chestAnimation) playChestAnimation(showChoice);
+  else showChoice();
+}
+
+/* ---------- Chest opening animation ---------- */
+
+const CHEST_ANIMATION = 2.1;     // seconds until the choice appears
+const CHEST_SKIPPABLE = 0.4;     // a tap skips the rest after this many seconds
+
+/*
+ * Timeline (seconds): 0-0.45 the chest drops in and bounces, 0.45-1.25 it
+ * shakes harder and harder, 1.25-2.1 the lid flies open with light rays and
+ * sparkles. Runs on its own canvas while the game is paused underneath.
+ */
+function playChestAnimation(onDone) {
+  const overlay = $('chestfx'), cv = overlay.querySelector('canvas'), g = cv.getContext('2d');
+  const width = game.clientWidth, height = game.clientHeight, ratio = Math.min(2.5, window.devicePixelRatio || 1);
+  cv.width = Math.round(width * ratio);
+  cv.height = Math.round(height * ratio);
+  overlay.hidden = false;
+  refreshPause();
+  const start = performance.now();
+  let finished = false, frameId = 0;
+  sound(180, 0.25, 'triangle', 0.06, -60);
+
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    cancelAnimationFrame(frameId);
+    overlay.hidden = true;
+    overlay.onclick = null;
+    refreshPause();
+    onDone();
+  };
+  overlay.onclick = () => { if ((performance.now() - start) / 1000 >= CHEST_SKIPPABLE) finish(); };
+
+  let creaked = false;
+  const frame = now => {
+    const t = (now - start) / 1000;
+    if (t >= CHEST_ANIMATION) { finish(); return; }
+    if (t > 1.25 && !creaked) { creaked = true; sound(520, 0.35, 'triangle', 0.06, 500); vibrate(40); }
+    drawChestFrame(g, ratio, width, height, t);
+    frameId = requestAnimationFrame(frame);
+  };
+  frameId = requestAnimationFrame(frame);
+}
+
+function drawChestFrame(g, ratio, width, height, t) {
+  g.setTransform(ratio, 0, 0, ratio, 0, 0);
+  g.clearRect(0, 0, width, height);
+  const size = Math.min(width, height) * 0.32, x = width / 2, groundY = height * 0.5 + size * 0.3;
+  const easeOut = k => 1 - Math.pow(1 - k, 3);
+
+  // drop with one bounce
+  let y = groundY;
+  if (t < 0.32) y = groundY - (1 - easeOut(t / 0.32)) * height * 0.6;
+  else if (t < 0.45) y = groundY - sin((t - 0.32) / 0.13 * PI) * size * 0.12;
+  // shaking, stronger towards the opening
+  const shake = t > 0.45 && t < 1.25 ? sin(t * 60) * (t - 0.45) * 0.12 : 0;
+  // lid angle: closed, a short peek, then wide open
+  const open = t < 1.25 ? (t > 0.9 ? sin((t - 0.9) / 0.35 * PI) * 0.15 : 0) : Math.min(1, (t - 1.25) / 0.35);
+
+  if (t > 1.25) drawChestLight(g, x, y - size * 0.35, size, Math.min(1, (t - 1.25) / 0.3), t);
+
+  g.save();
+  g.translate(x, y);
+  g.rotate(shake);
+  g.lineJoin = 'round';
+  g.strokeStyle = INK;
+  g.lineWidth = size * 0.035;
+  g.fillStyle = 'rgba(0,0,0,.25)';
+  fillEllipse(g, 0, size * 0.04, size * 0.62, size * 0.1);
+  // box
+  const w = size, h = size * 0.55;
+  g.fillStyle = '#8a5a34';
+  g.beginPath();
+  g.roundRect(-w / 2, -h, w, h, size * 0.05);
+  g.fill();
+  g.stroke();
+  g.fillStyle = 'rgba(0,0,0,.15)';
+  for (let i = 1; i < 3; i++) g.fillRect(-w / 2, -h + i * h / 3, w, size * 0.015);   // planks
+  chestBands(g, w, -h, h, size);
+  if (open > 0.3) {   // the open chest: dark inside, heaped with glowing gold
+    g.fillStyle = '#3a2416';
+    fillEllipse(g, 0, -h, w * 0.46, size * 0.08);
+    for (let i = 0; i < 9; i++) {
+      g.fillStyle = i % 3 ? '#f5b93a' : '#ffe08a';
+      fillCircle(g, (i - 4) * w * 0.09, -h - size * (0.03 + 0.05 * sin(i * 1.3) ** 2), size * 0.05);
+    }
+  }
+  // lid, hinged at the back edge
+  g.save();
+  g.translate(0, -h);
+  g.scale(1, cos(open * PI * 0.62));
+  g.fillStyle = '#9b6a3e';
+  g.beginPath();
+  g.moveTo(-w / 2, 0);
+  g.lineTo(-w / 2, -size * 0.18);
+  g.quadraticCurveTo(0, -size * 0.42, w / 2, -size * 0.18);
+  g.lineTo(w / 2, 0);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  chestBands(g, w, -size * 0.3, size * 0.3, size);
+  g.restore();
+  // lock
+  if (open < 0.2) {
+    g.fillStyle = '#f5b93a';
+    g.beginPath();
+    g.roundRect(-size * 0.07, -h - size * 0.06, size * 0.14, size * 0.16, size * 0.03);
+    g.fill();
+    g.stroke();
+  }
+  g.restore();
+}
+
+/** Two golden metal bands across the chest or lid. */
+function chestBands(g, w, top, h, size) {
+  g.fillStyle = '#f5b93a';
+  for (const bx of [-w * 0.32, w * 0.24]) {
+    g.fillRect(bx, top, size * 0.08, h);
+    g.strokeRect(bx, top, size * 0.08, h);
+  }
+}
+
+/** Light pouring out of the open chest: rotating rays and rising sparkles. */
+function drawChestLight(g, x, y, size, strength, t) {
+  g.save();
+  g.translate(x, y);
+  g.globalAlpha = strength;
+  for (let i = 0; i < 12; i++) {
+    const a = -PI / 2 + (i - 5.5) * 0.17 + sin(t * 2 + i) * 0.03;
+    const reach = size * (1.6 + 0.3 * sin(t * 5 + i * 1.7));
+    const ray = g.createLinearGradient(0, 0, cos(a) * reach, sin(a) * reach);
+    ray.addColorStop(0, 'rgba(255,236,170,.85)');
+    ray.addColorStop(1, 'rgba(255,236,170,0)');
+    g.fillStyle = ray;
+    g.beginPath();
+    g.moveTo(-size * 0.05, 0);
+    g.lineTo(cos(a - 0.05) * reach, sin(a - 0.05) * reach);
+    g.lineTo(cos(a + 0.05) * reach, sin(a + 0.05) * reach);
+    g.lineTo(size * 0.05, 0);
+    g.fill();
+  }
+  for (let i = 0; i < 14; i++) {   // sparkles rise and fade
+    const k = ((t - 1.25) * 0.9 + i / 14) % 1;
+    const sx = sin(i * 2.3) * size * 0.45, sy = -k * size * 1.3;
+    g.globalAlpha = strength * (1 - k);
+    g.fillStyle = i % 2 ? '#fff6c8' : '#f5b93a';
+    fillCircle(g, sx, sy, size * 0.025 * (1 - k * 0.5));
+  }
+  g.restore();
 }
 
 /* ===== 30-hud.js ===== */
@@ -3777,7 +4721,7 @@ const forgeOffer = id => ({
 });
 
 const SHOP_ITEMS = [
-  weaponOffer('dagger', 'Schnelle Würfe mit Gift und Abprallern.'),
+  weaponOffer('sword', 'Kräftige Hiebe direkt am Finger, später mit Schwertregen.'),
   weaponOffer('star', 'Langsame, wuchtige Flächenschläge.'),
   weaponOffer('bow', 'Schneller Fernschuss, stark gegen einzelne Gegner.'),
   weaponOffer('wand', 'Feuerbälle, die explodieren und Gegner in Brand setzen.'),
@@ -3816,6 +4760,7 @@ const SHOP_ITEMS = [
     buy: () => { S.solLv++; },
     requires: needsSoldier,
   },
+  unlockOffer('knight', 'troops', 'Ritter', 300, 'Reitet um die Burg und stürmt auf Gegner, die ihr zu nahe kommen. Unverwundbar.'),
   unlockOffer('armor', 'troops', 'Rüstung', 50, 'Soldaten halten 5 statt 3 Schläge aus.', needsSoldier),
   {
     id: 'soldierCap', tab: 'troops', name: 'Mehr Soldaten', prices: SOLDIER_CAP_PRICES,
@@ -3969,7 +4914,7 @@ function closeShop() {
  * the ability overview. Also decides when the game is paused.
  */
 
-const OVERLAY_IDS = ['menu', 'shop', 'pausep', 'abil', 'dialog'];
+const OVERLAY_IDS = ['menu', 'shop', 'pausep', 'abil', 'dialog', 'chestfx'];
 const isOpen = id => !$(id).hidden;
 
 /** The game is paused exactly while any overlay is open. Call after showing or hiding one. */
@@ -3999,6 +4944,7 @@ function showMenu() {
   world.particles = [];
   world.texts = [];
   refreshPause();
+  playMusic('menu');
 }
 
 function showMenuPage(id) {
@@ -4067,6 +5013,7 @@ function startGame(index, fresh) {
   renderHud();
   save();
   toast('Welle ' + S.wave);
+  playMusic('game');
 }
 
 /* ---------- Pause menu ---------- */
@@ -4074,6 +5021,7 @@ function startGame(index, fresh) {
 function renderPause() {
   $('p-snd').textContent = 'Ton: ' + (DB.opts.mute ? 'aus' : 'an');
   $('p-vib').textContent = 'Vibration: ' + (DB.opts.vib ? 'an' : 'aus');
+  $('p-music').textContent = 'Musik: ' + (DB.opts.music ? 'an' : 'aus');
 }
 function openPause() {
   if (session.paused) return;
@@ -4136,7 +5084,7 @@ function closeDialog() {
 function showIntro() {
   showDialog({
     title: 'Sire!',
-    text: 'Sire, die Monster greifen an. Nehmt Euer Schwert. Wir müssen uns aufrüsten!',
+    text: 'Sire, die Monster greifen an. Nehmt Eure Dolche. Wir müssen uns aufrüsten!',
     buttons: [{ label: 'Zu den Waffen!' }],
   });
 }
@@ -4149,6 +5097,18 @@ function showWaveHintOnce() {
   showDialog({
     title: 'Tipp',
     text: 'Oben links wählst du mit den Pfeilen die Welle selbst. Ist eine Welle zu schwer, geh ein paar Wellen zurück: Dort gibt es auch Gold, und deine Waffen leveln weiter.',
+    buttons: [{ label: 'Verstanden' }],
+  });
+}
+
+/** One-time hint after wave 2: long press on a weapon shows its abilities. */
+function showSkillHintOnce() {
+  if (S.hints.skills || !debugFlags.skillHint) return;
+  S.hints.skills = true;
+  save();
+  showDialog({
+    title: 'Tipp',
+    text: 'Halte eine Waffe unten gedrückt, um alle ihre Fähigkeiten zu sehen – auch die, die erst mit höherem Level kommen.',
     buttons: [{ label: 'Verstanden' }],
   });
 }
@@ -4228,6 +5188,12 @@ $('p-snd').addEventListener('click', () => {
   save();
   renderPause();
   sound(700, 0.08, 'triangle');
+});
+$('p-music').addEventListener('click', () => {
+  DB.opts.music = !DB.opts.music;
+  save();
+  renderPause();
+  playMusic(musicForScreen());
 });
 $('p-vib').addEventListener('click', () => {
   DB.opts.vib = !DB.opts.vib;
@@ -4310,6 +5276,7 @@ function update(dt) {
   updateCombo(dt);
   updateSoldiers(dt);
   updateArchers(dt);
+  updateKnight(dt);
   updateProjectiles(dt);
   updateZones(dt);
   updateVisuals(dt);
@@ -4407,6 +5374,7 @@ function drawActors() {
   const actors = [{ y: cy, draw() { drawWall(false); drawCastle(); drawWall(true); } }];
   for (const e of world.enemies) if (!e.dead) actors.push({ y: e.y, draw: () => drawEnemy(e) });
   for (const soldier of world.soldiers) actors.push({ y: soldier.y, draw: () => drawSoldier(soldier) });
+  if (S.own.knight && knight.active) actors.push({ y: knight.y, draw: drawKnight });
   for (let i = 0; i < S.archers; i++) {
     const post = archerPost(i, S.archers);
     actors.push({ y: post.y + 6 * U, draw: () => drawArcher(post) });
@@ -4625,6 +5593,10 @@ window.__bw = {
   ready() { combat.cooldown = 0; },
   hold(point) { session.holdPoint = point; },
   attack, aimLine,
+  queue: () => wave.queue.slice(),
+  bossFor, ENEMY_TYPES,
+  knight: () => ({ ...knight }),
+  music: () => ({ track: music.track, playing: !!music.bus, audio: audioContext ? audioContext.state : 'none' }),
   /** Colours of the pre-rendered ground at a few fixed points, to tell worlds apart without screenshots. */
   groundSample() {
     const g = ground.getContext('2d');
