@@ -1,0 +1,124 @@
+/* Layout: ein Bildschirm im Hochformat. Oben eine schlanke Glasleiste mit Welle, Leben, Mauer und Gold, unten die runden Waffen mit Infozeile. */
+:root{
+  --bg:#2f6a41; --glass:rgba(16,20,28,.74); --glass2:rgba(18,22,31,.96); --line:rgba(255,255,255,.16); --soft:rgba(255,255,255,.09);
+  --fg:#f4f6fa; --dim:#aeb7c6; --ink:#141821; --gold:#f5b93a; --heart:#ff6b6b; --xp:#5ab4ff; --ok:#6fdc7a;
+  --display:"Lilita One","Trebuchet MS",system-ui,sans-serif;
+  --body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);overflow:hidden;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
+#game{position:relative;height:100%;width:100%;overflow:hidden;touch-action:none}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud,#bar{position:absolute;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));
+  background:var(--glass);border:1px solid var(--line);box-shadow:0 6px 18px rgba(0,0,0,.25)}
+#hud{top:8px;border-radius:14px;padding:7px 9px 10px;display:grid;gap:7px;overflow:hidden}
+.r1,.r2{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.r2{align-items:flex-start}
+.wavectl{display:flex;align-items:center;gap:3px}
+.wavectl button,.tools button{border:1px solid var(--line);background:var(--soft);cursor:pointer;padding:0;display:grid;place-items:center}
+.wavectl button{width:28px;height:28px;border-radius:50%;font-size:11px;line-height:1}
+.wavectl button:disabled{opacity:.3;cursor:default}
+#wave{min-width:66px;text-align:center;font-weight:800;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
+#hearts{color:var(--heart);font-size:12px;line-height:1;white-space:nowrap;letter-spacing:.5px}
+#hearts .off{color:rgba(255,255,255,.2)}
+#hearts.many{display:flex;flex-wrap:wrap;justify-content:center;max-width:100px;font-size:11px;line-height:1.1;white-space:normal;letter-spacing:0}
+#wave.lava{color:#ffb36b}
+#gold{font-weight:800;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
+#gold::before,.purse::before,.wp.locked .badge::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--gold);margin-right:5px}
+.tools{display:flex;gap:5px}
+.tools button{width:36px;height:28px;border-radius:9px;font-weight:800;font-size:12px}
+.tools button[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+.tools svg{width:15px;height:15px}
+#wall{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px;max-width:120px;padding-top:2px}
+#wall i{width:9px;height:6px;border-radius:1.5px;background:#d5d9e0}
+#wall i.off{background:rgba(255,255,255,.14)}
+#wprog{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--xp)}
+#toast{position:absolute;top:118px;left:50%;transform:translate(-50%,-10px);max-width:calc(100% - 32px);text-align:center;
+  background:var(--glass2);border:1px solid rgba(245,185,58,.55);border-radius:12px;padding:7px 16px;
+  font-weight:800;font-size:15px;line-height:1.25;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#toast small{display:block;font-size:12px;color:var(--gold)}
+#hint{position:absolute;left:50%;bottom:132px;transform:translateX(-50%);background:var(--glass);border:1px solid var(--line);
+  border-radius:999px;padding:6px 14px;font-weight:800;font-size:12.5px;pointer-events:none;white-space:nowrap;transition:opacity .4s}
+#bar{bottom:8px;border-radius:18px;padding:9px 10px 9px;display:grid;gap:7px}
+.wps{display:flex;justify-content:space-between;gap:4px}
+.wp{position:relative;flex:none;width:52px;height:52px;border-radius:50%;border:2px solid var(--line);background:var(--soft);padding:0;
+  display:grid;place-items:center;cursor:pointer;touch-action:manipulation;-webkit-touch-callout:none;transition:transform .12s,border-color .12s}
+.wp canvas{width:34px;height:34px;display:block}
+.wp[aria-pressed="true"]{border-color:var(--gold);background:rgba(245,185,58,.16);box-shadow:0 0 0 4px rgba(245,185,58,.2);transform:translateY(-2px)}
+.wp.locked{border-style:dashed}
+.wp.locked canvas{filter:grayscale(1);opacity:.4}
+.wp .badge{position:absolute;right:-5px;bottom:-5px;min-width:22px;height:18px;padding:0 5px;border-radius:9px;background:var(--ink);
+  border:1px solid var(--line);font-weight:800;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+.wp[aria-pressed="true"] .badge{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+.wp.locked .badge{color:var(--gold)}
+.wp.locked .badge::before{width:7px;height:7px;margin-right:3px}
+.wp .cd{position:absolute;inset:-2px;border-radius:50%;pointer-events:none;
+  background:conic-gradient(rgba(8,10,14,.74) calc(var(--p,0)*1turn),transparent 0)}
+#winfo{display:flex;justify-content:space-between;gap:8px;font-weight:800;font-size:12.5px;line-height:1.3;white-space:nowrap;overflow:hidden;font-variant-numeric:tabular-nums}
+#winfo b{color:var(--gold);font-weight:800}
+#winfo .nx{color:var(--xp)}
+#wxp{height:3px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
+#wxp i{display:block;height:100%;width:0;background:var(--xp)}
+.inmenu #hud,.inmenu #bar,.inmenu #hint,.inmenu #toast{visibility:hidden}
+.ov{position:absolute;inset:0;display:grid;place-items:center;background:rgba(6,8,12,.62);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px}
+.shopcard{width:min(344px,100%);max-height:100%;overflow:auto;background:var(--glass2);border:1px solid var(--line);border-radius:18px;
+  padding:16px;box-shadow:0 14px 40px rgba(0,0,0,.45);display:grid;gap:10px}
+.shopcard h2{margin:0;font-family:var(--display);font-weight:400;font-size:23px;text-align:center;text-wrap:balance}
+.shopcard p{margin:0;font-weight:600;font-size:13px;color:var(--dim);text-align:center}
+.purse{justify-self:center;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-weight:800;font-variant-numeric:tabular-nums}
+.item{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:10px}
+.item b{display:block;font-weight:800;font-size:15px}
+.item span{display:block;font-weight:600;font-size:12px;color:var(--dim);line-height:1.3}
+.item button,#shopgo,.big{border:0;border-radius:12px;background:var(--gold);color:var(--ink);font-weight:800;cursor:pointer}
+.item button{font-size:14px;padding:9px 12px;white-space:nowrap;min-width:86px}
+.item button:disabled{background:var(--soft);color:var(--dim);cursor:default}
+.item button.own{background:rgba(111,220,122,.16);color:var(--ok)}
+#shopgo{background:var(--ok);padding:12px;font-size:16px}
+.big{font-size:17px;padding:13px}
+.big.alt{background:var(--soft);color:var(--fg);border:1px solid var(--line)}
+.big:disabled{background:var(--soft);color:rgba(255,255,255,.35);cursor:default}
+.shopcard .tip{font-size:12px}
+/* shop: header, tabs and the continue button stay put, only the offers of the open tab change */
+#shop .shopcard{height:min(560px,100%);grid-template-rows:auto auto auto auto minmax(0,1fr) auto}
+#shoptabs{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#shoptabs button{position:relative;border:1px solid var(--line);background:var(--soft);border-radius:999px;padding:6px 12px;font-weight:800;font-size:13px;cursor:pointer}
+#shoptabs button[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+#shoptabs button.hot::after{content:"";position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:var(--ok);border:2px solid #12161f}
+#items{display:grid;gap:10px;align-content:start;overflow:auto;min-height:0}
+.pips{display:flex;gap:3px;margin:4px 0 3px;font-style:normal;font-size:11px;font-weight:800;color:var(--gold)}
+.pips:empty{display:none}
+.pips u{width:16px;height:4px;border-radius:2px;background:rgba(255,255,255,.18);text-decoration:none}
+.pips u.on{background:var(--gold)}
+/* generic dialog: hints, chest, world picker, statistics */
+#dlg-buttons,#dlg-body{display:grid;gap:8px}
+#dlg-body:empty{display:none}
+.big small{display:block;margin-top:2px;font-size:12px;font-weight:700;opacity:.75}
+.stat{display:flex;justify-content:space-between;gap:12px;font-size:13px;font-weight:700}
+.stat b{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.stat.wide{flex-direction:column;gap:2px}.stat.wide b{white-space:normal;color:var(--gold)}
+.stat.open{color:var(--dim)}.stat.done b{color:var(--ok)}
+#dlg-body h3{margin:8px 0 0;font-size:14px;font-weight:800;color:var(--gold)}
+#menu{grid-template-rows:auto 1fr auto;justify-items:center;
+  background:linear-gradient(rgba(6,8,12,.72),rgba(6,8,12,.1) 36%,rgba(6,8,12,.1) 50%,rgba(6,8,12,.8))}
+#menu h1{margin:26px 0 0;font-family:var(--display);font-weight:400;font-size:54px;line-height:1;color:#fff;
+  text-shadow:0 3px 0 rgba(0,0,0,.35),0 10px 28px rgba(0,0,0,.5);text-align:center}
+#menu .sub{margin:8px 0 0;font-weight:800;font-size:14px;color:var(--dim);text-align:center}
+.mcol{align-self:end;width:min(300px,100%);display:grid;gap:10px;margin-bottom:14px}
+.mcol h2{margin:0;font-family:var(--display);font-weight:400;font-size:22px;text-align:center}
+.slot{display:grid;gap:3px;text-align:left;padding:11px 13px;border:1px solid var(--line);border-radius:14px;background:var(--glass2);cursor:pointer}
+.slot b{font-weight:800;font-size:16px}
+.slot span{font-weight:700;font-size:12px;color:var(--dim);line-height:1.3}
+.slot.warn{border-color:var(--heart)}.slot.warn span{color:var(--heart)}
+.slot:disabled{opacity:.45;cursor:default}
+#credit{font-weight:800;font-size:12px;color:var(--dim);text-align:center}
+#abillist{display:grid;gap:5px}
+.ab{display:grid;grid-template-columns:58px 1fr;gap:8px;align-items:baseline;font-weight:800;font-size:13px;color:rgba(255,255,255,.34)}
+.ab.on{color:var(--fg)}.ab.on b{color:var(--ok)}
+@media (max-width:350px){#hearts{font-size:10px;letter-spacing:0}#wave{min-width:58px;font-size:13px}.wp{width:46px;height:46px}.wp canvas{width:30px;height:30px}}
+@media (prefers-reduced-motion:reduce){.wp,#toast{transition:none}}

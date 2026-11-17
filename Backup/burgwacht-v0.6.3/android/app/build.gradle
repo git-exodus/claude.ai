@@ -1,0 +1,13 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.burgwacht.game'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'com.burgwacht.game'
+        minSdk 24
+        targetSdk 34
+        versionCode 9
+        versionName '0.6.3'
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
