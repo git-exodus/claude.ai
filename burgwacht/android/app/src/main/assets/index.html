@@ -30,13 +30,15 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
 #wave{min-width:66px;text-align:center;font-weight:800;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
 #hearts{color:var(--heart);font-size:12px;line-height:1;white-space:nowrap;letter-spacing:.5px}
 #hearts .off{color:rgba(255,255,255,.2)}
+#hearts.many{display:flex;flex-wrap:wrap;justify-content:center;max-width:100px;font-size:11px;line-height:1.1;white-space:normal;letter-spacing:0}
+#wave.lava{color:#ffb36b}
 #gold{font-weight:800;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
 #gold::before,.purse::before,.wp.locked .badge::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--gold);margin-right:5px}
 .tools{display:flex;gap:5px}
 .tools button{width:36px;height:28px;border-radius:9px;font-weight:800;font-size:12px}
 .tools button[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--ink)}
 .tools svg{width:15px;height:15px}
-#wall{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px;max-width:152px;padding-top:2px}
+#wall{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px;max-width:120px;padding-top:2px}
 #wall i{width:9px;height:6px;border-radius:1.5px;background:#d5d9e0}
 #wall i.off{background:rgba(255,255,255,.14)}
 #wprog{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--xp)}
@@ -87,6 +89,26 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
 .big.alt{background:var(--soft);color:var(--fg);border:1px solid var(--line)}
 .big:disabled{background:var(--soft);color:rgba(255,255,255,.35);cursor:default}
 .shopcard .tip{font-size:12px}
+/* shop: header, tabs and the continue button stay put, only the offers of the open tab change */
+#shop .shopcard{height:min(560px,100%);grid-template-rows:auto auto auto auto minmax(0,1fr) auto}
+#shoptabs{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#shoptabs button{position:relative;border:1px solid var(--line);background:var(--soft);border-radius:999px;padding:6px 12px;font-weight:800;font-size:13px;cursor:pointer}
+#shoptabs button[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+#shoptabs button.hot::after{content:"";position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:var(--ok);border:2px solid #12161f}
+#items{display:grid;gap:10px;align-content:start;overflow:auto;min-height:0}
+.pips{display:flex;gap:3px;margin:4px 0 3px;font-style:normal;font-size:11px;font-weight:800;color:var(--gold)}
+.pips:empty{display:none}
+.pips u{width:16px;height:4px;border-radius:2px;background:rgba(255,255,255,.18);text-decoration:none}
+.pips u.on{background:var(--gold)}
+/* generic dialog: hints, chest, world picker, statistics */
+#dlg-buttons,#dlg-body{display:grid;gap:8px}
+#dlg-body:empty{display:none}
+.big small{display:block;margin-top:2px;font-size:12px;font-weight:700;opacity:.75}
+.stat{display:flex;justify-content:space-between;gap:12px;font-size:13px;font-weight:700}
+.stat b{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.stat.wide{flex-direction:column;gap:2px}.stat.wide b{white-space:normal;color:var(--gold)}
+.stat.open{color:var(--dim)}.stat.done b{color:var(--ok)}
+#dlg-body h3{margin:8px 0 0;font-size:14px;font-weight:800;color:var(--gold)}
 #menu{grid-template-rows:auto 1fr auto;justify-items:center;
   background:linear-gradient(rgba(6,8,12,.72),rgba(6,8,12,.1) 36%,rgba(6,8,12,.1) 50%,rgba(6,8,12,.8))}
 #menu h1{margin:26px 0 0;font-family:var(--display);font-weight:400;font-size:54px;line-height:1;color:#fff;
@@ -116,7 +138,7 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
       <div id="gold">0</div>
     </div>
     <div class="r2">
-      <div class="tools"><button id="b-pause" type="button" aria-label="Pause">II</button><button id="b-speed" type="button" aria-label="Spieltempo">x1</button><button id="b-hold" type="button" aria-pressed="false" aria-label="Welle halten"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></button></div>
+      <div class="tools"><button id="b-pause" type="button" aria-label="Pause">II</button><button id="b-speed" type="button" aria-label="Spieltempo">x1</button><button id="b-world" type="button" aria-label="Welt wechseln" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg></button><button id="b-hold" type="button" aria-pressed="false" aria-label="Welle halten"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></button></div>
       <div id="wall" hidden></div>
     </div>
     <i id="wprog"></i>
@@ -133,6 +155,7 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
       <h2 id="shoptitle">Die Burg ist gefallen</h2>
       <p>Gib dein Gold aus. Danach geht es bei Welle 1 weiter.</p>
       <div class="purse" id="shopgold">0</div>
+      <div id="shoptabs"></div>
       <div id="items"></div>
       <button id="shopgo" type="button">Weiter bei Welle 1</button>
     </div>
@@ -143,6 +166,7 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
       <button class="big" id="p-resume" type="button">Weiter</button>
       <button class="big alt" id="p-snd" type="button">Ton: an</button>
       <button class="big alt" id="p-vib" type="button">Vibration: an</button>
+      <button class="big alt" id="p-stats" type="button">Statistik &amp; Erfolge</button>
       <button class="big alt" id="p-menu" type="button">Hauptmenü</button>
       <p class="tip">Tipp: Eine Waffe lange drücken zeigt alle ihre Fähigkeiten.</p>
     </div>
@@ -152,6 +176,14 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
       <h2 id="abiltitle">Fähigkeiten</h2>
       <div id="abillist"></div>
       <button class="big" id="abil-close" type="button">Schließen</button>
+    </div>
+  </div>
+  <div id="dialog" class="ov" hidden>
+    <div class="shopcard" role="dialog" aria-labelledby="dlg-title">
+      <h2 id="dlg-title"></h2>
+      <p id="dlg-text"></p>
+      <div id="dlg-body"></div>
+      <div id="dlg-buttons"></div>
     </div>
   </div>
   <div id="menu" class="ov">
@@ -166,7 +198,7 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
       <div id="slotlist" class="mcol" style="margin:0;width:100%"></div>
       <button class="big alt" id="m-back" type="button">Zurück</button>
     </div>
-    <div id="credit">@made by Brownii (Claude.ai) · v0.5</div>
+    <div id="credit">@made by Brownii (Claude.ai) · v0.6</div>
   </div>
 </div>
 
@@ -234,7 +266,7 @@ function fillEllipse(c, x, y, rx, ry) {
  * the place to tune the game.
  */
 
-const VERSION = '0.5';
+const VERSION = '0.6';
 const SAVE_KEY = 'burgwacht-v3';
 const LEGACY_SAVE_KEY = 'burgwacht-v2';   // single-save format from before the start menu
 
@@ -246,11 +278,13 @@ const LEGACY_SAVE_KEY = 'burgwacht-v2';   // single-save format from before the 
 const MAX_LEVEL = 100;
 const ABILITY_CAP = 100;
 
-const MAX_HP = 10;                 // castle lives
+const CASTLE_HP_TIERS = [10, 12, 15];    // castle lives per shop tier
+const BONUS_TIERS = [1, 1.25, 1.5];      // gold and XP multiplier per shop tier
 const CASTLE_SCALE = 0.6;          // castle and enemies are drawn at 60 % of their design size
 const WALL_TIERS = [0, 3, 5, 10, 25];   // wall hit points per shop tier (index = tier)
 const SOLDIER_INTERVALS = [5, 4, 3];    // seconds between soldiers per shop tier
-const MAX_SOLDIERS = 4;
+const SOLDIER_CAP = [4, 6];              // soldiers on the field without / with the "squad" upgrade
+const SOLDIER_HP = [3, 5];               // hits a soldier survives without / with armour
 const MAX_ENEMIES_ALIVE = 260;     // further enemies wait off-screen until there is room
 
 /*
@@ -267,7 +301,7 @@ const WEAPONS = {
     milestones: { 5: 'Doppelschwert', 10: 'Dreier-Fächer', 15: 'Echo-Hieb', 25: 'Kreisende Schwerter', 30: 'Klingenwelle', 40: 'Geisterschwert', 50: 'Riesenschwert', 60: 'Schwertsplitter', 70: 'Zeitriss', 80: 'Spiegelhieb', 90: 'Kettenblitz', 100: 'Schwertregen' },
   },
   dagger: {
-    name: 'Dolche', price: 5, baseDamage: 7, cooldown: [2, 0.3], baseAbility: 'Wurfdolch',
+    name: 'Dolche', price: 5, baseDamage: 9, cooldown: [2, 0.3], baseAbility: 'Wurfdolch',
     milestones: { 5: 'Dolchfächer', 10: 'Abpraller', 15: 'Durchbohren', 25: 'Ansteckendes Gift', 30: 'Schattenklon', 40: 'Splitterdolche', 50: 'Bumerang', 60: 'Giftwolke', 70: 'Dolchfallen', 80: 'Zielsuchend', 90: 'Dolchwirbel', 100: 'Kettenreaktion' },
   },
   star: {
@@ -285,20 +319,35 @@ const WEAPONS = {
 };
 const WEAPON_IDS = Object.keys(WEAPONS);
 
-/** XP needed to go from `level` to `level + 1`. */
-const xpNeeded = level => Math.round(4 + level * 1.4 + level * level * 0.035);
+/*
+ * XP needed to go from `level` to `level + 1`.
+ * Tuned together with the flat XP per enemy below so that the weapon used all
+ * the time is roughly level 4 / 8 / 15 / 22 / 40 / 80 after wave 5 / 10 / 20 /
+ * 30 / 50 / 100 of a first playthrough. The power law keeps working for
+ * levels far beyond 100.
+ */
+const xpNeeded = level => Math.round(4 + 6.4 * Math.pow(level, 1.4));
 
 /*
- * Enemy types. r/hp/sp/xp are the level-1 values (radius in U before CASTLE_SCALE,
- * speed in U per second); waves scale them with the functions below.
+ * Enemy types. r/hp/sp/xp are the base values (radius in U before CASTLE_SCALE,
+ * speed in U per second); worlds and waves scale them, see WORLDS below.
+ *   shielded  projectile hits only deal SHIELD_BLOCK of their damage; area damage is unaffected
+ *   ranged    stops at ARCHER_RANGE and shoots the castle instead of walking into it
  */
 const ENEMY_TYPES = {
-  slime: { r: 13, hp: 10, sp: 20, xp: 1, color: '#59c36a' },
-  bat:   { r: 10, hp: 6, sp: 38, xp: 1, color: '#9a6bd6' },
-  ogre:  { r: 19, hp: 42, sp: 13, xp: 4, color: '#4f9aa8' },
-  boss:  { r: 30, hp: 260, sp: 9, xp: 25, color: '#e07a3f' },
+  slime:  { r: 13, hp: 10, sp: 20, xp: 1, color: '#59c36a' },
+  bat:    { r: 10, hp: 6, sp: 38, xp: 1, color: '#9a6bd6' },
+  ogre:   { r: 19, hp: 42, sp: 13, xp: 3, color: '#4f9aa8' },
+  shield: { r: 14, hp: 26, sp: 16, xp: 2, color: '#8793b8', shielded: true },
+  archer: { r: 11, hp: 12, sp: 22, xp: 2, color: '#c9787f', ranged: true },
+  boss:   { r: 30, hp: 260, sp: 9, xp: 20, color: '#e07a3f' },
 };
-const BOSS_EVERY = 5;   // a boss joins every 5th wave
+const BOSS_EVERY = 5;        // a boss joins every 5th wave
+const SHIELD_BLOCK = 0.25;   // share of projectile damage that gets through a shield
+const ARCHER_RANGE = 105;    // distance from the castle (in U) at which archers stop
+const ARCHER_INTERVAL = 4;   // seconds between an archer's shots
+const EASY_WAVES = 3;        // the first waves of the meadow get EASY_HP_CUT less hit points
+const EASY_HP_CUT = 2;
 
 /** Number of regular enemies in a wave: +3 per wave up to 5, +5 to 15, +10 to 30, +15 to 50, +20 after. */
 function waveCount(waveNo) {
@@ -308,19 +357,58 @@ function waveCount(waveNo) {
 }
 const enemyHpFactor = waveNo => 1 + 0.22 * (waveNo - 1) + 0.015 * (waveNo - 1) * (waveNo - 1);
 const enemySpeedFactor = waveNo => 1 + Math.min(0.5, waveNo * 0.02);
-const enemyXpFactor = waveNo => 1 + 0.12 * waveNo;
 /** Seconds between two spawns: a wave takes at most ~80 s to enter the field. */
 const spawnGapFor = count => clamp(Math.min(80, 10 + count * 0.6) / count, 0.04, 1.5);
 
-/** Random type for one regular enemy; ogres appear from wave 3, bats from wave 2. */
+/*
+ * Worlds. Each world has its own wave counter and progress (see 03-state.js).
+ *   count(w)        regular enemies in wave w
+ *   hpFactor(w)     multiplier on enemy hit points
+ *   speedFactor(w)  multiplier on enemy speed
+ *   goldMult        gold per newly cleared wave = wave number * goldMult
+ *   xpMult          multiplier on enemy XP
+ *   colors          enemy colours that differ from ENEMY_TYPES
+ *   splitSlimes     slimes break into two small ones when they die
+ * The lava world unlocks after LAVA_UNLOCK_WAVE in the meadow; its wave 1 is
+ * about as tough as meadow wave 100.
+ */
+const LAVA_UNLOCK_WAVE = 100;
+const WORLDS = {
+  meadow: {
+    name: 'Wiese',
+    count: waveCount,
+    hpFactor: enemyHpFactor,
+    speedFactor: enemySpeedFactor,
+    goldMult: 1, xpMult: 1, colors: {}, splitSlimes: false,
+  },
+  lava: {
+    name: 'Lava-Welt',
+    count: w => waveCount(w + 20),
+    hpFactor: w => enemyHpFactor(LAVA_UNLOCK_WAVE) * (1 + 0.15 * (w - 1) + 0.008 * (w - 1) * (w - 1)),
+    speedFactor: () => 1.5,
+    goldMult: 3, xpMult: 3, splitSlimes: true,
+    colors: { slime: '#f0702a', bat: '#ffb23e', ogre: '#7a5560', shield: '#a8553a', archer: '#d94a3a', boss: '#c22b2b' },
+  },
+};
+
+/** Random type for one regular enemy. Bats come from wave 2, ogres from 3, shield bearers from 8, archers from 12. */
 function rollEnemyType(waveNo) {
-  const roll = Math.random();
-  const ogreShare = Math.min(0.25, 0.04 * waveNo);
-  const batShare = Math.min(0.3, 0.06 * waveNo);
-  if (waveNo >= 3 && roll < ogreShare) return 'ogre';
-  if (waveNo >= 2 && roll < ogreShare + batShare) return 'bat';
+  let roll = Math.random();
+  const shares = [
+    ['ogre', waveNo >= 3 ? Math.min(0.25, 0.04 * waveNo) : 0],
+    ['bat', waveNo >= 2 ? Math.min(0.3, 0.06 * waveNo) : 0],
+    ['shield', waveNo >= 8 ? Math.min(0.1, 0.01 * waveNo) : 0],
+    ['archer', waveNo >= 12 ? Math.min(0.05, 0.004 * waveNo) : 0],
+  ];
+  for (const [type, share] of shares) {
+    if (roll < share) return type;
+    roll -= share;
+  }
   return 'slime';
 }
+
+/* Tests set window.__bwQuiet before the game loads so rewards do not disturb what they measure. */
+const debugFlags = { achievements: !window.__bwQuiet, chests: !window.__bwQuiet };
 
 /* ===== 03-state.js ===== */
 /*
@@ -336,18 +424,32 @@ function blankSave() {
   return {
     lv: perWeapon(1),          // weapon levels
     xp: perWeapon(0),          // XP towards the next level
+    forge: perWeapon(0),       // forge stages per weapon (lava world shop), +10 % damage each
     active: 'sword',           // weapon selected in the bar
-    wave: 1,                   // wave currently being played
-    cleared: 0,                // highest wave ever cleared (limits the wave arrows, pays gold once)
+    world: 'meadow',           // world being played, key of WORLDS
+    wave: 1,                   // wave currently being played in that world
+    cleared: 0,                // highest wave ever cleared there (limits the wave arrows, pays gold once)
+    parked: { wave: 1, cleared: 0 },   // wave and cleared of the OTHER world while it is not played
     gold: 0,
     heal: 1,                   // lives restored after each cleared wave (shop: 1..3)
     hold: false,               // "repeat this wave" toggle
     wall: 0,                   // wall tier, index into WALL_TIERS
     wallHp: 0,                 // current wall hit points; only refilled after a defeat
     solLv: 0,                  // soldier speed tier, index into SOLDIER_INTERVALS
-    own: { dagger: false, star: false, bow: false, wand: false, soldier: false },
+    hpLv: 0,                   // castle lives tier, index into CASTLE_HP_TIERS
+    goldLv: 0,                 // gold bonus tier, index into BONUS_TIERS
+    xpLv: 0,                   // XP bonus tier, index into BONUS_TIERS
+    // one-time purchases
+    own: { dagger: false, star: false, bow: false, wand: false, soldier: false, armor: false, squad: false, tower: false },
+    // things that last until the next defeat: chest boons (id -> times taken) and chests already opened ("world:wave")
+    run: { boons: {}, chests: [] },
+    hints: { waves: false },   // one-time hint windows already shown
+    stats: { kills: 0, bosses: 0, bestCombo: 0, defeats: 0, goldEarned: 0 },
+    ach: {},                   // achievement id -> true once rewarded
   };
 }
+
+const toCount = (value, max = 1e12) => clamp(Math.floor(+value || 0), 0, max);   // safe non-negative integer
 
 /** Rebuilds a save from untrusted data (old versions, edited storage), clamping every field. */
 function sanitizeSave(data) {
@@ -356,17 +458,31 @@ function sanitizeSave(data) {
   for (const id of WEAPON_IDS) {
     save.lv[id] = clamp(data.lv?.[id] | 0 || 1, 1, MAX_LEVEL);
     save.xp[id] = +data.xp?.[id] || 0;
+    save.forge[id] = toCount(data.forge?.[id], 9999);
   }
-  save.gold = Math.max(0, data.gold | 0);
-  save.cleared = Math.max(0, data.cleared | 0);
+  save.gold = toCount(data.gold);
   save.heal = clamp(data.heal | 0 || 1, 1, 3);
   save.hold = !!data.hold;
-  save.wall = clamp(data.wall | 0, 0, WALL_TIERS.length - 1);
-  save.wallHp = clamp(data.wallHp | 0, 0, WALL_TIERS[save.wall]);
-  save.solLv = clamp(data.solLv | 0, 0, SOLDIER_INTERVALS.length - 1);
+  save.wall = toCount(data.wall, WALL_TIERS.length - 1);
+  save.wallHp = toCount(data.wallHp, WALL_TIERS[save.wall]);
+  save.solLv = toCount(data.solLv, SOLDIER_INTERVALS.length - 1);
+  save.hpLv = toCount(data.hpLv, CASTLE_HP_TIERS.length - 1);
+  save.goldLv = toCount(data.goldLv, BONUS_TIERS.length - 1);
+  save.xpLv = toCount(data.xpLv, BONUS_TIERS.length - 1);
   for (const key in save.own) save.own[key] = !!data.own?.[key];
+
+  save.world = WORLDS[data.world] ? data.world : 'meadow';
+  save.cleared = toCount(data.cleared);
   save.wave = clamp(data.wave | 0 || 1, 1, save.cleared + 1);
+  save.parked.cleared = toCount(data.parked?.cleared);
+  save.parked.wave = clamp(data.parked?.wave | 0 || 1, 1, save.parked.cleared + 1);
   if (data.active === 'sword' || save.own[data.active]) save.active = data.active;
+
+  for (const id in data.run?.boons || {}) save.run.boons[id] = toCount(data.run.boons[id], 99);
+  if (Array.isArray(data.run?.chests)) save.run.chests = data.run.chests.filter(key => typeof key === 'string').slice(0, 500);
+  save.hints.waves = !!data.hints?.waves;
+  for (const key in save.stats) save.stats[key] = toCount(data.stats?.[key]);
+  for (const id in data.ach || {}) if (data.ach[id]) save.ach[id] = true;
   return save;
 }
 
@@ -407,21 +523,37 @@ function loadSlotIntoState(index, fresh) {
 /* ---------- Values derived from the save ---------- */
 
 const owned = id => id === 'sword' || S.own[id];
+const currentWorld = () => WORLDS[S.world];
 
-/** Damage of one basic hit of the weapon at its current level. */
-const damageOf = id => WEAPONS[id].baseDamage * (1 + 0.09 * (S.lv[id] - 1));
+/** Highest meadow wave cleared, no matter which world is being played. */
+const meadowCleared = () => (S.world === 'meadow' ? S.cleared : S.parked.cleared);
+const lavaUnlocked = () => meadowCleared() >= LAVA_UNLOCK_WAVE;
 
-/** Seconds between attacks; shrinks linearly until ABILITY_CAP and stays there. */
+/** Multiplier from chest boons taken this run: `step` per boon, e.g. 1.25 -> x1.25, x1.56, ... */
+const boonFactor = (id, step) => Math.pow(step, S.run.boons[id] || 0);
+
+/** Damage of one basic hit of the weapon: level, forge stages and the damage boon. */
+function damageOf(id) {
+  const byLevel = WEAPONS[id].baseDamage * (1 + 0.09 * (S.lv[id] - 1));
+  return byLevel * (1 + 0.1 * S.forge[id]) * boonFactor('damage', 1.25);
+}
+
+/** Seconds between attacks; shrinks linearly until ABILITY_CAP and stays there. The speed boon shortens it. */
 function cooldownOf(id) {
   const [slow, fast] = WEAPONS[id].cooldown;
   const progress = (Math.min(S.lv[id], ABILITY_CAP) - 1) / (ABILITY_CAP - 1);
-  return slow - (slow - fast) * progress;
+  return Math.max(0.1, (slow - (slow - fast) * progress) * boonFactor('speed', 0.8));
 }
 
 /** Next milestone level above the weapon's current level, or undefined. */
 const nextMilestone = id => Object.keys(WEAPONS[id].milestones).map(Number).find(level => level > S.lv[id]);
 
 const wallMax = () => WALL_TIERS[S.wall];
+const maxHp = () => CASTLE_HP_TIERS[S.hpLv];
+const soldierCap = () => SOLDIER_CAP[+S.own.squad];
+const soldierHp = () => SOLDIER_HP[+S.own.armor];
+const goldFactor = () => BONUS_TIERS[S.goldLv] * boonFactor('gold', 1.5);
+const xpFactor = () => BONUS_TIERS[S.xpLv] * boonFactor('xp', 1.5);
 
 /* ===== 04-world.js ===== */
 /*
@@ -444,7 +576,7 @@ const wallMax = () => WALL_TIERS[S.wall];
  */
 const world = { enemies: [], projectiles: [], zones: [], effects: [], particles: [], texts: [], timers: [], soldiers: [] };
 
-const castle = { hp: MAX_HP, flash: 0, fallen: false };   // flash: seconds of hit feedback left
+const castle = { hp: CASTLE_HP_TIERS[0], flash: 0, fallen: false };   // flash: seconds of hit feedback left
 
 const combat = {
   cooldown: 0,        // seconds until the next attack is allowed
@@ -471,6 +603,8 @@ const session = {
   started: false,     // false until the first attack; hides the hint and gates vibration
   holdPoint: null,    // {x, y} while a finger rests on the field (auto-fire)
   soldierTimer: 2,
+  towerTimer: 1,      // tower archer, see 20-defenders.js
+  achievementTimer: 0,
   lastKillSound: 0,
   lastProgress: -1,   // last wave progress written to the DOM, to avoid redundant writes
 };
@@ -1006,8 +1140,14 @@ function drawEnemy(e) {
     }
     ctx.fillStyle = 'rgba(51,40,58,.25)';
     ctx.fillRect(-r * 0.6, r * 0.35, r * 1.2, r * 0.18);
+    if (e.lava) drawLavaCracks(r);   // lava golem
+  } else if (e.type === 'shield') {
+    drawShieldBearerBody(e, r, squash);
+  } else if (e.type === 'archer') {
+    drawArcherBody(e, r, squash);
   } else {
-    // slime, and the boss as a crowned slime
+    // slime, and the boss as a crowned slime (in the lava world: a dragon with wings)
+    if (e.boss && e.lava) drawDragonWings(r, moving ? sin(t * 9 + e.phase) * 0.35 : 0);
     ctx.scale(2 - squash, squash);
     ctx.beginPath();
     ctx.moveTo(-r, r * 0.8);
@@ -1036,7 +1176,7 @@ function drawEnemy(e) {
   }
 
   // eyes
-  const eyeY = e.type === 'ogre' ? -r * 0.25 : e.type === 'bat' ? -r * 0.1 : r * 0.15;
+  const eyeY = e.type === 'ogre' || e.type === 'shield' ? -r * 0.25 : e.type === 'bat' || e.type === 'archer' ? -r * 0.1 : r * 0.15;
   const eyeX = r * 0.36;
   ctx.fillStyle = '#fff';
   ctx.beginPath();
@@ -1060,6 +1200,84 @@ function drawEnemy(e) {
   ctx.restore();
 
   drawEnemyStatus(e, x, y);
+}
+
+/** Shield bearer: armoured body with a big shield held towards the castle. */
+function drawShieldBearerBody(e, r, squash) {
+  const side = cx >= e.x ? 1 : -1;   // the shield faces the castle
+  ctx.scale(2 - squash, squash);
+  ctx.beginPath();
+  ctx.roundRect(-r * 0.8, -r, r * 1.6, r * 1.9, r * 0.5);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(51,40,58,.3)';   // helmet band
+  ctx.fillRect(-r * 0.8, -r * 0.62, r * 1.6, r * 0.2);
+  ctx.fillStyle = e.flash > 0 ? '#fff' : '#d9dee8';
+  ctx.beginPath();
+  ctx.roundRect(side * r * 0.75 - r * 0.32, -r * 0.75, r * 0.64, r * 1.6, r * 0.25);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#f5b93a';
+  fillCircle(ctx, side * r * 0.75, 0, r * 0.14);
+}
+
+/** Archer: small hooded figure with a crossbow. */
+function drawArcherBody(e, r, squash) {
+  const side = cx >= e.x ? 1 : -1;
+  ctx.scale(2 - squash, squash);
+  ctx.beginPath();
+  ctx.arc(0, r * 0.1, r * 0.85, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();   // pointed hood
+  ctx.moveTo(-r * 0.8, -r * 0.25);
+  ctx.lineTo(0, -r * 1.55);
+  ctx.lineTo(r * 0.8, -r * 0.25);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = '#5b4636';   // crossbow
+  ctx.lineWidth = 2.4 * U;
+  ctx.beginPath();
+  ctx.moveTo(side * r * 0.5, r * 0.45);
+  ctx.lineTo(side * r * 1.5, r * 0.45);
+  ctx.moveTo(side * r * 1.2, r * 0.05);
+  ctx.lineTo(side * r * 1.2, r * 0.85);
+  ctx.stroke();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2 * U;
+}
+
+/** Glowing cracks on a lava golem. */
+function drawLavaCracks(r) {
+  ctx.strokeStyle = '#ff9a3c';
+  ctx.lineWidth = 1.6 * U;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.6, r * 0.1);
+  ctx.lineTo(-r * 0.25, r * 0.3);
+  ctx.lineTo(-r * 0.35, r * 0.7);
+  ctx.moveTo(r * 0.55, -r * 0.05);
+  ctx.lineTo(r * 0.2, r * 0.35);
+  ctx.lineTo(r * 0.45, r * 0.75);
+  ctx.stroke();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2 * U;
+}
+
+/** Wings of the lava boss; drawn before the body so they sit behind it. */
+function drawDragonWings(r, flap) {
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(side * r * 0.6, -r * 0.1);
+    ctx.lineTo(side * r * 2.0, -r * (1.0 + flap));
+    ctx.lineTo(side * r * 1.7, -r * 0.2);
+    ctx.lineTo(side * r * 2.1, r * 0.2);
+    ctx.lineTo(side * r * 1.3, r * 0.1);
+    ctx.lineTo(side * r * 0.8, r * 0.55);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
 }
 
 /** Status markers above an enemy: poison bubbles, flame, stun stars, frost ring, health bar. */
@@ -1149,9 +1367,24 @@ function drawSoldier(soldier) {
 
 /* ---------- Ground ---------- */
 
-let ground = null;   // off-screen canvas with the static background, rebuilt on resize
+let ground = null;   // off-screen canvas with the static background, rebuilt on resize and world change
+
+/* Colours of the ground per world. Meadows get grass and flowers, the lava world gets lava and embers. */
+const GROUND_STYLES = {
+  meadow: {
+    fill: ['#93d672', '#74bd5e', '#4d9a52'],
+    patches: ['rgba(255,255,220,.06)', 'rgba(20,80,40,.07)'],
+    yard: '201,168,119', stone: '#b9b4ad', edge: '20,50,40', plants: true,
+  },
+  lava: {
+    fill: ['#5a4442', '#43302f', '#2a1c1e'],
+    patches: ['rgba(255,150,60,.05)', 'rgba(0,0,0,.14)'],
+    yard: '120,96,88', stone: '#6f6260', edge: '20,6,6', plants: false,
+  },
+};
 
 function makeGround() {
+  const style = GROUND_STYLES[S.world];
   ground = document.createElement('canvas');
   ground.width = W * DPR;
   ground.height = H * DPR;
@@ -1165,24 +1398,45 @@ function makeGround() {
   const yardY = cy + 8 * U;   // centre of the trodden ground around the castle
 
   let fill = g.createRadialGradient(cx, cy, 10, cx, cy, far * 0.75);
-  fill.addColorStop(0, '#93d672');
-  fill.addColorStop(0.55, '#74bd5e');
-  fill.addColorStop(1, '#4d9a52');
+  fill.addColorStop(0, style.fill[0]);
+  fill.addColorStop(0.55, style.fill[1]);
+  fill.addColorStop(1, style.fill[2]);
   g.fillStyle = fill;
   g.fillRect(0, 0, W, H);
 
   // light and dark patches
   for (let i = 0; i < 46; i++) {
-    g.fillStyle = i % 2 ? 'rgba(255,255,220,.06)' : 'rgba(20,80,40,.07)';
+    g.fillStyle = style.patches[i % 2 ? 0 : 1];
     g.beginPath();
     g.ellipse(rand() * W, rand() * H, (20 + rand() * 50) * U, (10 + rand() * 22) * U, rand() * 3, 0, TAU);
     g.fill();
   }
   // castle yard
-  g.fillStyle = 'rgba(201,168,119,.6)';
+  if (!style.plants) drawLavaStreams(g, rand, yardY);
+  g.fillStyle = `rgba(${style.yard},.6)`;
   fillEllipse(g, cx, yardY, 58 * U, 34 * U);
-  g.fillStyle = 'rgba(201,168,119,.35)';
+  g.fillStyle = `rgba(${style.yard},.35)`;
   fillEllipse(g, cx, yardY, 72 * U, 44 * U);
+  if (style.plants) drawMeadowPlants(g, rand, yardY);
+  // stones
+  for (let i = 0; i < 16; i++) {
+    const x = rand() * W, y = rand() * H, size = (3 + rand() * 4) * U;
+    g.fillStyle = 'rgba(0,0,0,.14)';
+    fillEllipse(g, x + U, y + size * 0.5, size * 1.1, size * 0.5);
+    g.fillStyle = style.stone;
+    fillEllipse(g, x, y, size, size * 0.75);
+    g.fillStyle = 'rgba(255,255,255,.35)';
+    fillEllipse(g, x - size * 0.25, y - size * 0.25, size * 0.4, size * 0.25);
+  }
+  // darker edges
+  fill = g.createRadialGradient(cx, cy, far * 0.3, cx, cy, far * 0.78);
+  fill.addColorStop(0, `rgba(${style.edge},0)`);
+  fill.addColorStop(1, `rgba(${style.edge},.5)`);
+  g.fillStyle = fill;
+  g.fillRect(0, 0, W, H);
+}
+
+function drawMeadowPlants(g, rand, yardY) {
   // grass tufts
   g.strokeStyle = 'rgba(40,110,55,.55)';
   g.lineWidth = 1.4 * U;
@@ -1209,22 +1463,37 @@ function makeGround() {
     g.fillStyle = '#f5b93a';
     fillCircle(g, x, y, 1.3 * U);
   }
-  // stones
-  for (let i = 0; i < 16; i++) {
-    const x = rand() * W, y = rand() * H, size = (3 + rand() * 4) * U;
-    g.fillStyle = 'rgba(0,0,0,.14)';
-    fillEllipse(g, x + U, y + size * 0.5, size * 1.1, size * 0.5);
-    g.fillStyle = '#b9b4ad';
-    fillEllipse(g, x, y, size, size * 0.75);
-    g.fillStyle = 'rgba(255,255,255,.35)';
-    fillEllipse(g, x - size * 0.25, y - size * 0.25, size * 0.4, size * 0.25);
+}
+
+/** Winding lava streams with a bright core, plus scattered embers. */
+function drawLavaStreams(g, rand, yardY) {
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  for (let i = 0; i < 5; i++) {
+    // a stream wanders from one screen edge towards the opposite one, bending around the castle yard
+    const points = [];
+    let x = rand() * W, y = i % 2 ? -20 : H + 20;
+    const stepY = (i % 2 ? 1 : -1) * H / 7;
+    for (let j = 0; j < 9; j++) {
+      points.push([x, y]);
+      x = clamp(x + (rand() - 0.5) * 120 * U, -20, W + 20);
+      y += stepY;
+      if (dist(x, y, cx, yardY) < 110 * U) x += (x < cx ? -1 : 1) * 90 * U;
+    }
+    for (const [color, width] of [['rgba(60,10,5,.55)', 20], ['#d9461c', 13], ['#ff9a2e', 7], ['#ffe08a', 2.5]]) {
+      g.strokeStyle = color;
+      g.lineWidth = width * U;
+      g.beginPath();
+      g.moveTo(points[0][0], points[0][1]);
+      for (const [px, py] of points.slice(1)) g.lineTo(px, py);
+      g.stroke();
+    }
   }
-  // darker edges
-  fill = g.createRadialGradient(cx, cy, far * 0.3, cx, cy, far * 0.78);
-  fill.addColorStop(0, 'rgba(20,50,40,0)');
-  fill.addColorStop(1, 'rgba(20,50,40,.5)');
-  g.fillStyle = fill;
-  g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 70; i++) {   // embers
+    const x = rand() * W, y = rand() * H;
+    g.fillStyle = i % 3 ? 'rgba(255,140,50,.5)' : 'rgba(255,220,130,.6)';
+    fillCircle(g, x, y, (0.8 + rand() * 1.4) * U);
+  }
 }
 
 /* ===== 07-enemies.js ===== */
@@ -1237,28 +1506,43 @@ function makeGround() {
  *   color    colour of the floating damage number
  *   dot      true for damage over time: no number is shown
  * plus weapon-specific flags that the kill hooks read (splinter, generation, chain).
+ * Projectiles pass `viaProjectile`, which is what shield bearers block.
  */
 
-/** Puts one enemy of `type` on a random point just outside the screen. */
-function spawnEnemy(type) {
-  const base = ENEMY_TYPES[type];
-  const waveNo = S.wave;
-  // Walk from the castle along a random direction until the screen edge (+30 px) is reached.
+/** Random point just outside the screen: from the castle along a random direction to the edge (+30 px). */
+function spawnPoint() {
   const angle = rnd(TAU), dx = cos(angle), dy = sin(angle);
   const toSide = (W / 2 + 30) / Math.abs(dx || 1e-6);
   const toTopOrBottom = ((dy < 0 ? cy : H - cy) + 30) / Math.abs(dy || 1e-6);
   const reach = Math.min(toSide, toTopOrBottom);
-  const hp = base.hp * enemyHpFactor(waveNo);
+  return { x: cx + dx * reach, y: cy + dy * reach };
+}
+
+/**
+ * Puts one enemy of `type` on the field, scaled for the current world and wave.
+ * `at` overrides the position, `mini` makes one of the two halves of a split slime.
+ */
+function spawnEnemy(type, { at = spawnPoint(), mini = false } = {}) {
+  const base = ENEMY_TYPES[type];
+  const worldDef = currentWorld(), waveNo = S.wave;
+  let hp = base.hp * worldDef.hpFactor(waveNo);
+  if (S.world === 'meadow' && waveNo <= EASY_WAVES) hp = Math.max(1, hp - EASY_HP_CUT);   // gentle start
+  if (mini) hp *= 0.3;
 
   const enemy = {
     type,
     boss: type === 'boss',
-    x: cx + dx * reach, y: cy + dy * reach,
-    r: base.r * U * CASTLE_SCALE,
+    shielded: !!base.shielded,
+    ranged: !!base.ranged,
+    mini,
+    lava: S.world === 'lava',                 // selects the lava look in drawEnemy()
+    x: at.x, y: at.y,
+    r: base.r * U * CASTLE_SCALE * (mini ? 0.62 : 1),
     hp, max: hp,
-    sp: base.sp * enemySpeedFactor(waveNo),   // in U per second
-    xp: base.xp * enemyXpFactor(waveNo),
-    color: base.color,
+    sp: base.sp * worldDef.speedFactor(waveNo),   // in U per second
+    xp: base.xp * worldDef.xpMult * (mini ? 0.25 : 1),
+    color: worldDef.colors[type] || base.color,
+    shotCd: 2,                                // ranged only: seconds until the next shot once in range
     phase: rnd(TAU),                          // desynchronises the idle animation
     dead: false,
     flash: 0,                                 // white hit flash, seconds
@@ -1285,8 +1569,12 @@ function nearestEnemy(x, y, maxDist = 1e9, exclude = null) {
   return best;
 }
 
-function hurt(enemy, amount, source) {
+function hurt(enemy, amount, source, viaProjectile = false) {
   if (enemy.dead) return;
+  if (enemy.shielded && viaProjectile) {
+    amount *= SHIELD_BLOCK;
+    if (world.effects.length < FX_CAP_COMMON) ring(enemy.x, enemy.y, enemy.r * 1.4, '200,215,255', 0.18);   // "clank"
+  }
   enemy.hp -= amount;
   enemy.flash = 0.12;
   if (!source.dot && world.texts.length < TEXT_CAP) {
@@ -1330,6 +1618,7 @@ const KILL_HOOKS = [];
 
 function kill(enemy, source) {
   enemy.dead = true;
+  recordKill(enemy);
 
   // kill streak
   combo.count++;
@@ -1390,10 +1679,13 @@ function updateEnemies(dt) {
     e.knockX *= decay;
     e.knockY *= decay;
 
-    // frozen, stunned or held up by a soldier: no walking this frame
+    // frozen, stunned or held up by a soldier: no walking (or shooting) this frame
     if (e.freeze > 0) e.freeze -= dt;
     else if (e.stun > 0) e.stun -= dt;
-    else if (e.blocked <= 0) walkToCastle(e, dt);
+    else if (e.blocked <= 0) {
+      if (e.ranged && dist(e.x, e.y, cx, cy) <= ARCHER_RANGE * U) shootAtCastle(e, dt);
+      else walkToCastle(e, dt);
+    }
 
     e.x = clamp(e.x, -60, W + 60);
     e.y = clamp(e.y, -60, H + 60);
@@ -1428,6 +1720,36 @@ function walkToCastle(e, dt) {
   e.y += (sin(angle) + cos(angle) * weave) * speed * dt;
 }
 
+/** Archers in range stand still and fire a bolt at the castle every ARCHER_INTERVAL seconds. */
+function shootAtCastle(e, dt) {
+  e.shotCd -= dt;
+  if (e.shotCd > 0) return;
+  e.shotCd = ARCHER_INTERVAL;
+  const fromX = e.x, fromY = e.y - e.r;
+  // the bolt lands on the wall while it stands, otherwise on the castle
+  const angle = atan2(e.y - wallCenterY(), e.x - cx);
+  const toX = S.wallHp > 0 ? cx + cos(angle) * wallRadiusX() : cx;
+  const toY = S.wallHp > 0 ? wallCenterY() + sin(angle) * wallRadiusY() : cy - 10 * U;
+  const flight = 0.4;
+  addEffect(flight, k => {
+    const x = fromX + (toX - fromX) * k, y = fromY + (toY - fromY) * k - sin(k * PI) * 14 * U;
+    drawArrow(ctx, x, y, atan2(toY - fromY, toX - fromX), 12 * U, '#5b4636', '#33283a');
+  });
+  after(flight, () => {
+    if (S.wallHp > 0) wallHit(toX, toY);
+    else castleHit();
+  });
+}
+
+/** Lava world: a slime that dies breaks into two small ones (which do not split again). */
+KILL_HOOKS.push(enemy => {
+  if (enemy.type !== 'slime' || enemy.mini || !currentWorld().splitSlimes) return;
+  if (world.enemies.length >= MAX_ENEMIES_ALIVE + 60) return;
+  for (const side of [-1, 1]) {
+    spawnEnemy('slime', { at: { x: enemy.x + side * enemy.r * 0.7, y: enemy.y + rnd(-3, 3) * U }, mini: true });
+  }
+});
+
 /** An enemy that reaches the wall (while it stands) or the castle deals 1 damage and is gone. */
 function checkCastleContact(e) {
   if (S.wallHp > 0) {
@@ -1459,7 +1781,8 @@ const PROJECTILE_KINDS = {};
 
 /**
  * Adds a projectile. Required: kind, x, y, angle, speed, r (radius), dmg, source.
- * Common options: life (seconds), pierce (extra enemies it passes through).
+ * Common options: life (seconds), pierce (extra enemies it passes through),
+ * heavy (big things like rolling balls: shield bearers cannot block them).
  * Further fields are kind-specific. `p.hit` holds the enemies already damaged.
  */
 function addProjectile(spec) {
@@ -1531,7 +1854,7 @@ function updateProjectiles(dt) {
     for (const e of world.enemies) {
       if (e.dead || p.hit.has(e) || dist(p.x, p.y, e.x, e.y) >= p.r + e.r) continue;
       p.hit.add(e);
-      hurt(e, p.dmg, p.source);
+      hurt(e, p.dmg, p.source, !p.heavy);
       const kind = PROJECTILE_KINDS[p.kind];
       if (kind.onHit) kind.onHit(p, e);
       if (p.dead) break;
@@ -1659,7 +1982,7 @@ function swordOrbit(a) {
 function swordBladeWave(a) {
   addProjectile({
     kind: 'bladeWave', x: a.x, y: a.y, angle: a.angle, speed: 380 * U, r: 30 * U,
-    dmg: a.damage * 0.8, life: 2, pierce: 99, source: { weapon: 'sword', color: '#bfe6ff' },
+    dmg: a.damage * 0.8, life: 2, pierce: 99, heavy: true, source: { weapon: 'sword', color: '#bfe6ff' },
   });
 }
 
@@ -1808,7 +2131,7 @@ KILL_HOOKS.push((enemy, source) => {
  */
 
 const DAGGER_COLOR = '#c9f7e4';
-const POISON_SHARE = 0.35;   // poison damage per second as a share of the dagger's hit damage
+const POISON_SHARE = 0.7;    // poison damage per second as a share of the dagger's hit damage
 
 /**
  * Throws one dagger.
@@ -2059,7 +2382,7 @@ function starSlam(x, y, share) {
 function rollBall(x, y, angle, { speed, r, dmg, range, splits }) {
   addProjectile({
     kind: 'ball', x, y, angle, speed, r, dmg, range, splits,
-    travelled: 0, life: 5, pierce: 99, source: STAR_SOURCE,
+    travelled: 0, life: 5, pierce: 99, heavy: true, source: STAR_SOURCE,
   });
 }
 
@@ -2348,7 +2671,7 @@ function shootArrow(angle, opts = {}) {
     pierce: opts.giant ? 99 : (level >= 10 ? 2 : 0),
     bounce: aimed && level >= 60 ? 2 : 0,
     explosive: aimed && level >= 40,
-    giant: !!opts.giant, critical,
+    giant: !!opts.giant, heavy: !!opts.giant, critical,
     source: { weapon: 'bow', color: critical ? '#ffe14a' : BOW_COLOR },
   });
 }
@@ -2601,7 +2924,7 @@ function wandPhoenix(a) {
   const fromLeft = combat.attackCount % 4 === 0;
   addProjectile({
     kind: 'phoenix', x: fromLeft ? -30 : W + 30, y: a.y, angle: fromLeft ? 0 : PI, speed: 520 * U, r: 24 * U,
-    dmg: a.damage * 2, life: 3, pierce: 99, source: WAND_SOURCE,
+    dmg: a.damage * 2, life: 3, pierce: 99, heavy: true, source: WAND_SOURCE,
   });
 }
 
@@ -2793,7 +3116,6 @@ function castleHit() {
 
 /* ---------- Soldiers ---------- */
 
-const SOLDIER_HP = 3;                // hits a soldier survives
 const SOLDIER_RADIUS = () => 5.5 * U;
 const SOLDIER_HIT_INTERVAL = 0.8;    // seconds between a soldier's hits
 const ENEMY_HIT_INTERVAL = 1.2;      // seconds between an enemy's hits on a soldier
@@ -2801,7 +3123,7 @@ const ENEMY_HIT_INTERVAL = 1.2;      // seconds between an enemy's hits on a sol
 function spawnSoldier() {
   world.soldiers.push({
     x: cx, y: cy + 13 * U,           // the castle gate
-    hp: SOLDIER_HP, maxHp: SOLDIER_HP,
+    hp: soldierHp(), maxHp: soldierHp(),   // 3 hits, 5 with the armour upgrade
     attackCd: 0,
     flash: 0, swing: 0,              // hit flash and sword swing, seconds
     walking: false, facing: 1,       // facing: 1 = right, -1 = left
@@ -2818,7 +3140,7 @@ function updateSoldiers(dt) {
     session.soldierTimer -= dt;
     if (session.soldierTimer <= 0) {
       session.soldierTimer = SOLDIER_INTERVALS[S.solLv];
-      if (world.soldiers.length < MAX_SOLDIERS) spawnSoldier();
+      if (world.soldiers.length < soldierCap()) spawnSoldier();
     }
   }
 
@@ -2858,6 +3180,32 @@ function updateSoldiers(dt) {
   world.soldiers = world.soldiers.filter(soldier => soldier.hp > 0);
 }
 
+/* ---------- Tower archer ---------- */
+
+const TOWER_INTERVAL = 1.5;          // seconds between shots
+const TOWER_RANGE = () => 300 * U;
+
+/** Shop upgrade: an archer on the keep shoots the nearest enemy on his own. */
+function updateTowerArcher(dt) {
+  if (!S.own.tower) return;
+  session.towerTimer -= dt;
+  if (session.towerTimer > 0) return;
+  const target = nearestEnemy(cx, cy, TOWER_RANGE());
+  if (!target) return;                       // stay ready and shoot as soon as someone comes close
+  session.towerTimer = TOWER_INTERVAL;
+  const fromY = cy - 50 * U * CASTLE_SCALE;
+  addProjectile({
+    kind: 'towerBolt', x: cx, y: fromY, angle: atan2(target.y - fromY, target.x - cx), speed: 520 * U, r: 6 * U,
+    dmg: damageOf(S.active) * 0.5,           // half a hit of the weapon in hand, so he scales with the player
+    life: 1.2, source: { weapon: 'tower', color: '#e8e0ff' },
+  });
+}
+
+PROJECTILE_KINDS.towerBolt = {
+  onHit(p) { p.dead = true; },
+  draw(p, angle) { drawArrow(ctx, p.x, p.y, angle, 16 * U, '#d9ccff', '#eef4ff'); },
+};
+
 function walkToGuardPost(soldier, dt) {
   const postX = cx + cos(soldier.guardAngle) * 64 * U;
   const postY = cy + 20 * U + sin(soldier.guardAngle) * 34 * U;
@@ -2882,7 +3230,7 @@ function moveTowards(soldier, x, y, step) {
 /** Fills the spawn queue for the current wave S.wave. */
 function buildWave() {
   const waveNo = S.wave;
-  const count = waveCount(waveNo);
+  const count = currentWorld().count(waveNo);
   wave.queue = [];
   for (let i = 0; i < count; i++) wave.queue.push(rollEnemyType(waveNo));
   if (waveNo % BOSS_EVERY === 0) wave.queue.splice(Math.floor(wave.queue.length / 2), 0, 'boss');   // boss arrives mid-wave
@@ -2919,18 +3267,22 @@ function completeWave() {
   const waveNo = S.wave;
   let gold = 0;
   if (waveNo > S.cleared) {     // gold only for waves cleared for the first time
+    const wasLocked = !lavaUnlocked();
     S.cleared = waveNo;
-    gold = waveNo;
-    S.gold += gold;
+    gold = Math.round(waveNo * currentWorld().goldMult * goldFactor());
+    earnGold(gold);
     sound(1200, 0.07, 'triangle', 0.05);
+    if (wasLocked && lavaUnlocked()) toast('Die Lava-Welt ist offen!', 'Wechsle die Welt mit dem Knopf oben');
   }
-  castle.hp = Math.min(MAX_HP, castle.hp + S.heal);
+  castle.hp = Math.min(maxHp(), castle.hp + S.heal);
   if (!S.hold) S.wave++;
-  save();
   wave.pause = 2.5;
   buildWave();
-  renderHud();
   toast('Welle ' + waveNo + ' geschafft', gold ? '+' + gold + ' Gold' : '');
+  checkAchievements();
+  save();
+  renderHud();
+  if (waveNo % CHEST_EVERY === 0) offerChest(waveNo);
 }
 
 /** Wave arrows: jump to any wave up to the first one not cleared yet. Resets the enemies. */
@@ -2947,6 +3299,7 @@ function setWave(waveNo) {
 /** The castle fell: stop all feedback and open the shop. */
 function handleDefeat() {
   castle.fallen = false;
+  S.stats.defeats++;
   session.shake = 0;        // otherwise the frozen screen would keep shaking behind the shop
   castle.flash = 0;
   combo.count = 0;
@@ -2956,17 +3309,169 @@ function handleDefeat() {
   openShop();
 }
 
-/** Leaving the shop after a defeat: back to wave 1 with full lives and a repaired wall. */
+/** Leaving the shop after a defeat: back to wave 1 with full lives and a repaired wall; chest boons end. */
 function continueAfterDefeat() {
   S.wave = 1;
   S.wallHp = wallMax();
-  castle.hp = MAX_HP;
+  S.run = { boons: {}, chests: [] };
+  castle.hp = maxHp();
   combat.cooldown = 0;
   restartWave(true);
 }
 
+/** Switches to another world; each world keeps its own wave and progress. */
+function switchWorld(id) {
+  if (id === S.world || !WORLDS[id]) return;
+  const leaving = { wave: S.wave, cleared: S.cleared };
+  S.wave = S.parked.wave;
+  S.cleared = S.parked.cleared;
+  S.parked = leaving;
+  S.world = id;
+  makeGround();
+  restartWave(true);
+  renderHud();
+  save();
+  toast(WORLDS[id].name, 'Welle ' + S.wave);
+}
+
 /** Share of the wave that is already dealt with, 0..100, for the progress bar. */
 const waveProgress = () => Math.round((1 - (wave.queue.length + world.enemies.length) / Math.max(1, wave.total)) * 100);
+
+/* ===== 22-progress.js ===== */
+/*
+ * Long-term progress: statistics, achievements and the chest that appears
+ * every tenth wave.
+ */
+
+/** All gold income goes through here so the statistics stay correct. */
+function earnGold(amount) {
+  S.gold += amount;
+  S.stats.goldEarned += amount;
+}
+
+/** Called for every enemy killed by the player's side (not for enemies that reach the castle). */
+function recordKill(enemy) {
+  S.stats.kills++;
+  if (enemy.boss) S.stats.bosses++;
+  if (combo.count + 1 > S.stats.bestCombo) S.stats.bestCombo = combo.count + 1;
+}
+
+/* ---------- Achievements ---------- */
+
+/*
+ * Each achievement pays its gold reward once per save.
+ *   done()  true as soon as the goal is reached
+ */
+const highestWave = worldId => (S.world === worldId ? S.cleared : S.parked.cleared);
+const highestLevel = () => Math.max(...WEAPON_IDS.map(id => S.lv[id]));
+
+const ACHIEVEMENTS = [
+  { id: 'kills100', name: 'Monsterjäger', text: '100 Gegner besiegt', gold: 5, done: () => S.stats.kills >= 100 },
+  { id: 'kills1000', name: 'Monsterschreck', text: '1.000 Gegner besiegt', gold: 25, done: () => S.stats.kills >= 1000 },
+  { id: 'kills10000', name: 'Legende', text: '10.000 Gegner besiegt', gold: 100, done: () => S.stats.kills >= 10000 },
+  { id: 'combo25', name: 'In Fahrt', text: 'Serie von 25 Treffern', gold: 5, done: () => S.stats.bestCombo >= 25 },
+  { id: 'combo100', name: 'Unaufhaltsam', text: 'Serie von 100 Treffern', gold: 30, done: () => S.stats.bestCombo >= 100 },
+  { id: 'boss', name: 'Königsmörder', text: 'Ersten Boss besiegt', gold: 5, done: () => S.stats.bosses >= 1 },
+  { id: 'wave10', name: 'Standhaft', text: 'Welle 10 geschafft', gold: 10, done: () => highestWave('meadow') >= 10 },
+  { id: 'wave25', name: 'Bollwerk', text: 'Welle 25 geschafft', gold: 25, done: () => highestWave('meadow') >= 25 },
+  { id: 'wave50', name: 'Festung', text: 'Welle 50 geschafft', gold: 60, done: () => highestWave('meadow') >= 50 },
+  { id: 'wave100', name: 'Herr der Wiese', text: 'Welle 100 geschafft', gold: 200, done: () => highestWave('meadow') >= 100 },
+  { id: 'arsenal', name: 'Waffenkammer', text: 'Alle fünf Waffen im Besitz', gold: 30, done: () => WEAPON_IDS.every(owned) },
+  { id: 'level50', name: 'Meister', text: 'Eine Waffe auf Level 50', gold: 30, done: () => highestLevel() >= 50 },
+  { id: 'level100', name: 'Großmeister', text: 'Eine Waffe auf Level 100', gold: 100, done: () => highestLevel() >= 100 },
+  { id: 'lava', name: 'Feuertaufe', text: 'Erste Lava-Welle geschafft', gold: 50, done: () => highestWave('lava') >= 1 },
+];
+
+/** Rewards every achievement that was reached since the last check. Cheap; called about once a second. */
+function checkAchievements() {
+  if (!debugFlags.achievements || slot < 0) return;
+  for (const achievement of ACHIEVEMENTS) {
+    if (S.ach[achievement.id] || !achievement.done()) continue;
+    S.ach[achievement.id] = true;
+    earnGold(achievement.gold);
+    toast('Erfolg: ' + achievement.name, '+' + achievement.gold + ' Gold');
+    sound(1000, 0.1, 'triangle', 0.05, 400);
+    renderHud();
+    save();
+  }
+}
+
+/** Statistics and achievement list, opened from the pause menu. */
+function showStats() {
+  const row = (label, value, className = '') => {
+    const el = document.createElement('div');
+    el.className = 'stat ' + className;
+    const name = document.createElement('span'), amount = document.createElement('b');
+    name.textContent = label;
+    amount.textContent = value;
+    el.append(name, amount);
+    return el;
+  };
+  const number = n => n.toLocaleString('de-DE');
+  const body = [
+    row('Besiegte Gegner', number(S.stats.kills)),
+    row('Besiegte Bosse', number(S.stats.bosses)),
+    row('Längste Serie', '×' + number(S.stats.bestCombo)),
+    row('Höchste Welle (Wiese)', highestWave('meadow')),
+  ];
+  if (lavaUnlocked()) body.push(row('Höchste Welle (Lava)', highestWave('lava')));
+  body.push(row('Gold verdient', number(S.stats.goldEarned)), row('Niederlagen', number(S.stats.defeats)));
+
+  const boons = activeBoonNames();
+  if (boons.length) body.push(row('Truhen-Boni', boons.join(', '), 'wide'));
+
+  const heading = document.createElement('h3');
+  heading.textContent = 'Erfolge ' + Object.keys(S.ach).length + ' / ' + ACHIEVEMENTS.length;
+  body.push(heading);
+  for (const achievement of ACHIEVEMENTS) {
+    body.push(row(achievement.name + ' – ' + achievement.text, S.ach[achievement.id] ? '✓' : achievement.gold + ' Gold', S.ach[achievement.id] ? 'done' : 'open'));
+  }
+  showDialog({ title: 'Statistik', body, buttons: [{ label: 'Schließen' }] });
+}
+
+/* ---------- Chest every tenth wave ---------- */
+
+const CHEST_EVERY = 10;
+
+/*
+ * Boons from the chest. Lasting boons are counted in S.run.boons and read via
+ * boonFactor() in 03-state.js; they end with the next defeat. Instant boons
+ * apply once. `available()` hides boons that would do nothing right now.
+ */
+const BOONS = [
+  { id: 'damage', name: 'Scharfe Klingen', text: '+25 % Schaden für alle Waffen' },
+  { id: 'speed', name: 'Flinke Hände', text: 'Alle Waffen greifen 20 % schneller an' },
+  { id: 'xp', name: 'Lehrmeister', text: '+50 % XP' },
+  { id: 'gold', name: 'Schatzkarte', text: '+50 % Gold für neue Wellen' },
+  { id: 'feast', name: 'Festmahl', text: 'Die Burg wird sofort voll geheilt', instant: () => { castle.hp = maxHp(); }, available: () => castle.hp < maxHp() },
+  { id: 'mason', name: 'Maurer', text: 'Die Mauer wird sofort repariert', instant: () => { S.wallHp = wallMax(); }, available: () => S.wallHp < wallMax() },
+];
+
+const activeBoonNames = () => BOONS.filter(boon => S.run.boons[boon.id]).map(boon => boon.name + (S.run.boons[boon.id] > 1 ? ' ×' + S.run.boons[boon.id] : ''));
+
+function takeBoon(boon) {
+  if (boon.instant) boon.instant();
+  else S.run.boons[boon.id] = (S.run.boons[boon.id] || 0) + 1;
+  sound(880, 0.12, 'triangle', 0.05, 440);
+  save();
+  renderHud();
+}
+
+/** After clearing wave 10, 20, ...: pick one of three random boons. Once per wave number and run. */
+function offerChest(waveNo) {
+  const key = S.world + ':' + waveNo;
+  if (!debugFlags.chests || S.run.chests.includes(key)) return;
+  S.run.chests.push(key);
+  const pool = BOONS.filter(boon => !boon.available || boon.available());
+  const choices = [];
+  while (choices.length < 3 && pool.length) choices.push(pool.splice(Math.floor(rnd(pool.length)), 1)[0]);
+  showDialog({
+    title: 'Schatztruhe',
+    text: 'Wähle einen Bonus. Dauerhafte Boni gelten bis zur nächsten Niederlage.',
+    dismissable: false,
+    buttons: choices.map(boon => ({ label: boon.name, detail: boon.text, action: () => takeBoon(boon) })),
+  });
+}
 
 /* ===== 30-hud.js ===== */
 /*
@@ -3012,6 +3517,8 @@ function renderHud() {
   $('wup').disabled = S.wave > S.cleared;
   $('b-hold').setAttribute('aria-pressed', String(S.hold));
   $('b-speed').textContent = 'x' + DB.opts.speed;
+  $('wave').classList.toggle('lava', S.world === 'lava');
+  $('b-world').hidden = !lavaUnlocked();
   $('gold').textContent = S.gold;
   $('gold').setAttribute('aria-label', S.gold + ' Gold');
   renderHearts();
@@ -3021,15 +3528,16 @@ function renderHud() {
 }
 
 function renderHearts() {
-  const box = $('hearts');
+  const box = $('hearts'), max = maxHp();
   box.textContent = '';
-  for (let i = 0; i < MAX_HP; i++) {
+  box.classList.toggle('many', max > 10);   // more than ten hearts wrap into two rows
+  for (let i = 0; i < max; i++) {
     const heart = document.createElement('span');
     heart.textContent = '♥';
     if (i >= castle.hp) heart.className = 'off';
     box.appendChild(heart);
   }
-  box.setAttribute('aria-label', castle.hp + ' von ' + MAX_HP + ' Leben');
+  box.setAttribute('aria-label', castle.hp + ' von ' + max + ' Leben');
 }
 
 /** One brick per wall hit point; lost ones are dimmed. Wraps into several rows. */
@@ -3104,7 +3612,7 @@ function clearCooldownRings() {
 /** Gives XP to a weapon and handles level-ups, including the announcement of new abilities. */
 function gainXp(id, amount) {
   if (S.lv[id] >= MAX_LEVEL) return;
-  S.xp[id] += amount;
+  S.xp[id] += amount * xpFactor();
   let leveledUp = false;
   while (S.lv[id] < MAX_LEVEL && S.xp[id] >= xpNeeded(S.lv[id])) {
     S.xp[id] -= xpNeeded(S.lv[id]);
@@ -3121,113 +3629,219 @@ function gainXp(id, amount) {
     setTimeout(() => sound(880, 0.14, 'triangle', 0.05), 90);
     vibrate(30);
     ring(cx, cy, 90 * U, '245,185,58', 0.6);
+    checkAchievements();
     save();
   }
-  renderHud();
+  renderWeaponBar();     // only these two parts change with XP; kills are frequent, so skip the rest
+  renderWeaponInfo();
 }
 
 /* ===== 31-shop.js ===== */
 /*
  * The shop, which only opens after a defeat.
  *
- * SHOP_ITEMS is data: every entry describes one row.
- *   name      title of the row
- *   tierNames optional names of the tiers, shown as "name: tier"
- *   text      description
- *   prices    gold per tier; one entry = one-time purchase
- *   level()   tiers already bought
- *   buy()     applies the next tier
- *   requires  optional { met(), label } shown on the button while not met
+ * The shop is data-driven: SHOP_TABS lists the tabs, SHOP_ITEMS the offers.
+ * An offer has
+ *   id         unique; the buy button gets the DOM id "buy-<id>"
+ *   tab        id of the tab it is listed under
+ *   name       title of the card
+ *   tierNames  optional names of the tiers, shown as "name: tier"
+ *   text       description
+ *   prices     gold per tier (one entry = one-time purchase), OR
+ *   price(n)   price of tier n for offers without an upper limit (forge)
+ *   level()    tiers already bought
+ *   buy()      applies the next tier
+ *   requires   optional { met(), label } shown on the button while not met
+ *   visible()  optional; hides the offer while false
  */
 
-const weaponItem = (id, text) => ({
-  name: WEAPONS[id].name, text, prices: [WEAPONS[id].price],
+const SHOP_TABS = [
+  { id: 'weapons', name: 'Waffen' },
+  { id: 'castle', name: 'Burg' },
+  { id: 'troops', name: 'Truppen' },
+  { id: 'boni', name: 'Boni' },
+  { id: 'forge', name: 'Schmiede', visible: lavaUnlocked },   // gold for weapon damage, from the lava world on
+];
+
+/* Helpers that build the common kinds of offers. */
+const weaponOffer = (id, text) => ({
+  id, tab: 'weapons', name: WEAPONS[id].name, text, prices: [WEAPONS[id].price],
   level: () => +S.own[id],
   buy: () => { S.own[id] = true; },
 });
+const unlockOffer = (id, tab, name, price, text, requires) => ({
+  id, tab, name, text, prices: [price], requires,
+  level: () => +S.own[id],
+  buy: () => { S.own[id] = true; },
+});
+const needsSoldier = { met: () => S.own.soldier, label: 'Erst Soldat' };
+
+const FORGE_BASE_PRICE = 100, FORGE_PRICE_GROWTH = 1.35;
+const forgeOffer = id => ({
+  id: 'forge-' + id, tab: 'forge', name: WEAPONS[id].name + ' schmieden',
+  text: '+10 % Schaden für diese Waffe. Beliebig oft, wird jedes Mal teurer.',
+  price: stage => Math.round(FORGE_BASE_PRICE * Math.pow(FORGE_PRICE_GROWTH, stage)),
+  level: () => S.forge[id],
+  buy: () => { S.forge[id]++; },
+  visible: () => owned(id),
+});
 
 const SHOP_ITEMS = [
+  weaponOffer('dagger', 'Schnelle Würfe mit Gift und Abprallern.'),
+  weaponOffer('star', 'Langsame, wuchtige Flächenschläge.'),
+  weaponOffer('bow', 'Schneller Fernschuss, stark gegen einzelne Gegner.'),
+  weaponOffer('wand', 'Feuerbälle, die explodieren und Gegner in Brand setzen.'),
+
   {
-    name: 'Soldat', prices: [2],
-    text: 'Alle 5 Sekunden kommt ein kleiner Soldat aus der Burg. Er hält 3 Schläge aus und bremst Gegner.',
-    level: () => +S.own.soldier,
-    buy: () => { S.own.soldier = true; },
-  },
-  {
-    name: 'Soldaten-Tempo', tierNames: ['alle 4 s', 'alle 3 s'], prices: [25, 80],
-    text: 'Soldaten kommen schneller aus der Burg.',
-    level: () => S.solLv,
-    buy: () => { S.solLv++; },
-    requires: { met: () => S.own.soldier, label: 'Erst Soldat' },
-  },
-  weaponItem('dagger', 'Schaltet die Dolche als Waffe frei.'),
-  weaponItem('star', 'Schaltet den Morgenstern als Waffe frei.'),
-  weaponItem('bow', 'Schneller Fernschuss, stark gegen einzelne Gegner.'),
-  weaponItem('wand', 'Feuerbälle, die explodieren und Gegner in Brand setzen.'),
-  {
-    name: 'Heilung', tierNames: ['+2', '+3'], prices: [20, 32],
+    id: 'heal', tab: 'castle', name: 'Heilung', tierNames: ['+2', '+3'], prices: [20, 32],
     text: 'Leben, die die Burg nach jeder geschafften Welle zurückbekommt.',
     level: () => S.heal - 1,
     buy: () => { S.heal++; },
   },
   {
-    name: 'Mauer', tierNames: ['3 HP', '5 HP', '10 HP', '25 HP'], prices: [15, 30, 120, 300],
-    text: 'Fängt Treffer ab, bevor die Burg Leben verliert. Wird nur nach einer Niederlage repariert.',
+    id: 'wall', tab: 'castle', name: 'Mauer', tierNames: ['3 HP', '5 HP', '10 HP', '25 HP'], prices: [15, 30, 120, 300],
+    text: 'Fängt Treffer vor der Burg ab. Wird nur nach einer Niederlage repariert.',
     level: () => S.wall,
     buy: () => { S.wall++; },
   },
+  {
+    id: 'hp', tab: 'castle', name: 'Burg-Leben', tierNames: ['12 Leben', '15 Leben'], prices: [60, 150],
+    text: 'Die Burg hält mehr Treffer aus.',
+    level: () => S.hpLv,
+    buy: () => { S.hpLv++; },
+  },
+  unlockOffer('tower', 'castle', 'Turmschütze', 120, 'Schießt von selbst auf den nächsten Gegner.'),
+
+  unlockOffer('soldier', 'troops', 'Soldat', 2, 'Alle 5 Sekunden kommt ein kleiner Soldat aus der Burg und hält Gegner auf.'),
+  {
+    id: 'soldierSpeed', tab: 'troops', name: 'Soldaten-Tempo', tierNames: ['alle 4 s', 'alle 3 s'], prices: [25, 80],
+    text: 'Soldaten kommen schneller aus der Burg.',
+    level: () => S.solLv,
+    buy: () => { S.solLv++; },
+    requires: needsSoldier,
+  },
+  unlockOffer('armor', 'troops', 'Rüstung', 50, 'Soldaten halten 5 statt 3 Schläge aus.', needsSoldier),
+  unlockOffer('squad', 'troops', 'Verstärkung', 90, 'Bis zu 6 statt 4 Soldaten gleichzeitig.', needsSoldier),
+
+  {
+    id: 'goldBonus', tab: 'boni', name: 'Goldbonus', tierNames: ['+25 %', '+50 %'], prices: [80, 200],
+    text: 'Mehr Gold für jede neu geschaffte Welle.',
+    level: () => S.goldLv,
+    buy: () => { S.goldLv++; },
+  },
+  {
+    id: 'xpBonus', tab: 'boni', name: 'XP-Bonus', tierNames: ['+25 %', '+50 %'], prices: [60, 160],
+    text: 'Waffen leveln schneller.',
+    level: () => S.xpLv,
+    buy: () => { S.xpLv++; },
+  },
+
+  ...WEAPON_IDS.map(forgeOffer),
 ];
+
+const offerMaxLevel = offer => (offer.prices ? offer.prices.length : Infinity);
+const offerPrice = (offer, level) => (offer.prices ? offer.prices[level] : offer.price(level));
+const offerVisible = offer => !offer.visible || offer.visible();
+
+let shopTab = 'weapons';
 
 function renderShop() {
   $('shopgold').textContent = S.gold + ' Gold';
+
+  const tabs = $('shoptabs');
+  tabs.textContent = '';
+  for (const tab of SHOP_TABS) {
+    if (tab.visible && !tab.visible()) continue;
+    const offers = SHOP_ITEMS.filter(offer => offer.tab === tab.id && offerVisible(offer));
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.id = 'tab-' + tab.id;
+    button.textContent = tab.name;
+    button.setAttribute('aria-pressed', String(tab.id === shopTab));
+    // a dot marks tabs with something affordable
+    if (offers.some(canBuy)) button.classList.add('hot');
+    button.addEventListener('click', () => { shopTab = tab.id; renderShop(); });
+    tabs.appendChild(button);
+  }
+
   const list = $('items');
   list.textContent = '';
-  SHOP_ITEMS.forEach((item, index) => list.appendChild(shopRow(item, index)));
+  for (const offer of SHOP_ITEMS) {
+    if (offer.tab === shopTab && offerVisible(offer)) list.appendChild(shopCard(offer));
+  }
 }
 
-function shopRow(item, index) {
-  const level = item.level();
-  const soldOut = level >= item.prices.length;
-  const price = item.prices[level];
+/** True if the next tier of the offer can be bought right now. */
+function canBuy(offer) {
+  const level = offer.level();
+  if (level >= offerMaxLevel(offer)) return false;
+  if (offer.requires && !offer.requires.met()) return false;
+  return S.gold >= offerPrice(offer, level);
+}
 
-  const row = document.createElement('div');
-  row.className = 'item';
+function shopCard(offer) {
+  const level = offer.level(), maxLevel = offerMaxLevel(offer);
+  const soldOut = level >= maxLevel;
+  const price = soldOut ? 0 : offerPrice(offer, level);
+
+  const card = document.createElement('div');
+  card.className = 'item';
   const label = document.createElement('div');
   const title = document.createElement('b');
+  // tiered offers show the tier that is for sale next (or the last one when sold out)
+  title.textContent = offer.name + (offer.tierNames ? ': ' + offer.tierNames[Math.min(level, maxLevel - 1)] : '');
+  label.appendChild(title);
+  label.appendChild(tierPips(level, maxLevel));
   const text = document.createElement('span');
-  // tiered items show the tier that is for sale next (or the last one when sold out)
-  title.textContent = item.name + (item.tierNames ? ': ' + item.tierNames[Math.min(level, item.prices.length - 1)] : '');
-  text.textContent = item.text;
-  label.append(title, text);
+  text.textContent = offer.text;
+  label.appendChild(text);
 
   const button = document.createElement('button');
   button.type = 'button';
-  button.id = 'buy-' + index;
+  button.id = 'buy-' + offer.id;
   if (soldOut) {
-    button.textContent = item.prices.length > 1 ? 'Maximal' : 'Gekauft';
+    button.textContent = maxLevel > 1 ? 'Maximal' : 'Gekauft';
     button.disabled = true;
     button.className = 'own';
-  } else if (item.requires && !item.requires.met()) {
-    button.textContent = item.requires.label;
+  } else if (offer.requires && !offer.requires.met()) {
+    button.textContent = offer.requires.label;
     button.disabled = true;
   } else {
     button.textContent = price + ' Gold';
     button.disabled = S.gold < price;
     button.addEventListener('click', () => {
-      if (S.gold < price || item.level() !== level) return;   // guards against double taps
+      if (S.gold < price || offer.level() !== level) return;   // guards against double taps
       sound(900, 0.08, 'triangle', 0.05, 300);
       S.gold -= price;
-      item.buy();
+      offer.buy();
+      checkAchievements();
       save();
       renderHud();
       renderShop();
     });
   }
-  row.append(label, button);
-  return row;
+  card.append(label, button);
+  return card;
+}
+
+/** Row of dots showing bought and open tiers; unlimited offers show their stage as a number instead. */
+function tierPips(level, maxLevel) {
+  const pips = document.createElement('i');
+  pips.className = 'pips';
+  if (maxLevel === Infinity) {
+    pips.textContent = 'Stufe ' + level;
+  } else if (maxLevel > 1) {
+    for (let i = 0; i < maxLevel; i++) {
+      const pip = document.createElement('u');
+      if (i < level) pip.className = 'on';
+      pips.appendChild(pip);
+    }
+  }
+  return pips;
 }
 
 function openShop() {
+  shopTab = 'weapons';
   save();
   renderShop();
   $('shop').hidden = false;
@@ -3241,6 +3855,7 @@ function closeShop() {
   renderHud();
   save();
   toast('Welle 1');
+  showWaveHintOnce();
 }
 
 /* ===== 32-menus.js ===== */
@@ -3249,7 +3864,7 @@ function closeShop() {
  * the ability overview. Also decides when the game is paused.
  */
 
-const OVERLAY_IDS = ['menu', 'shop', 'pausep', 'abil'];
+const OVERLAY_IDS = ['menu', 'shop', 'pausep', 'abil', 'dialog'];
 const isOpen = id => !$(id).hidden;
 
 /** The game is paused exactly while any overlay is open. Call after showing or hiding one. */
@@ -3323,6 +3938,7 @@ function renderSlots() {
         return;
       }
       startGame(index, slotMode === 'new');
+      if (slotMode === 'new') showIntro();
     });
     list.appendChild(button);
   });
@@ -3331,7 +3947,8 @@ function renderSlots() {
 /** Leaves the menu and starts playing slot `index`; `fresh` starts a new game there. */
 function startGame(index, fresh) {
   loadSlotIntoState(index, fresh);
-  castle.hp = MAX_HP;
+  castle.hp = maxHp();
+  makeGround();                                  // the slot may be in another world than the last one played
   combat.cooldown = 0;
   combat.cooldownMax = 1;
   combat.attackCount = 0;
@@ -3362,6 +3979,89 @@ function openPause() {
 function closePause() {
   $('pausep').hidden = true;
   refreshPause();
+}
+
+/* ---------- Generic dialog ---------- */
+
+let dialogDismissable = true;   // false while the player has to pick one of the buttons (chest)
+
+/**
+ * Opens a small window and pauses the game.
+ *   text     paragraph below the title (optional)
+ *   body     extra DOM nodes between text and buttons (optional)
+ *   buttons  [{ label, detail?, action?, alt? }]; every button closes the window, then runs its action
+ *   dismissable  false = the back button does not close it
+ */
+function showDialog({ title, text = '', body = [], buttons = [{ label: 'Weiter' }], dismissable = true }) {
+  dialogDismissable = dismissable;
+  $('dlg-title').textContent = title;
+  $('dlg-text').textContent = text;
+  $('dlg-text').hidden = !text;
+  const bodyBox = $('dlg-body');
+  bodyBox.textContent = '';
+  bodyBox.append(...body);
+  const buttonBox = $('dlg-buttons');
+  buttonBox.textContent = '';
+  buttons.forEach((spec, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.id = 'dlg-' + index;
+    button.className = 'big' + (spec.alt ? ' alt' : '');
+    button.textContent = spec.label;
+    if (spec.detail) {
+      const detail = document.createElement('small');
+      detail.textContent = spec.detail;
+      button.appendChild(detail);
+    }
+    button.addEventListener('click', () => {
+      closeDialog();
+      if (spec.action) spec.action();
+    });
+    buttonBox.appendChild(button);
+  });
+  $('dialog').hidden = false;
+  refreshPause();
+}
+function closeDialog() {
+  $('dialog').hidden = true;
+  refreshPause();
+}
+
+/** Greeting at the start of every new game. */
+function showIntro() {
+  showDialog({
+    title: 'Sire!',
+    text: 'Sire, die Monster greifen an. Nehmt Euer Schwert. Wir müssen uns aufrüsten!',
+    buttons: [{ label: 'Zu den Waffen!' }],
+  });
+}
+
+/** One-time hint after the first defeat of a save: the wave arrows. */
+function showWaveHintOnce() {
+  if (S.hints.waves) return;
+  S.hints.waves = true;
+  save();
+  showDialog({
+    title: 'Tipp',
+    text: 'Oben links wählst du mit den Pfeilen die Welle selbst – bis zur höchsten, die du schon erreicht hast. So musst du nicht jedes Mal bei Welle 1 anfangen.',
+    buttons: [{ label: 'Verstanden' }],
+  });
+}
+
+/** World picker behind the globe button (only visible once the lava world is unlocked). */
+function showWorldChoice() {
+  if (session.paused || !lavaUnlocked()) return;
+  const waveIn = id => (id === S.world ? S.wave : S.parked.wave);
+  showDialog({
+    title: 'Welt wechseln',
+    text: 'Jede Welt hat ihre eigenen Wellen. In der Lava-Welt gibt es dreifaches Gold.',
+    buttons: Object.keys(WORLDS).map(id => ({
+      label: WORLDS[id].name,
+      detail: (id === S.world ? 'Hier bist du · ' : '') + 'Welle ' + waveIn(id),
+      alt: id === S.world,
+      action: () => switchWorld(id),
+    })),
+  });
 }
 
 /* ---------- Ability overview (long press on a weapon) ---------- */
@@ -3395,7 +4095,8 @@ function closeAbilities() {
 
 /** Called by the Android back button: closes the topmost thing, or exits from the main menu. */
 window.__back = () => {
-  if (isOpen('abil')) closeAbilities();
+  if (isOpen('dialog')) { if (dialogDismissable) closeDialog(); }
+  else if (isOpen('abil')) closeAbilities();
   else if (isOpen('pausep')) closePause();
   else if (isOpen('shop')) { /* the shop can only be left with its own button */ }
   else if (isOpen('menu')) {
@@ -3415,6 +4116,8 @@ else $('m-exit').hidden = true;
 $('b-pause').addEventListener('click', openPause);
 $('p-resume').addEventListener('click', closePause);
 $('p-menu').addEventListener('click', showMenu);
+$('p-stats').addEventListener('click', () => { closePause(); showStats(); });
+$('b-world').addEventListener('click', showWorldChoice);
 $('p-snd').addEventListener('click', () => {
   DB.opts.mute = !DB.opts.mute;
   save();
@@ -3501,6 +4204,7 @@ function update(dt) {
   updateEnemies(dt);
   updateCombo(dt);
   updateSoldiers(dt);
+  updateTowerArcher(dt);
   updateProjectiles(dt);
   updateZones(dt);
   updateVisuals(dt);
@@ -3510,6 +4214,12 @@ function update(dt) {
 
   if (castle.fallen) handleDefeat();
   updateHudMeters();
+
+  session.achievementTimer += dt;   // achievements are checked about once a second, not on every kill
+  if (session.achievementTimer >= 1) {
+    session.achievementTimer = 0;
+    checkAchievements();
+  }
 }
 
 function runTimers(dt) {
@@ -3739,7 +4449,8 @@ requestAnimationFrame(frame);
  */
 window.__bw = {
   S, DB, VERSION,
-  SHOP: SHOP_ITEMS.map(item => ({ t: item.prices })),   // prices per item, in shop order
+  SHOP: SHOP_ITEMS.filter(offer => offer.prices).map(offer => ({ id: offer.id, t: offer.prices })),   // offers with fixed prices
+  flags: debugFlags, switchWorld, WORLDS, lavaUnlocked,
   WALL: WALL_TIERS,
   startGame, showMenu,
   slot: () => slot,

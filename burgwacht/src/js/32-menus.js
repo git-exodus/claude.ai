@@ -3,7 +3,7 @@
  * the ability overview. Also decides when the game is paused.
  */
 
-const OVERLAY_IDS = ['menu', 'shop', 'pausep', 'abil'];
+const OVERLAY_IDS = ['menu', 'shop', 'pausep', 'abil', 'dialog'];
 const isOpen = id => !$(id).hidden;
 
 /** The game is paused exactly while any overlay is open. Call after showing or hiding one. */
@@ -77,6 +77,7 @@ function renderSlots() {
         return;
       }
       startGame(index, slotMode === 'new');
+      if (slotMode === 'new') showIntro();
     });
     list.appendChild(button);
   });
@@ -85,7 +86,8 @@ function renderSlots() {
 /** Leaves the menu and starts playing slot `index`; `fresh` starts a new game there. */
 function startGame(index, fresh) {
   loadSlotIntoState(index, fresh);
-  castle.hp = MAX_HP;
+  castle.hp = maxHp();
+  makeGround();                                  // the slot may be in another world than the last one played
   combat.cooldown = 0;
   combat.cooldownMax = 1;
   combat.attackCount = 0;
@@ -116,6 +118,89 @@ function openPause() {
 function closePause() {
   $('pausep').hidden = true;
   refreshPause();
+}
+
+/* ---------- Generic dialog ---------- */
+
+let dialogDismissable = true;   // false while the player has to pick one of the buttons (chest)
+
+/**
+ * Opens a small window and pauses the game.
+ *   text     paragraph below the title (optional)
+ *   body     extra DOM nodes between text and buttons (optional)
+ *   buttons  [{ label, detail?, action?, alt? }]; every button closes the window, then runs its action
+ *   dismissable  false = the back button does not close it
+ */
+function showDialog({ title, text = '', body = [], buttons = [{ label: 'Weiter' }], dismissable = true }) {
+  dialogDismissable = dismissable;
+  $('dlg-title').textContent = title;
+  $('dlg-text').textContent = text;
+  $('dlg-text').hidden = !text;
+  const bodyBox = $('dlg-body');
+  bodyBox.textContent = '';
+  bodyBox.append(...body);
+  const buttonBox = $('dlg-buttons');
+  buttonBox.textContent = '';
+  buttons.forEach((spec, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.id = 'dlg-' + index;
+    button.className = 'big' + (spec.alt ? ' alt' : '');
+    button.textContent = spec.label;
+    if (spec.detail) {
+      const detail = document.createElement('small');
+      detail.textContent = spec.detail;
+      button.appendChild(detail);
+    }
+    button.addEventListener('click', () => {
+      closeDialog();
+      if (spec.action) spec.action();
+    });
+    buttonBox.appendChild(button);
+  });
+  $('dialog').hidden = false;
+  refreshPause();
+}
+function closeDialog() {
+  $('dialog').hidden = true;
+  refreshPause();
+}
+
+/** Greeting at the start of every new game. */
+function showIntro() {
+  showDialog({
+    title: 'Sire!',
+    text: 'Sire, die Monster greifen an. Nehmt Euer Schwert. Wir müssen uns aufrüsten!',
+    buttons: [{ label: 'Zu den Waffen!' }],
+  });
+}
+
+/** One-time hint after the first defeat of a save: the wave arrows. */
+function showWaveHintOnce() {
+  if (S.hints.waves) return;
+  S.hints.waves = true;
+  save();
+  showDialog({
+    title: 'Tipp',
+    text: 'Oben links wählst du mit den Pfeilen die Welle selbst – bis zur höchsten, die du schon erreicht hast. So musst du nicht jedes Mal bei Welle 1 anfangen.',
+    buttons: [{ label: 'Verstanden' }],
+  });
+}
+
+/** World picker behind the globe button (only visible once the lava world is unlocked). */
+function showWorldChoice() {
+  if (session.paused || !lavaUnlocked()) return;
+  const waveIn = id => (id === S.world ? S.wave : S.parked.wave);
+  showDialog({
+    title: 'Welt wechseln',
+    text: 'Jede Welt hat ihre eigenen Wellen. In der Lava-Welt gibt es dreifaches Gold.',
+    buttons: Object.keys(WORLDS).map(id => ({
+      label: WORLDS[id].name,
+      detail: (id === S.world ? 'Hier bist du · ' : '') + 'Welle ' + waveIn(id),
+      alt: id === S.world,
+      action: () => switchWorld(id),
+    })),
+  });
 }
 
 /* ---------- Ability overview (long press on a weapon) ---------- */
@@ -149,7 +234,8 @@ function closeAbilities() {
 
 /** Called by the Android back button: closes the topmost thing, or exits from the main menu. */
 window.__back = () => {
-  if (isOpen('abil')) closeAbilities();
+  if (isOpen('dialog')) { if (dialogDismissable) closeDialog(); }
+  else if (isOpen('abil')) closeAbilities();
   else if (isOpen('pausep')) closePause();
   else if (isOpen('shop')) { /* the shop can only be left with its own button */ }
   else if (isOpen('menu')) {
@@ -169,6 +255,8 @@ else $('m-exit').hidden = true;
 $('b-pause').addEventListener('click', openPause);
 $('p-resume').addEventListener('click', closePause);
 $('p-menu').addEventListener('click', showMenu);
+$('p-stats').addEventListener('click', () => { closePause(); showStats(); });
+$('b-world').addEventListener('click', showWorldChoice);
 $('p-snd').addEventListener('click', () => {
   DB.opts.mute = !DB.opts.mute;
   save();

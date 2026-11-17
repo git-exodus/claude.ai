@@ -395,8 +395,14 @@ function drawEnemy(e) {
     }
     ctx.fillStyle = 'rgba(51,40,58,.25)';
     ctx.fillRect(-r * 0.6, r * 0.35, r * 1.2, r * 0.18);
+    if (e.lava) drawLavaCracks(r);   // lava golem
+  } else if (e.type === 'shield') {
+    drawShieldBearerBody(e, r, squash);
+  } else if (e.type === 'archer') {
+    drawArcherBody(e, r, squash);
   } else {
-    // slime, and the boss as a crowned slime
+    // slime, and the boss as a crowned slime (in the lava world: a dragon with wings)
+    if (e.boss && e.lava) drawDragonWings(r, moving ? sin(t * 9 + e.phase) * 0.35 : 0);
     ctx.scale(2 - squash, squash);
     ctx.beginPath();
     ctx.moveTo(-r, r * 0.8);
@@ -425,7 +431,7 @@ function drawEnemy(e) {
   }
 
   // eyes
-  const eyeY = e.type === 'ogre' ? -r * 0.25 : e.type === 'bat' ? -r * 0.1 : r * 0.15;
+  const eyeY = e.type === 'ogre' || e.type === 'shield' ? -r * 0.25 : e.type === 'bat' || e.type === 'archer' ? -r * 0.1 : r * 0.15;
   const eyeX = r * 0.36;
   ctx.fillStyle = '#fff';
   ctx.beginPath();
@@ -449,6 +455,84 @@ function drawEnemy(e) {
   ctx.restore();
 
   drawEnemyStatus(e, x, y);
+}
+
+/** Shield bearer: armoured body with a big shield held towards the castle. */
+function drawShieldBearerBody(e, r, squash) {
+  const side = cx >= e.x ? 1 : -1;   // the shield faces the castle
+  ctx.scale(2 - squash, squash);
+  ctx.beginPath();
+  ctx.roundRect(-r * 0.8, -r, r * 1.6, r * 1.9, r * 0.5);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(51,40,58,.3)';   // helmet band
+  ctx.fillRect(-r * 0.8, -r * 0.62, r * 1.6, r * 0.2);
+  ctx.fillStyle = e.flash > 0 ? '#fff' : '#d9dee8';
+  ctx.beginPath();
+  ctx.roundRect(side * r * 0.75 - r * 0.32, -r * 0.75, r * 0.64, r * 1.6, r * 0.25);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#f5b93a';
+  fillCircle(ctx, side * r * 0.75, 0, r * 0.14);
+}
+
+/** Archer: small hooded figure with a crossbow. */
+function drawArcherBody(e, r, squash) {
+  const side = cx >= e.x ? 1 : -1;
+  ctx.scale(2 - squash, squash);
+  ctx.beginPath();
+  ctx.arc(0, r * 0.1, r * 0.85, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();   // pointed hood
+  ctx.moveTo(-r * 0.8, -r * 0.25);
+  ctx.lineTo(0, -r * 1.55);
+  ctx.lineTo(r * 0.8, -r * 0.25);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = '#5b4636';   // crossbow
+  ctx.lineWidth = 2.4 * U;
+  ctx.beginPath();
+  ctx.moveTo(side * r * 0.5, r * 0.45);
+  ctx.lineTo(side * r * 1.5, r * 0.45);
+  ctx.moveTo(side * r * 1.2, r * 0.05);
+  ctx.lineTo(side * r * 1.2, r * 0.85);
+  ctx.stroke();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2 * U;
+}
+
+/** Glowing cracks on a lava golem. */
+function drawLavaCracks(r) {
+  ctx.strokeStyle = '#ff9a3c';
+  ctx.lineWidth = 1.6 * U;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.6, r * 0.1);
+  ctx.lineTo(-r * 0.25, r * 0.3);
+  ctx.lineTo(-r * 0.35, r * 0.7);
+  ctx.moveTo(r * 0.55, -r * 0.05);
+  ctx.lineTo(r * 0.2, r * 0.35);
+  ctx.lineTo(r * 0.45, r * 0.75);
+  ctx.stroke();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2 * U;
+}
+
+/** Wings of the lava boss; drawn before the body so they sit behind it. */
+function drawDragonWings(r, flap) {
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(side * r * 0.6, -r * 0.1);
+    ctx.lineTo(side * r * 2.0, -r * (1.0 + flap));
+    ctx.lineTo(side * r * 1.7, -r * 0.2);
+    ctx.lineTo(side * r * 2.1, r * 0.2);
+    ctx.lineTo(side * r * 1.3, r * 0.1);
+    ctx.lineTo(side * r * 0.8, r * 0.55);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
 }
 
 /** Status markers above an enemy: poison bubbles, flame, stun stars, frost ring, health bar. */
@@ -538,9 +622,24 @@ function drawSoldier(soldier) {
 
 /* ---------- Ground ---------- */
 
-let ground = null;   // off-screen canvas with the static background, rebuilt on resize
+let ground = null;   // off-screen canvas with the static background, rebuilt on resize and world change
+
+/* Colours of the ground per world. Meadows get grass and flowers, the lava world gets lava and embers. */
+const GROUND_STYLES = {
+  meadow: {
+    fill: ['#93d672', '#74bd5e', '#4d9a52'],
+    patches: ['rgba(255,255,220,.06)', 'rgba(20,80,40,.07)'],
+    yard: '201,168,119', stone: '#b9b4ad', edge: '20,50,40', plants: true,
+  },
+  lava: {
+    fill: ['#5a4442', '#43302f', '#2a1c1e'],
+    patches: ['rgba(255,150,60,.05)', 'rgba(0,0,0,.14)'],
+    yard: '120,96,88', stone: '#6f6260', edge: '20,6,6', plants: false,
+  },
+};
 
 function makeGround() {
+  const style = GROUND_STYLES[S.world];
   ground = document.createElement('canvas');
   ground.width = W * DPR;
   ground.height = H * DPR;
@@ -554,24 +653,45 @@ function makeGround() {
   const yardY = cy + 8 * U;   // centre of the trodden ground around the castle
 
   let fill = g.createRadialGradient(cx, cy, 10, cx, cy, far * 0.75);
-  fill.addColorStop(0, '#93d672');
-  fill.addColorStop(0.55, '#74bd5e');
-  fill.addColorStop(1, '#4d9a52');
+  fill.addColorStop(0, style.fill[0]);
+  fill.addColorStop(0.55, style.fill[1]);
+  fill.addColorStop(1, style.fill[2]);
   g.fillStyle = fill;
   g.fillRect(0, 0, W, H);
 
   // light and dark patches
   for (let i = 0; i < 46; i++) {
-    g.fillStyle = i % 2 ? 'rgba(255,255,220,.06)' : 'rgba(20,80,40,.07)';
+    g.fillStyle = style.patches[i % 2 ? 0 : 1];
     g.beginPath();
     g.ellipse(rand() * W, rand() * H, (20 + rand() * 50) * U, (10 + rand() * 22) * U, rand() * 3, 0, TAU);
     g.fill();
   }
   // castle yard
-  g.fillStyle = 'rgba(201,168,119,.6)';
+  if (!style.plants) drawLavaStreams(g, rand, yardY);
+  g.fillStyle = `rgba(${style.yard},.6)`;
   fillEllipse(g, cx, yardY, 58 * U, 34 * U);
-  g.fillStyle = 'rgba(201,168,119,.35)';
+  g.fillStyle = `rgba(${style.yard},.35)`;
   fillEllipse(g, cx, yardY, 72 * U, 44 * U);
+  if (style.plants) drawMeadowPlants(g, rand, yardY);
+  // stones
+  for (let i = 0; i < 16; i++) {
+    const x = rand() * W, y = rand() * H, size = (3 + rand() * 4) * U;
+    g.fillStyle = 'rgba(0,0,0,.14)';
+    fillEllipse(g, x + U, y + size * 0.5, size * 1.1, size * 0.5);
+    g.fillStyle = style.stone;
+    fillEllipse(g, x, y, size, size * 0.75);
+    g.fillStyle = 'rgba(255,255,255,.35)';
+    fillEllipse(g, x - size * 0.25, y - size * 0.25, size * 0.4, size * 0.25);
+  }
+  // darker edges
+  fill = g.createRadialGradient(cx, cy, far * 0.3, cx, cy, far * 0.78);
+  fill.addColorStop(0, `rgba(${style.edge},0)`);
+  fill.addColorStop(1, `rgba(${style.edge},.5)`);
+  g.fillStyle = fill;
+  g.fillRect(0, 0, W, H);
+}
+
+function drawMeadowPlants(g, rand, yardY) {
   // grass tufts
   g.strokeStyle = 'rgba(40,110,55,.55)';
   g.lineWidth = 1.4 * U;
@@ -598,20 +718,35 @@ function makeGround() {
     g.fillStyle = '#f5b93a';
     fillCircle(g, x, y, 1.3 * U);
   }
-  // stones
-  for (let i = 0; i < 16; i++) {
-    const x = rand() * W, y = rand() * H, size = (3 + rand() * 4) * U;
-    g.fillStyle = 'rgba(0,0,0,.14)';
-    fillEllipse(g, x + U, y + size * 0.5, size * 1.1, size * 0.5);
-    g.fillStyle = '#b9b4ad';
-    fillEllipse(g, x, y, size, size * 0.75);
-    g.fillStyle = 'rgba(255,255,255,.35)';
-    fillEllipse(g, x - size * 0.25, y - size * 0.25, size * 0.4, size * 0.25);
+}
+
+/** Winding lava streams with a bright core, plus scattered embers. */
+function drawLavaStreams(g, rand, yardY) {
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  for (let i = 0; i < 5; i++) {
+    // a stream wanders from one screen edge towards the opposite one, bending around the castle yard
+    const points = [];
+    let x = rand() * W, y = i % 2 ? -20 : H + 20;
+    const stepY = (i % 2 ? 1 : -1) * H / 7;
+    for (let j = 0; j < 9; j++) {
+      points.push([x, y]);
+      x = clamp(x + (rand() - 0.5) * 120 * U, -20, W + 20);
+      y += stepY;
+      if (dist(x, y, cx, yardY) < 110 * U) x += (x < cx ? -1 : 1) * 90 * U;
+    }
+    for (const [color, width] of [['rgba(60,10,5,.55)', 20], ['#d9461c', 13], ['#ff9a2e', 7], ['#ffe08a', 2.5]]) {
+      g.strokeStyle = color;
+      g.lineWidth = width * U;
+      g.beginPath();
+      g.moveTo(points[0][0], points[0][1]);
+      for (const [px, py] of points.slice(1)) g.lineTo(px, py);
+      g.stroke();
+    }
   }
-  // darker edges
-  fill = g.createRadialGradient(cx, cy, far * 0.3, cx, cy, far * 0.78);
-  fill.addColorStop(0, 'rgba(20,50,40,0)');
-  fill.addColorStop(1, 'rgba(20,50,40,.5)');
-  g.fillStyle = fill;
-  g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 70; i++) {   // embers
+    const x = rand() * W, y = rand() * H;
+    g.fillStyle = i % 3 ? 'rgba(255,140,50,.5)' : 'rgba(255,220,130,.6)';
+    fillCircle(g, x, y, (0.8 + rand() * 1.4) * U);
+  }
 }

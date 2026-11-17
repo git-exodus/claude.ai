@@ -31,7 +31,6 @@ function castleHit() {
 
 /* ---------- Soldiers ---------- */
 
-const SOLDIER_HP = 3;                // hits a soldier survives
 const SOLDIER_RADIUS = () => 5.5 * U;
 const SOLDIER_HIT_INTERVAL = 0.8;    // seconds between a soldier's hits
 const ENEMY_HIT_INTERVAL = 1.2;      // seconds between an enemy's hits on a soldier
@@ -39,7 +38,7 @@ const ENEMY_HIT_INTERVAL = 1.2;      // seconds between an enemy's hits on a sol
 function spawnSoldier() {
   world.soldiers.push({
     x: cx, y: cy + 13 * U,           // the castle gate
-    hp: SOLDIER_HP, maxHp: SOLDIER_HP,
+    hp: soldierHp(), maxHp: soldierHp(),   // 3 hits, 5 with the armour upgrade
     attackCd: 0,
     flash: 0, swing: 0,              // hit flash and sword swing, seconds
     walking: false, facing: 1,       // facing: 1 = right, -1 = left
@@ -56,7 +55,7 @@ function updateSoldiers(dt) {
     session.soldierTimer -= dt;
     if (session.soldierTimer <= 0) {
       session.soldierTimer = SOLDIER_INTERVALS[S.solLv];
-      if (world.soldiers.length < MAX_SOLDIERS) spawnSoldier();
+      if (world.soldiers.length < soldierCap()) spawnSoldier();
     }
   }
 
@@ -95,6 +94,32 @@ function updateSoldiers(dt) {
   }
   world.soldiers = world.soldiers.filter(soldier => soldier.hp > 0);
 }
+
+/* ---------- Tower archer ---------- */
+
+const TOWER_INTERVAL = 1.5;          // seconds between shots
+const TOWER_RANGE = () => 300 * U;
+
+/** Shop upgrade: an archer on the keep shoots the nearest enemy on his own. */
+function updateTowerArcher(dt) {
+  if (!S.own.tower) return;
+  session.towerTimer -= dt;
+  if (session.towerTimer > 0) return;
+  const target = nearestEnemy(cx, cy, TOWER_RANGE());
+  if (!target) return;                       // stay ready and shoot as soon as someone comes close
+  session.towerTimer = TOWER_INTERVAL;
+  const fromY = cy - 50 * U * CASTLE_SCALE;
+  addProjectile({
+    kind: 'towerBolt', x: cx, y: fromY, angle: atan2(target.y - fromY, target.x - cx), speed: 520 * U, r: 6 * U,
+    dmg: damageOf(S.active) * 0.5,           // half a hit of the weapon in hand, so he scales with the player
+    life: 1.2, source: { weapon: 'tower', color: '#e8e0ff' },
+  });
+}
+
+PROJECTILE_KINDS.towerBolt = {
+  onHit(p) { p.dead = true; },
+  draw(p, angle) { drawArrow(ctx, p.x, p.y, angle, 16 * U, '#d9ccff', '#eef4ff'); },
+};
 
 function walkToGuardPost(soldier, dt) {
   const postX = cx + cos(soldier.guardAngle) * 64 * U;

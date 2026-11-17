@@ -1,7 +1,10 @@
 const {chromium}=require('playwright');
 let fails=0;const ok=(c,m,x='')=>{console.log((c?'PASS ':'FAIL ')+m+(x!==''?'  ['+x+']':''));if(!c)fails++};
 (async()=>{const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:360,height:740},deviceScaleFactor:1});
-const p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+const p=await ctx.newPage();
+await ctx.addInitScript(()=>{window.__bwQuiet=true});
+const dismiss=async()=>{if(await p.evaluate(()=>!document.getElementById('dialog').hidden))await p.click('#dlg-0')};
+const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
 const url='file://'+require('path').resolve(__dirname,'../android/app/src/main/assets/index.html');const E=f=>p.evaluate(f);const vis=id=>p.evaluate(id=>!document.getElementById(id).hidden,id);
 await p.goto(url);await E(()=>localStorage.clear());await p.goto(url);await p.waitForTimeout(300);
 // Menü
@@ -13,7 +16,7 @@ await p.screenshot({path:'menu.png'});
 let t0=await E(()=>__bw.state().t);await p.waitForTimeout(400);ok(await E(()=>__bw.state().t)===t0,'Im Menü läuft keine Spielzeit');
 await p.click('#m-start');r=await E(()=>[...document.querySelectorAll('.slot span')].map(x=>x.textContent).join('|'));ok(r==='Leer|Leer','Platzwahl zeigt zwei leere Plätze',r);
 await p.click('#m-back');ok(await vis('m-main'),'Zurück führt ins Hauptmenü');
-await p.click('#m-start');await p.click('#slot-0');ok(!(await vis('menu'))&&await E(()=>__bw.slot()===0&&!__bw.state().paused),'Neues Spiel in Platz 1 läuft');
+await p.click('#m-start');await p.click('#slot-0');r=await E(()=>({d:!document.getElementById('dialog').hidden,t:document.getElementById('dlg-text').textContent,p:__bw.state().paused}));ok(r.d&&r.p&&r.t==='Sire, die Monster greifen an. Nehmt Euer Schwert. Wir müssen uns aufrüsten!','Neues Spiel beginnt mit dem Begrüßungsfenster',r.t);await p.click('#dlg-0');ok(!(await vis('menu'))&&await E(()=>__bw.slot()===0&&!__bw.state().paused),'Neues Spiel in Platz 1 läuft');
 // Waffenfenster
 r=await E(()=>[...document.getElementById('winfo').children].map(x=>x.textContent).join('|'));ok(r==='Schwert Lvl 1|Schaden 10|alle 3,5 s|Neu ab Lvl 5','Infozeile: Waffe, Schaden, Tempo, nächste Fähigkeit',r);
 r=await E(()=>{const w=document.getElementById('winfo'),b=document.getElementById('bar').getBoundingClientRect(),i=w.getBoundingClientRect(),k=document.querySelector('.wps').getBoundingClientRect();return [i.top>k.bottom,w.scrollWidth<=w.clientWidth+1,parseFloat(getComputedStyle(w).fontSize)]});ok(r[0]&&r[1]&&r[2]>=11,'Infozeile steht unter den Waffen, passt in die Breite und ist lesbar groß',r[2]+' px');
@@ -63,11 +66,11 @@ await p.click('#b-pause');await p.click('#p-menu');ok(await vis('menu')&&await E
 ok(await E(()=>!document.getElementById('m-load').disabled),'Spiel laden jetzt aktiv');
 await p.click('#m-load');r=await E(()=>[...document.querySelectorAll('.slot')].map(x=>x.querySelector('span').textContent+(x.disabled?'(aus)':'')).join('|'));
 ok(r==='Welle 4 · 7 Gold · Schwert 12|Leer(aus)','Laden zeigt Platz 1 mit Inhalt, Platz 2 leer und gesperrt',r);await p.screenshot({path:'slots.png'});
-await p.click('#m-back');await p.click('#m-start');await p.click('#slot-1');r=await E(()=>({s:__bw.slot(),g:__bw.S.gold,l:__bw.S.lv.sword,w:__bw.S.wave}));ok(r.s===1&&r.g===0&&r.l===1&&r.w===1,'Neues Spiel in Platz 2 startet leer',JSON.stringify(r));
-await E(()=>{__bw.S.gold=3;__bw.save();__bw.showMenu()});await p.click('#m-load');await p.click('#slot-0');r=await E(()=>({s:__bw.slot(),g:__bw.S.gold,l:__bw.S.lv.sword,w:__bw.S.wave}));ok(r.s===0&&r.g===7&&r.l===12&&r.w===4,'Platz 1 unverändert geladen',JSON.stringify(r));
+await p.click('#m-back');await p.click('#m-start');await p.click('#slot-1');await dismiss();r=await E(()=>({s:__bw.slot(),g:__bw.S.gold,l:__bw.S.lv.sword,w:__bw.S.wave}));ok(r.s===1&&r.g===0&&r.l===1&&r.w===1,'Neues Spiel in Platz 2 startet leer',JSON.stringify(r));
+await E(()=>{__bw.S.gold=3;__bw.save();__bw.showMenu()});await p.click('#m-load');await p.click('#slot-0');ok(await E(()=>document.getElementById('dialog').hidden),'Beim Laden erscheint kein Begrüßungsfenster');r=await E(()=>({s:__bw.slot(),g:__bw.S.gold,l:__bw.S.lv.sword,w:__bw.S.wave}));ok(r.s===0&&r.g===7&&r.l===12&&r.w===4,'Platz 1 unverändert geladen',JSON.stringify(r));
 await E(()=>__bw.showMenu());await p.click('#m-start');await p.click('#slot-0');r=await E(()=>({m:!document.getElementById('menu').hidden,t:document.querySelector('#slot-0 span').textContent}));ok(r.m&&r.t.startsWith('Überschreiben?'),'Belegter Platz fragt vor dem Überschreiben nach',r.t);
 await p.click('#m-back');await p.click('#m-load');await p.click('#slot-1');ok(await E(()=>__bw.S.gold===3),'Abbrechen überschreibt nichts, Platz 2 lädt');
-await E(()=>__bw.showMenu());await p.click('#m-start');await p.click('#slot-0');await p.click('#slot-0');r=await E(()=>({s:__bw.slot(),g:__bw.S.gold,l:__bw.S.lv.sword}));ok(r.s===0&&r.g===0&&r.l===1,'Zweites Tippen überschreibt Platz 1',JSON.stringify(r));
+await E(()=>__bw.showMenu());await p.click('#m-start');await p.click('#slot-0');await p.click('#slot-0');await dismiss();r=await E(()=>({s:__bw.slot(),g:__bw.S.gold,l:__bw.S.lv.sword}));ok(r.s===0&&r.g===0&&r.l===1,'Zweites Tippen überschreibt Platz 1',JSON.stringify(r));
 await p.goto(url);await p.waitForTimeout(200);r=await E(()=>({a:__bw.DB.slots.map(x=>x&&x.gold),v:__bw.DB.opts.vib}));ok(JSON.stringify(r.a)==='[0,3]'&&r.v===false,'Beide Spielstände und Einstellungen überstehen einen Neustart',JSON.stringify(r));
 // Migration
 await E(()=>{localStorage.clear();localStorage.setItem('burgwacht-v2',JSON.stringify({lv:{sword:9,dagger:2,star:1},xp:{sword:1,dagger:0,star:0},wave:3,active:'sword',gold:4,cleared:3,heal:1,own:{dagger:true,star:false,soldier:true}}))});

@@ -1,6 +1,6 @@
 const {chromium}=require('playwright');
-(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:360,height:740}});const errs=[];p.on('pageerror',e=>errs.push(e.message));
-const url='file://'+require('path').resolve(__dirname,'../android/app/src/main/assets/index.html');await p.goto(url);await p.evaluate(()=>localStorage.clear());await p.goto(url);await p.click('#m-start');await p.click('#slot-0');
+(async()=>{const b=await chromium.launch();const c0=await b.newContext({viewport:{width:360,height:740}});await c0.addInitScript(()=>{window.__bwQuiet=true});const p=await c0.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+const url='file://'+require('path').resolve(__dirname,'../android/app/src/main/assets/index.html');await p.goto(url);await p.evaluate(()=>localStorage.clear());await p.goto(url);await p.click('#m-start');await p.click('#slot-0');await p.click('#dlg-0');
 for(const wave of[50,100]){console.log('--- Welle '+wave+' ---');
  for(const w of['sword','dagger','star','bow','wand']){const runs=[];
   for(let k=0;k<3;k++){runs.push(await p.evaluate(([w,wave])=>{const g=__bw,S=g.S;Object.assign(S.own,{dagger:true,star:true,bow:true,wand:true,soldier:false});S.lv={sword:1,dagger:1,star:1,bow:1,wand:1};S.lv[w]=100;S.xp[w]=0;

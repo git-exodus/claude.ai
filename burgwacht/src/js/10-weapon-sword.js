@@ -101,7 +101,7 @@ function swordOrbit(a) {
 function swordBladeWave(a) {
   addProjectile({
     kind: 'bladeWave', x: a.x, y: a.y, angle: a.angle, speed: 380 * U, r: 30 * U,
-    dmg: a.damage * 0.8, life: 2, pierce: 99, source: { weapon: 'sword', color: '#bfe6ff' },
+    dmg: a.damage * 0.8, life: 2, pierce: 99, heavy: true, source: { weapon: 'sword', color: '#bfe6ff' },
   });
 }
 

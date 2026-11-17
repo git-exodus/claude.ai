@@ -18,7 +18,7 @@
  */
 const world = { enemies: [], projectiles: [], zones: [], effects: [], particles: [], texts: [], timers: [], soldiers: [] };
 
-const castle = { hp: MAX_HP, flash: 0, fallen: false };   // flash: seconds of hit feedback left
+const castle = { hp: CASTLE_HP_TIERS[0], flash: 0, fallen: false };   // flash: seconds of hit feedback left
 
 const combat = {
   cooldown: 0,        // seconds until the next attack is allowed
@@ -45,6 +45,8 @@ const session = {
   started: false,     // false until the first attack; hides the hint and gates vibration
   holdPoint: null,    // {x, y} while a finger rests on the field (auto-fire)
   soldierTimer: 2,
+  towerTimer: 1,      // tower archer, see 20-defenders.js
+  achievementTimer: 0,
   lastKillSound: 0,
   lastProgress: -1,   // last wave progress written to the DOM, to avoid redundant writes
 };

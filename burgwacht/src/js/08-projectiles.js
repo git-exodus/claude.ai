@@ -12,7 +12,8 @@ const PROJECTILE_KINDS = {};
 
 /**
  * Adds a projectile. Required: kind, x, y, angle, speed, r (radius), dmg, source.
- * Common options: life (seconds), pierce (extra enemies it passes through).
+ * Common options: life (seconds), pierce (extra enemies it passes through),
+ * heavy (big things like rolling balls: shield bearers cannot block them).
  * Further fields are kind-specific. `p.hit` holds the enemies already damaged.
  */
 function addProjectile(spec) {
@@ -84,7 +85,7 @@ function updateProjectiles(dt) {
     for (const e of world.enemies) {
       if (e.dead || p.hit.has(e) || dist(p.x, p.y, e.x, e.y) >= p.r + e.r) continue;
       p.hit.add(e);
-      hurt(e, p.dmg, p.source);
+      hurt(e, p.dmg, p.source, !p.heavy);
       const kind = PROJECTILE_KINDS[p.kind];
       if (kind.onHit) kind.onHit(p, e);
       if (p.dead) break;

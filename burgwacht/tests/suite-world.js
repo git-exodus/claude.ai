@@ -1,9 +1,14 @@
 const {chromium}=require('playwright');
 let fails=0;const ok=(c,m,x='')=>{console.log((c?'PASS ':'FAIL ')+m+(x!==''?'  ['+x+']':''));if(!c)fails++};
 (async()=>{const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:360,height:740},deviceScaleFactor:1});
-const p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+const p=await ctx.newPage();
+await ctx.addInitScript(()=>{window.__bwQuiet=true});
+const dismiss=async()=>{if(await p.evaluate(()=>!document.getElementById('dialog').hidden))await p.click('#dlg-0')};
+const shopList=()=>p.evaluate(()=>['weapons','castle','troops','boni'].map(t=>{document.getElementById('tab-'+t).click();return t+': '+[...document.querySelectorAll('#items .item')].map(x=>x.querySelector('b').textContent+' → '+x.querySelector('button').textContent+(x.querySelector('button').disabled?'(aus)':'')).join(' | ')}).join('\n'));
+const buy=async(tab,id)=>{await p.click('#tab-'+tab);await p.click('#buy-'+id)};
+const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
 const url='file://'+require('path').resolve(__dirname,'../android/app/src/main/assets/index.html');const E=f=>p.evaluate(f);
-await p.goto(url);await E(()=>localStorage.clear());await p.goto(url);await p.waitForTimeout(200);await p.click('#m-start');await p.click('#slot-0');
+await p.goto(url);await E(()=>localStorage.clear());await p.goto(url);await p.waitForTimeout(200);await p.click('#m-start');await p.click('#slot-0');await dismiss();
 // Gegnerzahlen
 let r=await E(()=>[1,2,5,6,15,16,30,31,50,51,100].map(w=>__bw.waveCount(w)));
 ok(JSON.stringify(r)==='[8,11,20,25,70,80,220,235,520,540,1520]','Gegnerzahl: +3 bis Welle 5, +5 bis 15, +10 bis 30, +15 bis 50, +20 danach',r.join(', '));
@@ -18,14 +23,14 @@ r=await lose();ok(r.paused&&r.shake===0&&r.castleFlash===0,'Im Shop wackelt die 
 const px=()=>p.screenshot({clip:{x:120,y:250,width:120,height:120}});const a1=await px();await p.waitForTimeout(250);const a2=await px();ok(a1.equals(a2),'Burg-Bild im Shop bleibt über 250 ms identisch');
 // Shop: Soldaten-Tempo und Mauer
 r=await E(()=>({cost:__bw.SHOP.map(i=>i.t.reduce((a,c)=>a+c,0)),sum:__bw.SHOP.reduce((a,i)=>a+i.t.reduce((x,c)=>x+c,0),0),inc:Array.from({length:100},(_,i)=>i+1).reduce((a,c)=>a+c,0)}));
-ok(r.sum===754&&r.inc-r.sum===4296,'Gold-Rechnung: alle Käufe 754, Rest nach Welle 100 = 4.296',r.cost.join('+')+' = '+r.sum);
-await E(()=>{__bw.S.gold=1000;__bw.save()});await E(()=>{document.getElementById('shopgo').click()});await lose();
-r=await E(()=>[...document.querySelectorAll('#items .item')].map(x=>x.querySelector('b').textContent+' → '+x.querySelector('button').textContent+(x.querySelector('button').disabled?'(aus)':'')).join(' | '));
-ok(r==='Soldat → 2 Gold | Soldaten-Tempo: alle 4 s → Erst Soldat(aus) | Dolche → 5 Gold | Morgenstern → 10 Gold | Bogen → 40 Gold | Feuerstab → 75 Gold | Heilung: +2 → 20 Gold | Mauer: 3 HP → 15 Gold','Shop-Liste mit Stufen',r);
-await p.click('#buy-0');await p.click('#buy-1');r=await E(()=>[__bw.S.solLv,__bw.S.gold,document.querySelectorAll('#items .item b')[1].textContent,document.getElementById('buy-1').textContent]);ok(r[0]===1&&r[1]===973&&r[2]==='Soldaten-Tempo: alle 3 s'&&r[3]==='80 Gold','Soldaten alle 4 s für 25 Gold',r.join(' / '));
-await p.click('#buy-1');r=await E(()=>[__bw.S.solLv,__bw.S.gold,document.getElementById('buy-1').textContent]);ok(r[0]===2&&r[1]===893&&r[2]==='Maximal','Soldaten alle 3 s für 80 Gold',r.join(' / '));
-const wallSteps=[];for(let i=0;i<4;i++){await p.click('#buy-7');wallSteps.push(await E(()=>[__bw.S.wall,__bw.S.gold].join(':')))}
-ok(wallSteps.join(' ')==='1:878 2:848 3:728 4:428','Mauer-Stufen 15, 30, 120, 300 Gold',wallSteps.join(' '));ok(await E(()=>document.getElementById('buy-7').textContent)==='Maximal','Mauer bei 25 HP ausgereizt');
+ok(r.sum===1724&&r.inc-r.sum===3326,'Gold-Rechnung: alle festen Käufe 1.724, Rest nach Welle 100 = 3.326',r.cost.join('+')+' = '+r.sum);
+await E(()=>{__bw.S.gold=1000;__bw.save()});await E(()=>{document.getElementById('shopgo').click()});await dismiss();await lose();
+r=await shopList();
+ok(r.includes('troops: Soldat → 2 Gold | Soldaten-Tempo: alle 4 s → Erst Soldat(aus)')&&r.includes('castle: Heilung: +2 → 20 Gold | Mauer: 3 HP → 15 Gold'),'Shop-Liste mit Stufen',r.replace(/\n/g,' // '));
+await buy('troops','soldier');await p.click('#buy-soldierSpeed');r=await E(()=>[__bw.S.solLv,__bw.S.gold,document.querySelectorAll('#items .item b')[1].textContent,document.getElementById('buy-soldierSpeed').textContent]);ok(r[0]===1&&r[1]===973&&r[2]==='Soldaten-Tempo: alle 3 s'&&r[3]==='80 Gold','Soldaten alle 4 s für 25 Gold',r.join(' / '));
+await p.click('#buy-soldierSpeed');r=await E(()=>[__bw.S.solLv,__bw.S.gold,document.getElementById('buy-soldierSpeed').textContent]);ok(r[0]===2&&r[1]===893&&r[2]==='Maximal','Soldaten alle 3 s für 80 Gold',r.join(' / '));
+const wallSteps=[];for(let i=0;i<4;i++){await buy('castle','wall');wallSteps.push(await E(()=>[__bw.S.wall,__bw.S.gold].join(':')))}
+ok(wallSteps.join(' ')==='1:878 2:848 3:728 4:428','Mauer-Stufen 15, 30, 120, 300 Gold',wallSteps.join(' '));ok(await E(()=>document.getElementById('buy-wall').textContent)==='Maximal','Mauer bei 25 HP ausgereizt');
 await p.screenshot({path:'shop2.png'});
 await p.click('#shopgo');r=await E(()=>{const w=document.getElementById('wall');return {hp:__bw.S.wallHp,n:w.children.length,off:w.querySelectorAll('.off').length,h:Math.round(w.getBoundingClientRect().height),right:Math.round(w.getBoundingClientRect().right),hid:w.hidden}});
 ok(r.hp===25&&r.n===25&&r.off===0&&!r.hid,'Mauer nach Niederlage voll repariert: 25 Symbole',JSON.stringify(r));ok(r.h>=14&&r.right<=344,'Mauer-Symbole stehen in mehreren Zeilen oben rechts',r.h+' px hoch');

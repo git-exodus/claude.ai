@@ -4,7 +4,7 @@
  */
 
 const DAGGER_COLOR = '#c9f7e4';
-const POISON_SHARE = 0.35;   // poison damage per second as a share of the dagger's hit damage
+const POISON_SHARE = 0.7;    // poison damage per second as a share of the dagger's hit damage
 
 /**
  * Throws one dagger.

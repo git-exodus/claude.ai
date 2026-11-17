@@ -7,28 +7,43 @@
  *   color    colour of the floating damage number
  *   dot      true for damage over time: no number is shown
  * plus weapon-specific flags that the kill hooks read (splinter, generation, chain).
+ * Projectiles pass `viaProjectile`, which is what shield bearers block.
  */
 
-/** Puts one enemy of `type` on a random point just outside the screen. */
-function spawnEnemy(type) {
-  const base = ENEMY_TYPES[type];
-  const waveNo = S.wave;
-  // Walk from the castle along a random direction until the screen edge (+30 px) is reached.
+/** Random point just outside the screen: from the castle along a random direction to the edge (+30 px). */
+function spawnPoint() {
   const angle = rnd(TAU), dx = cos(angle), dy = sin(angle);
   const toSide = (W / 2 + 30) / Math.abs(dx || 1e-6);
   const toTopOrBottom = ((dy < 0 ? cy : H - cy) + 30) / Math.abs(dy || 1e-6);
   const reach = Math.min(toSide, toTopOrBottom);
-  const hp = base.hp * enemyHpFactor(waveNo);
+  return { x: cx + dx * reach, y: cy + dy * reach };
+}
+
+/**
+ * Puts one enemy of `type` on the field, scaled for the current world and wave.
+ * `at` overrides the position, `mini` makes one of the two halves of a split slime.
+ */
+function spawnEnemy(type, { at = spawnPoint(), mini = false } = {}) {
+  const base = ENEMY_TYPES[type];
+  const worldDef = currentWorld(), waveNo = S.wave;
+  let hp = base.hp * worldDef.hpFactor(waveNo);
+  if (S.world === 'meadow' && waveNo <= EASY_WAVES) hp = Math.max(1, hp - EASY_HP_CUT);   // gentle start
+  if (mini) hp *= 0.3;
 
   const enemy = {
     type,
     boss: type === 'boss',
-    x: cx + dx * reach, y: cy + dy * reach,
-    r: base.r * U * CASTLE_SCALE,
+    shielded: !!base.shielded,
+    ranged: !!base.ranged,
+    mini,
+    lava: S.world === 'lava',                 // selects the lava look in drawEnemy()
+    x: at.x, y: at.y,
+    r: base.r * U * CASTLE_SCALE * (mini ? 0.62 : 1),
     hp, max: hp,
-    sp: base.sp * enemySpeedFactor(waveNo),   // in U per second
-    xp: base.xp * enemyXpFactor(waveNo),
-    color: base.color,
+    sp: base.sp * worldDef.speedFactor(waveNo),   // in U per second
+    xp: base.xp * worldDef.xpMult * (mini ? 0.25 : 1),
+    color: worldDef.colors[type] || base.color,
+    shotCd: 2,                                // ranged only: seconds until the next shot once in range
     phase: rnd(TAU),                          // desynchronises the idle animation
     dead: false,
     flash: 0,                                 // white hit flash, seconds
@@ -55,8 +70,12 @@ function nearestEnemy(x, y, maxDist = 1e9, exclude = null) {
   return best;
 }
 
-function hurt(enemy, amount, source) {
+function hurt(enemy, amount, source, viaProjectile = false) {
   if (enemy.dead) return;
+  if (enemy.shielded && viaProjectile) {
+    amount *= SHIELD_BLOCK;
+    if (world.effects.length < FX_CAP_COMMON) ring(enemy.x, enemy.y, enemy.r * 1.4, '200,215,255', 0.18);   // "clank"
+  }
   enemy.hp -= amount;
   enemy.flash = 0.12;
   if (!source.dot && world.texts.length < TEXT_CAP) {
@@ -100,6 +119,7 @@ const KILL_HOOKS = [];
 
 function kill(enemy, source) {
   enemy.dead = true;
+  recordKill(enemy);
 
   // kill streak
   combo.count++;
@@ -160,10 +180,13 @@ function updateEnemies(dt) {
     e.knockX *= decay;
     e.knockY *= decay;
 
-    // frozen, stunned or held up by a soldier: no walking this frame
+    // frozen, stunned or held up by a soldier: no walking (or shooting) this frame
     if (e.freeze > 0) e.freeze -= dt;
     else if (e.stun > 0) e.stun -= dt;
-    else if (e.blocked <= 0) walkToCastle(e, dt);
+    else if (e.blocked <= 0) {
+      if (e.ranged && dist(e.x, e.y, cx, cy) <= ARCHER_RANGE * U) shootAtCastle(e, dt);
+      else walkToCastle(e, dt);
+    }
 
     e.x = clamp(e.x, -60, W + 60);
     e.y = clamp(e.y, -60, H + 60);
@@ -197,6 +220,36 @@ function walkToCastle(e, dt) {
   e.x += (cos(angle) - sin(angle) * weave) * speed * dt;
   e.y += (sin(angle) + cos(angle) * weave) * speed * dt;
 }
+
+/** Archers in range stand still and fire a bolt at the castle every ARCHER_INTERVAL seconds. */
+function shootAtCastle(e, dt) {
+  e.shotCd -= dt;
+  if (e.shotCd > 0) return;
+  e.shotCd = ARCHER_INTERVAL;
+  const fromX = e.x, fromY = e.y - e.r;
+  // the bolt lands on the wall while it stands, otherwise on the castle
+  const angle = atan2(e.y - wallCenterY(), e.x - cx);
+  const toX = S.wallHp > 0 ? cx + cos(angle) * wallRadiusX() : cx;
+  const toY = S.wallHp > 0 ? wallCenterY() + sin(angle) * wallRadiusY() : cy - 10 * U;
+  const flight = 0.4;
+  addEffect(flight, k => {
+    const x = fromX + (toX - fromX) * k, y = fromY + (toY - fromY) * k - sin(k * PI) * 14 * U;
+    drawArrow(ctx, x, y, atan2(toY - fromY, toX - fromX), 12 * U, '#5b4636', '#33283a');
+  });
+  after(flight, () => {
+    if (S.wallHp > 0) wallHit(toX, toY);
+    else castleHit();
+  });
+}
+
+/** Lava world: a slime that dies breaks into two small ones (which do not split again). */
+KILL_HOOKS.push(enemy => {
+  if (enemy.type !== 'slime' || enemy.mini || !currentWorld().splitSlimes) return;
+  if (world.enemies.length >= MAX_ENEMIES_ALIVE + 60) return;
+  for (const side of [-1, 1]) {
+    spawnEnemy('slime', { at: { x: enemy.x + side * enemy.r * 0.7, y: enemy.y + rnd(-3, 3) * U }, mini: true });
+  }
+});
 
 /** An enemy that reaches the wall (while it stands) or the castle deals 1 damage and is gone. */
 function checkCastleContact(e) {

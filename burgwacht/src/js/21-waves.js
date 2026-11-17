@@ -6,7 +6,7 @@
 /** Fills the spawn queue for the current wave S.wave. */
 function buildWave() {
   const waveNo = S.wave;
-  const count = waveCount(waveNo);
+  const count = currentWorld().count(waveNo);
   wave.queue = [];
   for (let i = 0; i < count; i++) wave.queue.push(rollEnemyType(waveNo));
   if (waveNo % BOSS_EVERY === 0) wave.queue.splice(Math.floor(wave.queue.length / 2), 0, 'boss');   // boss arrives mid-wave
@@ -43,18 +43,22 @@ function completeWave() {
   const waveNo = S.wave;
   let gold = 0;
   if (waveNo > S.cleared) {     // gold only for waves cleared for the first time
+    const wasLocked = !lavaUnlocked();
     S.cleared = waveNo;
-    gold = waveNo;
-    S.gold += gold;
+    gold = Math.round(waveNo * currentWorld().goldMult * goldFactor());
+    earnGold(gold);
     sound(1200, 0.07, 'triangle', 0.05);
+    if (wasLocked && lavaUnlocked()) toast('Die Lava-Welt ist offen!', 'Wechsle die Welt mit dem Knopf oben');
   }
-  castle.hp = Math.min(MAX_HP, castle.hp + S.heal);
+  castle.hp = Math.min(maxHp(), castle.hp + S.heal);
   if (!S.hold) S.wave++;
-  save();
   wave.pause = 2.5;
   buildWave();
-  renderHud();
   toast('Welle ' + waveNo + ' geschafft', gold ? '+' + gold + ' Gold' : '');
+  checkAchievements();
+  save();
+  renderHud();
+  if (waveNo % CHEST_EVERY === 0) offerChest(waveNo);
 }
 
 /** Wave arrows: jump to any wave up to the first one not cleared yet. Resets the enemies. */
@@ -71,6 +75,7 @@ function setWave(waveNo) {
 /** The castle fell: stop all feedback and open the shop. */
 function handleDefeat() {
   castle.fallen = false;
+  S.stats.defeats++;
   session.shake = 0;        // otherwise the frozen screen would keep shaking behind the shop
   castle.flash = 0;
   combo.count = 0;
@@ -80,13 +85,29 @@ function handleDefeat() {
   openShop();
 }
 
-/** Leaving the shop after a defeat: back to wave 1 with full lives and a repaired wall. */
+/** Leaving the shop after a defeat: back to wave 1 with full lives and a repaired wall; chest boons end. */
 function continueAfterDefeat() {
   S.wave = 1;
   S.wallHp = wallMax();
-  castle.hp = MAX_HP;
+  S.run = { boons: {}, chests: [] };
+  castle.hp = maxHp();
   combat.cooldown = 0;
   restartWave(true);
+}
+
+/** Switches to another world; each world keeps its own wave and progress. */
+function switchWorld(id) {
+  if (id === S.world || !WORLDS[id]) return;
+  const leaving = { wave: S.wave, cleared: S.cleared };
+  S.wave = S.parked.wave;
+  S.cleared = S.parked.cleared;
+  S.parked = leaving;
+  S.world = id;
+  makeGround();
+  restartWave(true);
+  renderHud();
+  save();
+  toast(WORLDS[id].name, 'Welle ' + S.wave);
 }
 
 /** Share of the wave that is already dealt with, 0..100, for the progress bar. */

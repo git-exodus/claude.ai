@@ -4,7 +4,8 @@
  */
 window.__bw = {
   S, DB, VERSION,
-  SHOP: SHOP_ITEMS.map(item => ({ t: item.prices })),   // prices per item, in shop order
+  SHOP: SHOP_ITEMS.filter(offer => offer.prices).map(offer => ({ id: offer.id, t: offer.prices })),   // offers with fixed prices
+  flags: debugFlags, switchWorld, WORLDS, lavaUnlocked,
   WALL: WALL_TIERS,
   startGame, showMenu,
   slot: () => slot,

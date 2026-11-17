@@ -147,7 +147,7 @@ function wandPhoenix(a) {
   const fromLeft = combat.attackCount % 4 === 0;
   addProjectile({
     kind: 'phoenix', x: fromLeft ? -30 : W + 30, y: a.y, angle: fromLeft ? 0 : PI, speed: 520 * U, r: 24 * U,
-    dmg: a.damage * 2, life: 3, pierce: 99, source: WAND_SOURCE,
+    dmg: a.damage * 2, life: 3, pierce: 99, heavy: true, source: WAND_SOURCE,
   });
 }
 

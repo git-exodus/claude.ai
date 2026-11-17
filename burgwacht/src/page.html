@@ -7,7 +7,7 @@
       <div id="gold">0</div>
     </div>
     <div class="r2">
-      <div class="tools"><button id="b-pause" type="button" aria-label="Pause">II</button><button id="b-speed" type="button" aria-label="Spieltempo">x1</button><button id="b-hold" type="button" aria-pressed="false" aria-label="Welle halten"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></button></div>
+      <div class="tools"><button id="b-pause" type="button" aria-label="Pause">II</button><button id="b-speed" type="button" aria-label="Spieltempo">x1</button><button id="b-world" type="button" aria-label="Welt wechseln" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg></button><button id="b-hold" type="button" aria-pressed="false" aria-label="Welle halten"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></button></div>
       <div id="wall" hidden></div>
     </div>
     <i id="wprog"></i>
@@ -24,6 +24,7 @@
       <h2 id="shoptitle">Die Burg ist gefallen</h2>
       <p>Gib dein Gold aus. Danach geht es bei Welle 1 weiter.</p>
       <div class="purse" id="shopgold">0</div>
+      <div id="shoptabs"></div>
       <div id="items"></div>
       <button id="shopgo" type="button">Weiter bei Welle 1</button>
     </div>
@@ -34,6 +35,7 @@
       <button class="big" id="p-resume" type="button">Weiter</button>
       <button class="big alt" id="p-snd" type="button">Ton: an</button>
       <button class="big alt" id="p-vib" type="button">Vibration: an</button>
+      <button class="big alt" id="p-stats" type="button">Statistik &amp; Erfolge</button>
       <button class="big alt" id="p-menu" type="button">Hauptmenü</button>
       <p class="tip">Tipp: Eine Waffe lange drücken zeigt alle ihre Fähigkeiten.</p>
     </div>
@@ -43,6 +45,14 @@
       <h2 id="abiltitle">Fähigkeiten</h2>
       <div id="abillist"></div>
       <button class="big" id="abil-close" type="button">Schließen</button>
+    </div>
+  </div>
+  <div id="dialog" class="ov" hidden>
+    <div class="shopcard" role="dialog" aria-labelledby="dlg-title">
+      <h2 id="dlg-title"></h2>
+      <p id="dlg-text"></p>
+      <div id="dlg-body"></div>
+      <div id="dlg-buttons"></div>
     </div>
   </div>
   <div id="menu" class="ov">
@@ -57,6 +67,6 @@
       <div id="slotlist" class="mcol" style="margin:0;width:100%"></div>
       <button class="big alt" id="m-back" type="button">Zurück</button>
     </div>
-    <div id="credit">@made by Brownii (Claude.ai) · v0.5</div>
+    <div id="credit">@made by Brownii (Claude.ai) · v0.6</div>
   </div>
 </div>

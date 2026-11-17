@@ -30,7 +30,7 @@ function shootArrow(angle, opts = {}) {
     pierce: opts.giant ? 99 : (level >= 10 ? 2 : 0),
     bounce: aimed && level >= 60 ? 2 : 0,
     explosive: aimed && level >= 40,
-    giant: !!opts.giant, critical,
+    giant: !!opts.giant, heavy: !!opts.giant, critical,
     source: { weapon: 'bow', color: critical ? '#ffe14a' : BOW_COLOR },
   });
 }

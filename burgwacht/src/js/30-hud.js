@@ -41,6 +41,8 @@ function renderHud() {
   $('wup').disabled = S.wave > S.cleared;
   $('b-hold').setAttribute('aria-pressed', String(S.hold));
   $('b-speed').textContent = 'x' + DB.opts.speed;
+  $('wave').classList.toggle('lava', S.world === 'lava');
+  $('b-world').hidden = !lavaUnlocked();
   $('gold').textContent = S.gold;
   $('gold').setAttribute('aria-label', S.gold + ' Gold');
   renderHearts();
@@ -50,15 +52,16 @@ function renderHud() {
 }
 
 function renderHearts() {
-  const box = $('hearts');
+  const box = $('hearts'), max = maxHp();
   box.textContent = '';
-  for (let i = 0; i < MAX_HP; i++) {
+  box.classList.toggle('many', max > 10);   // more than ten hearts wrap into two rows
+  for (let i = 0; i < max; i++) {
     const heart = document.createElement('span');
     heart.textContent = '♥';
     if (i >= castle.hp) heart.className = 'off';
     box.appendChild(heart);
   }
-  box.setAttribute('aria-label', castle.hp + ' von ' + MAX_HP + ' Leben');
+  box.setAttribute('aria-label', castle.hp + ' von ' + max + ' Leben');
 }
 
 /** One brick per wall hit point; lost ones are dimmed. Wraps into several rows. */
@@ -133,7 +136,7 @@ function clearCooldownRings() {
 /** Gives XP to a weapon and handles level-ups, including the announcement of new abilities. */
 function gainXp(id, amount) {
   if (S.lv[id] >= MAX_LEVEL) return;
-  S.xp[id] += amount;
+  S.xp[id] += amount * xpFactor();
   let leveledUp = false;
   while (S.lv[id] < MAX_LEVEL && S.xp[id] >= xpNeeded(S.lv[id])) {
     S.xp[id] -= xpNeeded(S.lv[id]);
@@ -150,7 +153,9 @@ function gainXp(id, amount) {
     setTimeout(() => sound(880, 0.14, 'triangle', 0.05), 90);
     vibrate(30);
     ring(cx, cy, 90 * U, '245,185,58', 0.6);
+    checkAchievements();
     save();
   }
-  renderHud();
+  renderWeaponBar();     // only these two parts change with XP; kills are frequent, so skip the rest
+  renderWeaponInfo();
 }

@@ -55,6 +55,7 @@ function update(dt) {
   updateEnemies(dt);
   updateCombo(dt);
   updateSoldiers(dt);
+  updateTowerArcher(dt);
   updateProjectiles(dt);
   updateZones(dt);
   updateVisuals(dt);
@@ -64,6 +65,12 @@ function update(dt) {
 
   if (castle.fallen) handleDefeat();
   updateHudMeters();
+
+  session.achievementTimer += dt;   // achievements are checked about once a second, not on every kill
+  if (session.achievementTimer >= 1) {
+    session.achievementTimer = 0;
+    checkAchievements();
+  }
 }
 
 function runTimers(dt) {

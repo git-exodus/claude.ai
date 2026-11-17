@@ -25,13 +25,15 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
 #wave{min-width:66px;text-align:center;font-weight:800;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
 #hearts{color:var(--heart);font-size:12px;line-height:1;white-space:nowrap;letter-spacing:.5px}
 #hearts .off{color:rgba(255,255,255,.2)}
+#hearts.many{display:flex;flex-wrap:wrap;justify-content:center;max-width:100px;font-size:11px;line-height:1.1;white-space:normal;letter-spacing:0}
+#wave.lava{color:#ffb36b}
 #gold{font-weight:800;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
 #gold::before,.purse::before,.wp.locked .badge::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--gold);margin-right:5px}
 .tools{display:flex;gap:5px}
 .tools button{width:36px;height:28px;border-radius:9px;font-weight:800;font-size:12px}
 .tools button[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--ink)}
 .tools svg{width:15px;height:15px}
-#wall{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px;max-width:152px;padding-top:2px}
+#wall{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px;max-width:120px;padding-top:2px}
 #wall i{width:9px;height:6px;border-radius:1.5px;background:#d5d9e0}
 #wall i.off{background:rgba(255,255,255,.14)}
 #wprog{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--xp)}
@@ -82,6 +84,26 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
 .big.alt{background:var(--soft);color:var(--fg);border:1px solid var(--line)}
 .big:disabled{background:var(--soft);color:rgba(255,255,255,.35);cursor:default}
 .shopcard .tip{font-size:12px}
+/* shop: header, tabs and the continue button stay put, only the offers of the open tab change */
+#shop .shopcard{height:min(560px,100%);grid-template-rows:auto auto auto auto minmax(0,1fr) auto}
+#shoptabs{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#shoptabs button{position:relative;border:1px solid var(--line);background:var(--soft);border-radius:999px;padding:6px 12px;font-weight:800;font-size:13px;cursor:pointer}
+#shoptabs button[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+#shoptabs button.hot::after{content:"";position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:var(--ok);border:2px solid #12161f}
+#items{display:grid;gap:10px;align-content:start;overflow:auto;min-height:0}
+.pips{display:flex;gap:3px;margin:4px 0 3px;font-style:normal;font-size:11px;font-weight:800;color:var(--gold)}
+.pips:empty{display:none}
+.pips u{width:16px;height:4px;border-radius:2px;background:rgba(255,255,255,.18);text-decoration:none}
+.pips u.on{background:var(--gold)}
+/* generic dialog: hints, chest, world picker, statistics */
+#dlg-buttons,#dlg-body{display:grid;gap:8px}
+#dlg-body:empty{display:none}
+.big small{display:block;margin-top:2px;font-size:12px;font-weight:700;opacity:.75}
+.stat{display:flex;justify-content:space-between;gap:12px;font-size:13px;font-weight:700}
+.stat b{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.stat.wide{flex-direction:column;gap:2px}.stat.wide b{white-space:normal;color:var(--gold)}
+.stat.open{color:var(--dim)}.stat.done b{color:var(--ok)}
+#dlg-body h3{margin:8px 0 0;font-size:14px;font-weight:800;color:var(--gold)}
 #menu{grid-template-rows:auto 1fr auto;justify-items:center;
   background:linear-gradient(rgba(6,8,12,.72),rgba(6,8,12,.1) 36%,rgba(6,8,12,.1) 50%,rgba(6,8,12,.8))}
 #menu h1{margin:26px 0 0;font-family:var(--display);font-weight:400;font-size:54px;line-height:1;color:#fff;

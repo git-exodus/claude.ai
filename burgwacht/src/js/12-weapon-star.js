@@ -47,7 +47,7 @@ function starSlam(x, y, share) {
 function rollBall(x, y, angle, { speed, r, dmg, range, splits }) {
   addProjectile({
     kind: 'ball', x, y, angle, speed, r, dmg, range, splits,
-    travelled: 0, life: 5, pierce: 99, source: STAR_SOURCE,
+    travelled: 0, life: 5, pierce: 99, heavy: true, source: STAR_SOURCE,
   });
 }
 

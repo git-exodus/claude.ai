@@ -3,7 +3,7 @@
  * the place to tune the game.
  */
 
-const VERSION = '0.5';
+const VERSION = '0.6';
 const SAVE_KEY = 'burgwacht-v3';
 const LEGACY_SAVE_KEY = 'burgwacht-v2';   // single-save format from before the start menu
 
@@ -15,11 +15,13 @@ const LEGACY_SAVE_KEY = 'burgwacht-v2';   // single-save format from before the 
 const MAX_LEVEL = 100;
 const ABILITY_CAP = 100;
 
-const MAX_HP = 10;                 // castle lives
+const CASTLE_HP_TIERS = [10, 12, 15];    // castle lives per shop tier
+const BONUS_TIERS = [1, 1.25, 1.5];      // gold and XP multiplier per shop tier
 const CASTLE_SCALE = 0.6;          // castle and enemies are drawn at 60 % of their design size
 const WALL_TIERS = [0, 3, 5, 10, 25];   // wall hit points per shop tier (index = tier)
 const SOLDIER_INTERVALS = [5, 4, 3];    // seconds between soldiers per shop tier
-const MAX_SOLDIERS = 4;
+const SOLDIER_CAP = [4, 6];              // soldiers on the field without / with the "squad" upgrade
+const SOLDIER_HP = [3, 5];               // hits a soldier survives without / with armour
 const MAX_ENEMIES_ALIVE = 260;     // further enemies wait off-screen until there is room
 
 /*
@@ -36,7 +38,7 @@ const WEAPONS = {
     milestones: { 5: 'Doppelschwert', 10: 'Dreier-Fächer', 15: 'Echo-Hieb', 25: 'Kreisende Schwerter', 30: 'Klingenwelle', 40: 'Geisterschwert', 50: 'Riesenschwert', 60: 'Schwertsplitter', 70: 'Zeitriss', 80: 'Spiegelhieb', 90: 'Kettenblitz', 100: 'Schwertregen' },
   },
   dagger: {
-    name: 'Dolche', price: 5, baseDamage: 7, cooldown: [2, 0.3], baseAbility: 'Wurfdolch',
+    name: 'Dolche', price: 5, baseDamage: 9, cooldown: [2, 0.3], baseAbility: 'Wurfdolch',
     milestones: { 5: 'Dolchfächer', 10: 'Abpraller', 15: 'Durchbohren', 25: 'Ansteckendes Gift', 30: 'Schattenklon', 40: 'Splitterdolche', 50: 'Bumerang', 60: 'Giftwolke', 70: 'Dolchfallen', 80: 'Zielsuchend', 90: 'Dolchwirbel', 100: 'Kettenreaktion' },
   },
   star: {
@@ -54,20 +56,35 @@ const WEAPONS = {
 };
 const WEAPON_IDS = Object.keys(WEAPONS);
 
-/** XP needed to go from `level` to `level + 1`. */
-const xpNeeded = level => Math.round(4 + level * 1.4 + level * level * 0.035);
+/*
+ * XP needed to go from `level` to `level + 1`.
+ * Tuned together with the flat XP per enemy below so that the weapon used all
+ * the time is roughly level 4 / 8 / 15 / 22 / 40 / 80 after wave 5 / 10 / 20 /
+ * 30 / 50 / 100 of a first playthrough. The power law keeps working for
+ * levels far beyond 100.
+ */
+const xpNeeded = level => Math.round(4 + 6.4 * Math.pow(level, 1.4));
 
 /*
- * Enemy types. r/hp/sp/xp are the level-1 values (radius in U before CASTLE_SCALE,
- * speed in U per second); waves scale them with the functions below.
+ * Enemy types. r/hp/sp/xp are the base values (radius in U before CASTLE_SCALE,
+ * speed in U per second); worlds and waves scale them, see WORLDS below.
+ *   shielded  projectile hits only deal SHIELD_BLOCK of their damage; area damage is unaffected
+ *   ranged    stops at ARCHER_RANGE and shoots the castle instead of walking into it
  */
 const ENEMY_TYPES = {
-  slime: { r: 13, hp: 10, sp: 20, xp: 1, color: '#59c36a' },
-  bat:   { r: 10, hp: 6, sp: 38, xp: 1, color: '#9a6bd6' },
-  ogre:  { r: 19, hp: 42, sp: 13, xp: 4, color: '#4f9aa8' },
-  boss:  { r: 30, hp: 260, sp: 9, xp: 25, color: '#e07a3f' },
+  slime:  { r: 13, hp: 10, sp: 20, xp: 1, color: '#59c36a' },
+  bat:    { r: 10, hp: 6, sp: 38, xp: 1, color: '#9a6bd6' },
+  ogre:   { r: 19, hp: 42, sp: 13, xp: 3, color: '#4f9aa8' },
+  shield: { r: 14, hp: 26, sp: 16, xp: 2, color: '#8793b8', shielded: true },
+  archer: { r: 11, hp: 12, sp: 22, xp: 2, color: '#c9787f', ranged: true },
+  boss:   { r: 30, hp: 260, sp: 9, xp: 20, color: '#e07a3f' },
 };
-const BOSS_EVERY = 5;   // a boss joins every 5th wave
+const BOSS_EVERY = 5;        // a boss joins every 5th wave
+const SHIELD_BLOCK = 0.25;   // share of projectile damage that gets through a shield
+const ARCHER_RANGE = 105;    // distance from the castle (in U) at which archers stop
+const ARCHER_INTERVAL = 4;   // seconds between an archer's shots
+const EASY_WAVES = 3;        // the first waves of the meadow get EASY_HP_CUT less hit points
+const EASY_HP_CUT = 2;
 
 /** Number of regular enemies in a wave: +3 per wave up to 5, +5 to 15, +10 to 30, +15 to 50, +20 after. */
 function waveCount(waveNo) {
@@ -77,16 +94,55 @@ function waveCount(waveNo) {
 }
 const enemyHpFactor = waveNo => 1 + 0.22 * (waveNo - 1) + 0.015 * (waveNo - 1) * (waveNo - 1);
 const enemySpeedFactor = waveNo => 1 + Math.min(0.5, waveNo * 0.02);
-const enemyXpFactor = waveNo => 1 + 0.12 * waveNo;
 /** Seconds between two spawns: a wave takes at most ~80 s to enter the field. */
 const spawnGapFor = count => clamp(Math.min(80, 10 + count * 0.6) / count, 0.04, 1.5);
 
-/** Random type for one regular enemy; ogres appear from wave 3, bats from wave 2. */
+/*
+ * Worlds. Each world has its own wave counter and progress (see 03-state.js).
+ *   count(w)        regular enemies in wave w
+ *   hpFactor(w)     multiplier on enemy hit points
+ *   speedFactor(w)  multiplier on enemy speed
+ *   goldMult        gold per newly cleared wave = wave number * goldMult
+ *   xpMult          multiplier on enemy XP
+ *   colors          enemy colours that differ from ENEMY_TYPES
+ *   splitSlimes     slimes break into two small ones when they die
+ * The lava world unlocks after LAVA_UNLOCK_WAVE in the meadow; its wave 1 is
+ * about as tough as meadow wave 100.
+ */
+const LAVA_UNLOCK_WAVE = 100;
+const WORLDS = {
+  meadow: {
+    name: 'Wiese',
+    count: waveCount,
+    hpFactor: enemyHpFactor,
+    speedFactor: enemySpeedFactor,
+    goldMult: 1, xpMult: 1, colors: {}, splitSlimes: false,
+  },
+  lava: {
+    name: 'Lava-Welt',
+    count: w => waveCount(w + 20),
+    hpFactor: w => enemyHpFactor(LAVA_UNLOCK_WAVE) * (1 + 0.15 * (w - 1) + 0.008 * (w - 1) * (w - 1)),
+    speedFactor: () => 1.5,
+    goldMult: 3, xpMult: 3, splitSlimes: true,
+    colors: { slime: '#f0702a', bat: '#ffb23e', ogre: '#7a5560', shield: '#a8553a', archer: '#d94a3a', boss: '#c22b2b' },
+  },
+};
+
+/** Random type for one regular enemy. Bats come from wave 2, ogres from 3, shield bearers from 8, archers from 12. */
 function rollEnemyType(waveNo) {
-  const roll = Math.random();
-  const ogreShare = Math.min(0.25, 0.04 * waveNo);
-  const batShare = Math.min(0.3, 0.06 * waveNo);
-  if (waveNo >= 3 && roll < ogreShare) return 'ogre';
-  if (waveNo >= 2 && roll < ogreShare + batShare) return 'bat';
+  let roll = Math.random();
+  const shares = [
+    ['ogre', waveNo >= 3 ? Math.min(0.25, 0.04 * waveNo) : 0],
+    ['bat', waveNo >= 2 ? Math.min(0.3, 0.06 * waveNo) : 0],
+    ['shield', waveNo >= 8 ? Math.min(0.1, 0.01 * waveNo) : 0],
+    ['archer', waveNo >= 12 ? Math.min(0.05, 0.004 * waveNo) : 0],
+  ];
+  for (const [type, share] of shares) {
+    if (roll < share) return type;
+    roll -= share;
+  }
   return 'slime';
 }
+
+/* Tests set window.__bwQuiet before the game loads so rewards do not disturb what they measure. */
+const debugFlags = { achievements: !window.__bwQuiet, chests: !window.__bwQuiet };
