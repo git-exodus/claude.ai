@@ -7,7 +7,7 @@
  * src/page.html and versionCode/versionName in android/app/build.gradle.
  */
 
-const VERSION = '0.8.1';
+const VERSION = '0.8.2';
 const SAVE_KEY = 'burgwacht-v3';
 const LEGACY_SAVE_KEY = 'burgwacht-v2';   // single-save format from before the start menu
 
@@ -27,7 +27,7 @@ const SOLDIER_INTERVALS = [5, 4, 3];    // seconds between soldiers per shop tie
 const SOLDIER_CAP_BASE = 4, SOLDIER_CAP_STEP = 2;   // soldiers on the field: 4, +2 per "more soldiers" tier
 const SOLDIER_CAP_PRICES = [30, 50, 80, 120, 170, 230, 300, 400];   // 8 tiers -> at most 20 soldiers
 const ARCHER_PRICES = [60, 90, 130, 180, 240, 310, 390, 480, 580, 700];   // archers on the wall, at most 10
-const XP_GAIN = 1.3;                     // global XP multiplier (levelling was too slow without it)
+const XP_GAIN = 1.95;                    // global XP multiplier: 1.3 since 0.7, x1.5 in 0.8.2 (levelling felt too slow)
 const SOLDIER_HP = [3, 5];               // hits a soldier survives without / with armour
 const MAX_ENEMIES_ALIVE = 260;     // further enemies wait off-screen until there is room
 
@@ -69,7 +69,7 @@ const STARTER_WEAPON = 'dagger';
 /*
  * XP needed to go from `level` to `level + 1`.
  * Together with the flat XP per enemy, XP_GAIN and WAVE_SIZE the weapon used
- * all the time is roughly level 4 / 8 / 14 / 22 / 37 / 78 after wave 5 / 10 /
+ * all the time is roughly level 5 / 9 / 17 / 26 / 44 / 93 after wave 5 / 10 /
  * 20 / 30 / 50 / 100 of a first playthrough without repeating waves
  * (tests/suite-progress.js checks this curve). The power law keeps working for
  * levels far beyond 100.

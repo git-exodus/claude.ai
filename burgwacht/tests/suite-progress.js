@@ -71,14 +71,14 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
       const share = { ogre: w >= 3 ? Math.min(0.25, 0.04 * w) : 0, bat: w >= 2 ? Math.min(0.3, 0.06 * w) : 0, shield: w >= 8 ? Math.min(0.1, 0.01 * w) : 0, archer: w >= 12 ? Math.min(0.05, 0.004 * w) : 0 };
       share.slime = 1 - share.ogre - share.bat - share.shield - share.archer;
       let per = 0; for (const t in share) per += share[t] * xpOf[t];
-      xp += 1.3 * (__bw.waveCount(w) * per + (w % 5 === 0 ? 20 : 0));   // XP_GAIN
+      xp += 1.95 * (__bw.waveCount(w) * per + (w % 5 === 0 ? 20 : 0));   // XP_GAIN
       while (xp >= need(level)) { xp -= need(level); level++; }
       if ([5, 10, 20, 30, 50, 100].includes(w)) out[w] = level;
     }
     return out;
   });
-  const target = { 5: 4, 10: 8, 20: 14, 30: 22, 50: 37, 100: 78 };   // since 0.8.1 (waves 30 % smaller)
-  ok(Object.keys(target).every(w => Math.abs(r[w] - target[w]) <= Math.max(2, target[w] * 0.15)), 'XP-Tempo (Soll 4/8/14/22/37/78 ohne Wiederholungen)', Object.keys(r).map(w => 'Welle ' + w + ': Lvl ' + r[w]).join(' · '));
+  const target = { 5: 5, 10: 9, 20: 17, 30: 26, 50: 44, 100: 93 };   // since 0.8.2 (smaller waves, XP_GAIN 1.95)
+  ok(Object.keys(target).every(w => Math.abs(r[w] - target[w]) <= Math.max(2, target[w] * 0.15)), 'XP-Tempo (Soll 5/9/17/26/44/93 ohne Wiederholungen)', Object.keys(r).map(w => 'Welle ' + w + ': Lvl ' + r[w]).join(' · '));
   r = await E(() => { const g = __bw; g.S.lv.sword = 1000; const o = [g.cdOf('sword'), Math.round(g.dmgOf('sword')), g.need(999)]; g.S.lv.sword = 1; return o; });
   ok(r[0] === 0.5 && r[1] === 909 && r[2] > 0 && Number.isFinite(r[2]), 'Formeln rechnen auch mit Level 1000 (Tempo bleibt auf Level-100-Wert)', r.join(' / '));
 
@@ -112,7 +112,7 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   await E(() => __bw.startGame(0, false));
   r = await E(() => { const g = __bw; g.S.archers = 0; g.S.cleared = 2; g.S.wave = 3; const gold0 = g.S.gold; g.step(3); g.clear(); g.step(0.1); g.step(3); g.S.xp.sword = 0; const x0 = 0, l0 = g.S.lv.sword; g.S.lv.sword = Math.max(l0, 5); const l1 = g.S.lv.sword; const e = g.spawn('slime'); e.hp = 1; e.xp = 4; g.ens().forEach(x => { if (x !== e) x.dead = true; }); g.ready(); g.attack(e.x, e.y); g.step(0.2); return [g.S.gold - gold0, +(g.S.xp.sword - x0).toFixed(2), g.S.lv.sword - l1]; });
   ok(r[0] === 3, 'Goldbonus +25 %: Welle 3 gibt 2,5 statt 2 Gold (gerundet 3)', r[0]);
-  ok(r[2] === 0 && r[1] === 6.5, 'XP: 4 XP werden mit +30 % und dem Bonus +25 % zu 6,5', r[1]);
+  ok(r[2] === 0 && r[1] === 9.75, 'XP: 4 XP werden mit XP_GAIN 1,95 und dem Bonus +25 % zu 9,75', r[1]);
 
   // ---- 20 Soldaten und 10 Bogenschützen ----
   await E(() => { const S = __bw.S; S.gold = 5000; S.own.soldier = true; });

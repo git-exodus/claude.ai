@@ -5,7 +5,7 @@ vom Bildschirmrand auf sie zu, und der Spieler greift mit dem Finger an der geti
 Waffen steigen durch besiegte Gegner im Level und bekommen an festen Stufen neue Fähigkeiten, die
 sich alle addieren. Gold aus den Wellen fließt in einen Shop, der sich nur nach einer Niederlage öffnet.
 
-**Stand: Version 0.8.1.** Das Spiel ist eine einzige HTML-Seite ohne externe Bilder oder Töne (alles
+**Stand: Version 0.8.2.** Das Spiel ist eine einzige HTML-Seite ohne externe Bilder oder Töne (alles
 wird per Code gezeichnet und erzeugt) und wird zusätzlich als Android-APK ausgeliefert.
 
 Diese Datei soll jeder späteren Sitzung (Mensch oder Claude) reichen, um ohne Vorwissen
@@ -207,9 +207,9 @@ Die Version steht an **drei** Stellen, die gemeinsam geändert werden müssen:
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.8.1';` |
-| `src/page.html` → Fußzeile `#credit` | `@made by Brownii (Claude.ai) · v0.8.1` |
-| `android/app/build.gradle` → `versionCode` (Ganzzahl, immer +1) und `versionName` | `versionCode 12`, `versionName '0.8.1'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.8.2';` |
+| `src/page.html` → Fußzeile `#credit` | `@made by Brownii (Claude.ai) · v0.8.2` |
+| `android/app/build.gradle` → `versionCode` (Ganzzahl, immer +1) und `versionName` | `versionCode 13`, `versionName '0.8.2'` |
 
 `suite-menu.js` prüft, dass Fußzeile und `VERSION` übereinstimmen.
 
@@ -354,7 +354,7 @@ Weltwahl in `21-waves.js`/`32-menus.js` erweitern (bisher gibt es genau zwei Wel
 
 ## 7. Spielregeln und Balance (aktuelle Werte)
 
-Quelle der Wahrheit ist `src/js/02-config.js`. Diese Tabellen geben den Stand von 0.8.1 wieder.
+Quelle der Wahrheit ist `src/js/02-config.js`. Diese Tabellen geben den Stand von 0.8.2 wieder.
 
 ### 7.1 Waffen
 
@@ -370,8 +370,8 @@ Quelle der Wahrheit ist `src/js/02-config.js`. Diese Tabellen geben den Stand vo
 - Cooldown sinkt linear bis `ABILITY_CAP = 100` und bleibt dann; der Truhenbonus „Flinke Hände“ multipliziert mit 0,8 pro Stück, minimal 0,1 s.
 - Neue Fähigkeiten bei Level 5, 10, 15, 25, 30, 40, 50, 60, 70, 80, 90, 100; sie addieren sich. Namen in `WEAPONS.<id>.milestones`.
 - `MAX_LEVEL = 100`. Geplant ist 1000: dann nur diese Zahl ändern; die Formeln rechnen schon damit (getestet), Fähigkeiten gibt es aber weiter nur bis 100.
-- XP für Level L → L+1: `round(4 + 6,4 · L^1,4)`. XP pro Kill = `xp` des Gegnertyps × Welt-Faktor × `XP_GAIN` (1,3) × XP-Bonus (Shop) × Truhenbonus. XP bekommt nur die gerade gewählte Waffe.
-- Richtwert erstes Durchspielen ohne Wiederholen: Level 4 / 8 / 14 / 22 / 37 / 78 nach Welle 5 / 10 / 20 / 30 / 50 / 100 (seit 0.8.1; vorher mit 30 % größeren Wellen 5 / 9 / 16 / 25 / 43 / 91).
+- XP für Level L → L+1: `round(4 + 6,4 · L^1,4)`. XP pro Kill = `xp` des Gegnertyps × Welt-Faktor × `XP_GAIN` (1,95; bis 0.8.1 war es 1,3) × XP-Bonus (Shop) × Truhenbonus. XP bekommt nur die gerade gewählte Waffe.
+- Richtwert erstes Durchspielen ohne Wiederholen: Level 5 / 9 / 17 / 26 / 44 / 93 nach Welle 5 / 10 / 20 / 30 / 50 / 100 (seit 0.8.2).
 - Halten des Fingers = Dauerfeuer im Takt des Cooldowns. Langes Drücken auf eine Waffe = Fähigkeiten-Übersicht.
 
 Waffenvergleich (`bench-weapons.js`, jede Waffe allein auf Level 100, ohne Mauer und Truppen;
@@ -615,6 +615,7 @@ Playwright und Chromium sind in den Cloud-Sitzungen vorinstalliert (`require('pl
 | 0.7 | Gold für jede Welle, Truhe alle 3 Wellen, 20 Soldaten, 10 Bogenschützen, Neustart auf derselben Welle, +30 % XP |
 | 0.8 | Dolche als Startwaffe, Ritter, Kobolde, Orks, Wölfe, Wolfsalpha, Orkkönig, Musik, Truhen-Animation, Fähigkeiten-Hinweis |
 | 0.8.1 | Menümusik startet beim ersten Tippen (vorher stumm), alle Wellen 30 % kleiner (`WAVE_SIZE`) |
+| 0.8.2 | XP × 1,5 (`XP_GAIN` 1,3 → 1,95) |
 
 ---
 
