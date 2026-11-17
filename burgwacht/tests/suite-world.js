@@ -37,7 +37,7 @@ const { chromium, GAME_URL, createReport, openPage, loadClean, startNewGame, dis
 
   /* ---------- wave sizes ---------- */
   r = await game(() => [1, 2, 5, 6, 15, 16, 30, 31, 50, 51, 100].map(w => __bw.waveCount(w)));
-  ok(JSON.stringify(r) === '[8,11,20,25,70,80,220,235,520,540,1520]', 'Gegnerzahl: +3 bis Welle 5, +5 bis 15, +10 bis 30, +15 bis 50, +20 danach', r.join(', '));
+  ok(JSON.stringify(r) === '[6,8,14,18,49,56,154,165,364,378,1064]', 'Gegnerzahl: Grundkurve (+3 bis Welle 5, +5 bis 15, +10 bis 30, +15 bis 50, +20 danach) × 0,7', r.join(', '));
   // the real queue adds the boss (and the wolf alpha's pack); spawn gap shrinks with the wave
   r = await game(() => {
     const g = __bw, out = [];
@@ -55,8 +55,8 @@ const { chromium, GAME_URL, createReport, openPage, loadClean, startNewGame, dis
     g.startGame(0, true);
     return out;
   });
-  ok(r[0][1] === 8 && r[1][1] === 21 && r[5][1] === 1525, 'Wellen enthalten die Gegnerzahl plus Boss (Welle 100: Wolfsalpha mit Rudel)', r.map(x => x[1]).join(', '));
-  ok(r.every((x, i) => i === 0 || x[2] <= r[i - 1][2]) && r[0][2] === 1.5 && r[5][2] < 0.06, 'Gegner kommen einzeln, mit jeder Welle in kürzerem Abstand', r.map(x => 'W' + x[0] + ': ' + x[2] + ' s').join(' · '));
+  ok(r[0][1] === 6 && r[1][1] === 15 && r[5][1] === 1069, 'Wellen enthalten die Gegnerzahl plus Boss (Welle 100: Wolfsalpha mit Rudel)', r.map(x => x[1]).join(', '));
+  ok(r.every((x, i) => i === 0 || x[2] <= r[i - 1][2]) && r[0][2] === 1.5 && r[5][2] < 0.08, 'Gegner kommen einzeln, mit jeder Welle in kürzerem Abstand', r.map(x => 'W' + x[0] + ': ' + x[2] + ' s').join(' · '));
 
   /* ---------- enemy size ---------- */
   r = await game(() => {
@@ -207,7 +207,7 @@ const { chromium, GAME_URL, createReport, openPage, loadClean, startNewGame, dis
   });
   ok(r[0] >= 12 && r[1] === 0, 'Treffer-Serie zählt hoch und läuft nach 1,5 s aus', r);
 
-  /* ---------- wave 100: 1,525 enemies, all weapons at level 100, 30 s with auto-fire from second 10 ---------- */
+  /* ---------- wave 100: 1,069 enemies, all weapons at level 100, 30 s with auto-fire from second 10 ---------- */
   r = await game(() => {
     const g = __bw, S = g.S;
     S.own.dagger = S.own.star = S.own.bow = S.own.wand = S.own.soldier = true;
@@ -234,7 +234,7 @@ const { chromium, GAME_URL, createReport, openPage, loadClean, startNewGame, dis
     g.hold(null);
     return { total, most, ms: (performance.now() - start) / frames };
   });
-  ok(r.total === 1525 && r.most <= 260 && r.most > 100 && r.ms < 6, 'Welle 100: 1.525 Gegner, viele gleichzeitig, Logik bleibt schnell', `bis zu ${r.most} gleichzeitig, ${r.ms.toFixed(2)} ms pro Bild`);
+  ok(r.total === 1069 && r.most <= 260 && r.most > 100 && r.ms < 6, 'Welle 100: 1.069 Gegner, viele gleichzeitig, Logik bleibt schnell', `bis zu ${r.most} gleichzeitig, ${r.ms.toFixed(2)} ms pro Bild`);
   await game(() => {
     const g = __bw;
     g.S.active = 'star';

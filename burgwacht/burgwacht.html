@@ -207,7 +207,7 @@ button:focus-visible{outline:2px solid var(--xp);outline-offset:2px}
       <div id="slotlist" class="mcol" style="margin:0;width:100%"></div>
       <button class="big alt" id="m-back" type="button">Zurück</button>
     </div>
-    <div id="credit">@made by Brownii (Claude.ai) · v0.8</div>
+    <div id="credit">@made by Brownii (Claude.ai) · v0.8.1</div>
   </div>
 </div>
 
@@ -279,7 +279,7 @@ function fillEllipse(c, x, y, rx, ry) {
  * src/page.html and versionCode/versionName in android/app/build.gradle.
  */
 
-const VERSION = '0.8';
+const VERSION = '0.8.1';
 const SAVE_KEY = 'burgwacht-v3';
 const LEGACY_SAVE_KEY = 'burgwacht-v2';   // single-save format from before the start menu
 
@@ -340,8 +340,8 @@ const STARTER_WEAPON = 'dagger';
 
 /*
  * XP needed to go from `level` to `level + 1`.
- * Tuned together with the flat XP per enemy and XP_GAIN so that the weapon used
- * all the time is roughly level 5 / 9 / 16 / 25 / 43 / 91 after wave 5 / 10 /
+ * Together with the flat XP per enemy, XP_GAIN and WAVE_SIZE the weapon used
+ * all the time is roughly level 4 / 8 / 14 / 22 / 37 / 78 after wave 5 / 10 /
  * 20 / 30 / 50 / 100 of a first playthrough without repeating waves
  * (tests/suite-progress.js checks this curve). The power law keeps working for
  * levels far beyond 100.
@@ -406,11 +406,17 @@ function meadowHp(type, waveNo) {
  */
 const goldForWave = waveNo => 2 + 3 * Math.floor((waveNo - 1) / 10);
 
-/** Number of regular enemies in a wave: +3 per wave up to 5, +5 to 15, +10 to 30, +15 to 50, +20 after. */
+/*
+ * Number of regular enemies in a wave. The base curve starts at 8 and grows by
+ * 3 per wave up to wave 5, 5 up to 15, 10 up to 30, 15 up to 50 and 20 after
+ * that; WAVE_SIZE scales it down (0.7 since 0.8.1: with all the new enemy types
+ * waves felt too crowded). Bosses and the alpha's pack come on top.
+ */
+const WAVE_SIZE = 0.7;
 function waveCount(waveNo) {
   let n = 8;
   for (let i = 2; i <= waveNo; i++) n += i <= 5 ? 3 : i <= 15 ? 5 : i <= 30 ? 10 : i <= 50 ? 15 : 20;
-  return n;
+  return Math.max(1, Math.round(n * WAVE_SIZE));
 }
 const enemyHpFactor = waveNo => 1 + 0.22 * (waveNo - 1) + 0.015 * (waveNo - 1) * (waveNo - 1);
 const enemySpeedFactor = waveNo => 1 + Math.min(0.5, waveNo * 0.02);
@@ -1138,11 +1144,21 @@ function playMusic(id) {
 const musicForScreen = () => (slot < 0 ? 'menu' : 'game');
 
 /*
- * Browsers only start audio after a user gesture, so the menu music begins
- * with the first tap. In the background (app minimised, tab hidden) the
- * audio clock is suspended so nothing plays.
+ * Browsers keep an AudioContext suspended until a user gesture. The menu music
+ * is scheduled right at start-up, so every touch, click or key press resumes
+ * the context (getAudio() does that) and starts the music if none is set up.
+ * Several event types are needed: on touch screens Chrome only counts
+ * pointerup/touchend as a gesture, not pointerdown.
+ * In the background (app minimised, tab hidden) the audio clock is suspended
+ * so nothing plays.
  */
-addEventListener('pointerdown', () => { if (!music.bus) playMusic(musicForScreen()); }, { capture: true });
+function unlockAudio() {
+  getAudio();
+  if (!music.bus) playMusic(musicForScreen());
+}
+for (const type of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) {
+  addEventListener(type, unlockAudio, { capture: true });
+}
 document.addEventListener('visibilitychange', () => {
   if (!audioContext) return;
   if (document.hidden) audioContext.suspend();

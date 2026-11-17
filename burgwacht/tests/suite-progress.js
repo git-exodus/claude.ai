@@ -77,8 +77,8 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
     }
     return out;
   });
-  const target = { 5: 5, 10: 9, 20: 16, 30: 25, 50: 43, 100: 91 };
-  ok(Object.keys(target).every(w => Math.abs(r[w] - target[w]) <= Math.max(2, target[w] * 0.15)), 'XP-Tempo mit +30 % XP (Soll 5/9/16/25/43/91, ohne Wiederholungen)', Object.keys(r).map(w => 'Welle ' + w + ': Lvl ' + r[w]).join(' · '));
+  const target = { 5: 4, 10: 8, 20: 14, 30: 22, 50: 37, 100: 78 };   // since 0.8.1 (waves 30 % smaller)
+  ok(Object.keys(target).every(w => Math.abs(r[w] - target[w]) <= Math.max(2, target[w] * 0.15)), 'XP-Tempo (Soll 4/8/14/22/37/78 ohne Wiederholungen)', Object.keys(r).map(w => 'Welle ' + w + ': Lvl ' + r[w]).join(' · '));
   r = await E(() => { const g = __bw; g.S.lv.sword = 1000; const o = [g.cdOf('sword'), Math.round(g.dmgOf('sword')), g.need(999)]; g.S.lv.sword = 1; return o; });
   ok(r[0] === 0.5 && r[1] === 909 && r[2] > 0 && Number.isFinite(r[2]), 'Formeln rechnen auch mit Level 1000 (Tempo bleibt auf Level-100-Wert)', r.join(' / '));
 
@@ -204,7 +204,7 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   await p.click('#dlg-1');
   r = await E(() => { const g = __bw, S = g.S; return { world: S.world, wave: S.wave, cleared: S.cleared, parked: JSON.stringify(S.parked), queue: g.state().queue, lava: document.getElementById('wave').classList.contains('lava') }; });
   ok(r.world === 'lava' && r.wave === 1 && r.cleared === 0 && r.parked === '{"wave":101,"cleared":100}' && r.lava, 'Wechsel in die Lava-Welt: eigene Wellen ab 1, Wiese bleibt gemerkt', JSON.stringify(r));
-  ok(r.queue === 130, 'Lava-Welle 1 hat 130 Gegner', r.queue);
+  ok(r.queue === 91, 'Lava-Welle 1 hat 91 Gegner (wie Wiesen-Welle 21)', r.queue);
   const lavaPixel = await E(() => __bw.groundSample());
   ok(meadowPixel !== lavaPixel, 'Der Boden sieht in der Lava-Welt anders aus');
   r = await E(() => { const g = __bw; const e = g.spawn('slime'); const o = { hp: Math.round(e.max), lava: e.lava, color: e.color, sp: e.sp }; e.dead = true; return o; });

@@ -5,7 +5,7 @@ vom Bildschirmrand auf sie zu, und der Spieler greift mit dem Finger an der geti
 Waffen steigen durch besiegte Gegner im Level und bekommen an festen Stufen neue Fähigkeiten, die
 sich alle addieren. Gold aus den Wellen fließt in einen Shop, der sich nur nach einer Niederlage öffnet.
 
-**Stand: Version 0.8.** Das Spiel ist eine einzige HTML-Seite ohne externe Bilder oder Töne (alles
+**Stand: Version 0.8.1.** Das Spiel ist eine einzige HTML-Seite ohne externe Bilder oder Töne (alles
 wird per Code gezeichnet und erzeugt) und wird zusätzlich als Android-APK ausgeliefert.
 
 Diese Datei soll jeder späteren Sitzung (Mensch oder Claude) reichen, um ohne Vorwissen
@@ -48,7 +48,7 @@ cd burgwacht && ./build-apk.sh        # baut zusätzlich Burgwacht.apk (braucht 
 Checkliste vor dem ersten Eingriff:
 
 1. Diese README lesen, dann `src/js/02-config.js` (alle Spielwerte) überfliegen.
-2. `tests/run.sh` laufen lassen. Erwartet: **275 Prüfungen, 0 Fehler** (111 + 57 + 24 + 52 + 31).
+2. `tests/run.sh` laufen lassen. Erwartet: **276 Prüfungen, 0 Fehler** (111 + 57 + 24 + 52 + 32).
 3. Prüfen, ob das Android-SDK da ist: `ls /opt/android-sdk/build-tools` → `34.0.0`. Wenn nicht, siehe 4.3.
 4. Vor größeren Änderungen ein Backup anlegen (siehe 4.5) – das ist ausdrücklicher Wunsch des Auftraggebers.
 
@@ -207,9 +207,9 @@ Die Version steht an **drei** Stellen, die gemeinsam geändert werden müssen:
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.8';` |
-| `src/page.html` → Fußzeile `#credit` | `@made by Brownii (Claude.ai) · v0.8` |
-| `android/app/build.gradle` → `versionCode` (Ganzzahl, immer +1) und `versionName` | `versionCode 11`, `versionName '0.8'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.8.1';` |
+| `src/page.html` → Fußzeile `#credit` | `@made by Brownii (Claude.ai) · v0.8.1` |
+| `android/app/build.gradle` → `versionCode` (Ganzzahl, immer +1) und `versionName` | `versionCode 12`, `versionName '0.8.1'` |
 
 `suite-menu.js` prüft, dass Fußzeile und `VERSION` übereinstimmen.
 
@@ -354,7 +354,7 @@ Weltwahl in `21-waves.js`/`32-menus.js` erweitern (bisher gibt es genau zwei Wel
 
 ## 7. Spielregeln und Balance (aktuelle Werte)
 
-Quelle der Wahrheit ist `src/js/02-config.js`. Diese Tabellen geben den Stand von 0.8 wieder.
+Quelle der Wahrheit ist `src/js/02-config.js`. Diese Tabellen geben den Stand von 0.8.1 wieder.
 
 ### 7.1 Waffen
 
@@ -371,13 +371,13 @@ Quelle der Wahrheit ist `src/js/02-config.js`. Diese Tabellen geben den Stand vo
 - Neue Fähigkeiten bei Level 5, 10, 15, 25, 30, 40, 50, 60, 70, 80, 90, 100; sie addieren sich. Namen in `WEAPONS.<id>.milestones`.
 - `MAX_LEVEL = 100`. Geplant ist 1000: dann nur diese Zahl ändern; die Formeln rechnen schon damit (getestet), Fähigkeiten gibt es aber weiter nur bis 100.
 - XP für Level L → L+1: `round(4 + 6,4 · L^1,4)`. XP pro Kill = `xp` des Gegnertyps × Welt-Faktor × `XP_GAIN` (1,3) × XP-Bonus (Shop) × Truhenbonus. XP bekommt nur die gerade gewählte Waffe.
-- Richtwert erstes Durchspielen ohne Wiederholen: Level 5 / 9 / 16 / 25 / 43 / 91 nach Welle 5 / 10 / 20 / 30 / 50 / 100.
+- Richtwert erstes Durchspielen ohne Wiederholen: Level 4 / 8 / 14 / 22 / 37 / 78 nach Welle 5 / 10 / 20 / 30 / 50 / 100 (seit 0.8.1; vorher mit 30 % größeren Wellen 5 / 9 / 16 / 25 / 43 / 91).
 - Halten des Fingers = Dauerfeuer im Takt des Cooldowns. Langes Drücken auf eine Waffe = Fähigkeiten-Übersicht.
 
 Waffenvergleich (`bench-weapons.js`, jede Waffe allein auf Level 100, ohne Mauer und Truppen;
 Mittel aus drei Läufen, „durchgekommen“ = verlorene Burgleben):
 
-Stand 0.8:
+Stand 0.8, also noch mit den 30 % größeren Wellen (seit 0.8.1 ist Welle 100 kleiner; bei Bedarf `bench-weapons.js` neu laufen lassen):
 
 | Waffe | Welle 50: durchgekommen | Welle 100: durchgekommen | Welle 100: max. gleichzeitig |
 |---|---|---|---|
@@ -435,8 +435,9 @@ Leben pro Welle (aus dem Spiel ausgelesen):
 
 ### 7.3 Wellen
 
-- **Gegnerzahl (Wiese):** 8 in Welle 1, dann +3 pro Welle bis 5, +5 bis 15, +10 bis 30, +15 bis 50, +20 danach
-  (5: 20 · 15: 70 · 30: 220 · 50: 520 · 100: 1.520), plus Boss (und ggf. Rudel). Lava-Welle w hat so viele wie Wiesen-Welle w + 20.
+- **Gegnerzahl (Wiese):** Grundkurve 8 in Welle 1, dann +3 pro Welle bis 5, +5 bis 15, +10 bis 30, +15 bis 50, +20 danach,
+  mal `WAVE_SIZE = 0.7` (seit 0.8.1, gerundet): 1: 6 · 5: 14 · 10: 31 · 15: 49 · 20: 84 · 30: 154 · 50: 364 · 100: 1.064.
+  Dazu der Boss (und beim Wolfsalpha sein Rudel). Lava-Welle w hat so viele wie Wiesen-Welle w + 20 (Lava 1: 91).
 - **Abstand:** einzeln, `clamp(min(80, 10 + 0,6·n) / n, 0,04 s, 1,5 s)` – eine Welle braucht höchstens ~80 s zum Hereinkommen. Höchstens 260 Gegner gleichzeitig, der Rest wartet.
 - **Nach einer geschafften Welle:** Gold (7.4), +`heal` Leben (bis Maximum), nächste Welle – außer „Halten“ ist an. Alle 3 Wellen eine Truhe (7.6). Nach Welle 2 einmalig der Fähigkeiten-Hinweis.
 - **Wellen-Pfeile:** jede Welle von 1 bis „höchste geschaffte + 1“; beim Wechsel werden die Gegner zurückgesetzt.
@@ -446,7 +447,7 @@ Leben pro Welle (aus dem Spiel ausgelesen):
 
 - Jede geschaffte Welle zahlt, auch wiederholte: **2 Gold in Welle 1–10, je weitere 10 Wellen 3 mehr** (11–20: 5, 21–30: 8, … 91–100: 29).
 - × Welt (Lava 3) × Goldbonus (Shop 1 / 1,25 / 1,5) × 1,5 je Truhenbonus „Schatzkarte“, gerundet.
-- Welle 1–100 einmal geschafft: 1.550 Gold. Alle festen Shop-Preise zusammen: 6.354 Gold (+ Schmiede).
+- Welle 1–100 einmal geschafft: 1.550 Gold (unabhängig von der Gegnerzahl). Alle festen Shop-Preise zusammen: 6.354 Gold (+ Schmiede).
 - Erfolge zahlen einmalig zusätzlich, zusammen 675 Gold (7.7).
 
 ### 7.5 Shop (nur nach einer Niederlage)
@@ -511,8 +512,10 @@ eine Waffe Level 50 / 100 (30/100), erste Lava-Welle (50). Statistik und Erfolge
 - Unten: runde Waffenknöpfe (Level-Abzeichen, Cooldown-Ring; gesperrt mit Preis) und die Infozeile
   „<Waffe> Lvl n · Schaden · alle x s · Neu ab Lvl m“, darunter der XP-Balken.
 - Pause-Menü: Weiter, Ton, Musik, Vibration, Statistik & Erfolge, Hauptmenü.
-- Musik: Menü „Burghof“ (Laute, D-dorisch, 3/4), Spiel „Wachtposten“ (Flöte, 6/8). Live erzeugt, startet
-  mit dem ersten Tippen (Browser-Regel), pausiert im Hintergrund, eigener Schalter.
+- Musik: Menü „Burghof“ (Laute, D-dorisch, 3/4), Spiel „Wachtposten“ (Flöte, 6/8). Live erzeugt, pausiert im
+  Hintergrund, eigener Schalter. Browser und WebView geben Ton erst nach einer Berührung frei: Die Menümusik
+  ist ab dem Start eingeplant, und jede Berührung (`pointerdown/pointerup/touchend/click/keydown`) gibt den
+  `AudioContext` frei (`unlockAudio` in 05-music). In 0.8 fehlte das, die Menümusik blieb stumm.
 - Begrüßung bei jedem neuen Spiel: „Sire, die Monster greifen an. Nehmt Eure Dolche. Wir müssen uns aufrüsten!“
 
 ---
@@ -555,7 +558,7 @@ Playwright und Chromium sind in den Cloud-Sitzungen vorinstalliert (`require('pl
 | `suite-menu.js` | 57 | Hauptmenü, Spielstände, Infozeile, Tempo, Dauerfeuer, Pause, x2, Halten, Fähigkeiten-Übersicht, Zurück/Exit (simuliert), Migration, Lasttest |
 | `suite-world.js` | 24 | Gegnerzahlen, Größe, kein Wackeln im Shop, Wirtschaft, Mauer, Soldaten-Tempo, Serie, Welle 100 |
 | `suite-progress.js` | 52 | Leben pro Welle, XP-Kurve, Level 1000, Ziellinie, Shop-Reiter, 20 Soldaten/10 Schützen, Schildträger, Armbrust, Truhe, Erfolge, Statistik, Lava-Welt, Schmiede |
-| `suite-content.js` | 31 | Dolch-Start, Ritter, neue Gegner, Rudel, Bosse, Lava-Farben, Musik, Hinweis nach Welle 2, Truhen-Animation |
+| `suite-content.js` | 32 | Dolch-Start, Ritter, neue Gegner, Rudel, Bosse, Lava-Farben, Musik (mit normaler Autoplay-Sperre wie am Handy), Hinweis nach Welle 2, Truhen-Animation |
 
 `bench-weapons.js` ist kein Test, sondern ein Vergleich für Balance-Entscheidungen (dauert mehrere Minuten).
 
@@ -580,7 +583,11 @@ Playwright und Chromium sind in den Cloud-Sitzungen vorinstalliert (`require('pl
 
 - **Nur im Emulator getestet.** Alles läuft in headless Chromium; ein echtes Android-Gerät stand nie
   zur Verfügung. Vibration, Exit, Zurück-Taste und Ton sind dort nur simuliert bzw. nicht hörbar.
-- **Musik und Ton** brauchen eine Nutzergeste; die erste Berührung startet die Menümusik.
+- **Musik und Ton** brauchen eine Nutzergeste; die erste Berührung startet die Menümusik. Tests nie mit
+  `--autoplay-policy=no-user-gesture-required` starten – damit war der Fehler der stummen Menümusik in 0.8 unsichtbar.
+- **Echtzeit zwischen Prüfungen:** Zwischen zwei `page.evaluate`-Aufrufen läuft das Spiel in echter Zeit weiter.
+  Kleine Wellen (Welle 1 hat nur 6 Gegner) können dabei schon enden; Tests vorher gezielt zurücksetzen
+  (`S.wave = 1; save(); startGame(0, false)`).
 - **Exit-Knopf** gibt es nur in der APK (`window.Android`); im Browser ist er ausgeblendet.
 - **Kleine Gegner:** Durch `CASTLE_SCALE = 0.6` sind Kobolde und Wölfe recht klein; Details erkennt man nur aus der Nähe.
 - **Dolche** sind auf Level 100 in Welle 100 mit Abstand die schwächste Waffe, und außer dem Schwert hält keine Waffe Welle 100 allein (siehe 7.1).
@@ -607,6 +614,7 @@ Playwright und Chromium sind in den Cloud-Sitzungen vorinstalliert (`require('pl
 | 0.6.1–0.6.3 | Leichtere erste Wellen, Ziellinie, lineare Lebenspunkte bis Welle 17 |
 | 0.7 | Gold für jede Welle, Truhe alle 3 Wellen, 20 Soldaten, 10 Bogenschützen, Neustart auf derselben Welle, +30 % XP |
 | 0.8 | Dolche als Startwaffe, Ritter, Kobolde, Orks, Wölfe, Wolfsalpha, Orkkönig, Musik, Truhen-Animation, Fähigkeiten-Hinweis |
+| 0.8.1 | Menümusik startet beim ersten Tippen (vorher stumm), alle Wellen 30 % kleiner (`WAVE_SIZE`) |
 
 ---
 

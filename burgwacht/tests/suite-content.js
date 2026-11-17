@@ -9,15 +9,15 @@
  *   - not quiet (second page): menu and game music, skill hint after wave 2,
  *     chest opening animation (about 2 s, tap to skip), music switch and its saving
  *
- * Chromium is started with --autoplay-policy=no-user-gesture-required so the
- * music can start in headless mode; whether it sounds good cannot be tested here.
+ * Chromium runs with its normal autoplay policy, like a phone: audio only starts
+ * after a tap. Whether the music sounds good cannot be tested here.
  */
 const { chromium } = require('playwright');
 let fails = 0;
 const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== '' ? '  [' + x + ']' : '')); if (!c) fails++; };
 
 (async () => {
-  const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
+  const b = await chromium.launch();
   const url = 'file://' + require('path').resolve(__dirname, '../android/app/src/main/assets/index.html');
   const errs = [];
   // quiet = no rewards, hints, chest animation or music, so they cannot disturb other checks
@@ -101,12 +101,16 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
   // ---- Truhen-Animation, Fähigkeiten-Hinweis, Musik (ohne Ruhe-Modus) ----
   p = await open(false);
   const F = f => p.evaluate(f);
-  await p.click('#m-start');
   r = await F(() => __bw.music());
-  ok(r.track === 'menu' && r.playing, 'Hauptmenü spielt nach dem ersten Tippen die Burghof-Musik', JSON.stringify(r));
+  ok(r.track === 'menu' && r.audio === 'suspended', 'Vor der ersten Berührung ist der Ton gesperrt (Browser-Regel)', JSON.stringify(r));
+  await p.mouse.click(180, 300);   // a tap on the menu background, not on a button
+  await p.waitForTimeout(300);     // resuming the audio context is asynchronous
+  r = await F(() => __bw.music());
+  ok(r.track === 'menu' && r.playing && r.audio === 'running', 'Hauptmenü spielt nach dem ersten Tippen die Burghof-Musik', JSON.stringify(r));
+  await p.click('#m-start');
   await p.click('#slot-0');
   r = await F(() => ({ m: __bw.music(), intro: document.getElementById('dlg-text').textContent }));
-  ok(r.m.track === 'game' && r.m.playing && r.intro.includes('Nehmt Eure Dolche'), 'Im Spiel läuft die Wachtposten-Musik, Begrüßung nennt die Dolche', JSON.stringify(r.m));
+  ok(r.m.track === 'game' && r.m.playing && r.m.audio === 'running' && r.intro.includes('Nehmt Eure Dolche'), 'Im Spiel läuft die Wachtposten-Musik, Begrüßung nennt die Dolche', JSON.stringify(r.m));
   await p.click('#dlg-0');
   await F(() => { const g = __bw; g.flags.achievements = false; g.step(3); g.clear(); g.step(0.1); });
   ok(await F(() => __bw.S.wave === 2 && document.getElementById('dialog').hidden), 'Nach Welle 1 noch kein Hinweis');

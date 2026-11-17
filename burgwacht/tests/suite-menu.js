@@ -164,6 +164,9 @@ const { chromium, GAME_URL, createReport, openPage, loadClean, dismissDialog } =
     g.step(0.1);
     return { w: g.S.wave, gold: g.S.gold, c: g.S.cleared };
   });
+  // Start wave 1 afresh: it has only 6 enemies, and the real-time game loop between
+  // the checks above may already have finished it.
+  await game(() => { const g = __bw; g.S.wave = 1; g.S.cleared = 0; g.S.gold = 0; g.S.hold = false; g.save(); g.startGame(0, false); g.hud(); });
   r = await game(() => {
     const g = __bw;
     g.step(3);
@@ -174,7 +177,7 @@ const { chromium, GAME_URL, createReport, openPage, loadClean, dismissDialog } =
     e.hp = 1;
     g.ready();
     g.attack(e.x, e.y);
-    g.step(0.3);
+    g.step(1);   // the dagger flies from the castle to an enemy that may still be at the edge
     return [before, parseFloat(bar.style.width)];
   });
   ok(r[1] > r[0], 'Wellen-Fortschritt steigt mit besiegten Gegnern', r.join(' → ') + ' %');

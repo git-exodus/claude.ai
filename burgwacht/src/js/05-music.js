@@ -295,11 +295,21 @@ function playMusic(id) {
 const musicForScreen = () => (slot < 0 ? 'menu' : 'game');
 
 /*
- * Browsers only start audio after a user gesture, so the menu music begins
- * with the first tap. In the background (app minimised, tab hidden) the
- * audio clock is suspended so nothing plays.
+ * Browsers keep an AudioContext suspended until a user gesture. The menu music
+ * is scheduled right at start-up, so every touch, click or key press resumes
+ * the context (getAudio() does that) and starts the music if none is set up.
+ * Several event types are needed: on touch screens Chrome only counts
+ * pointerup/touchend as a gesture, not pointerdown.
+ * In the background (app minimised, tab hidden) the audio clock is suspended
+ * so nothing plays.
  */
-addEventListener('pointerdown', () => { if (!music.bus) playMusic(musicForScreen()); }, { capture: true });
+function unlockAudio() {
+  getAudio();
+  if (!music.bus) playMusic(musicForScreen());
+}
+for (const type of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) {
+  addEventListener(type, unlockAudio, { capture: true });
+}
 document.addEventListener('visibilitychange', () => {
   if (!audioContext) return;
   if (document.hidden) audioContext.suspend();
