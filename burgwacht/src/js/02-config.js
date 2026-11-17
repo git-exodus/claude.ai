@@ -3,7 +3,7 @@
  * the place to tune the game.
  */
 
-const VERSION = '0.6.1';
+const VERSION = '0.6.2';
 const SAVE_KEY = 'burgwacht-v3';
 const LEGACY_SAVE_KEY = 'burgwacht-v2';   // single-save format from before the start menu
 
@@ -84,15 +84,32 @@ const BOSS_EVERY = 5;        // a boss joins every 5th wave
 const SHIELD_BLOCK = 0.25;   // share of projectile damage that gets through a shield
 const ARCHER_RANGE = 105;    // distance from the castle (in U) at which archers stop
 const ARCHER_INTERVAL = 4;   // seconds between an archer's shots
-const EASY_WAVES = 3;        // the first waves of the meadow get EASY_HP_CUT less hit points
-const EASY_HP_CUT = 2;
+
 /*
- * On top of that, meadow enemies start with EARLY_HP_DISCOUNT less hit points
- * in wave 1; the discount shrinks linearly and is gone from EARLY_HP_UNTIL on.
+ * Gentle start in the meadow. Three rules stack, in this order:
+ *   1. waves 1..EASY_WAVES: EASY_HP_CUT hit points less
+ *   2. EARLY_HP_DISCOUNT less in wave 1, shrinking linearly to nothing at EARLY_HP_UNTIL
+ *   3. waves 1..SOFT_WAVES: small enemies lose SOFT_HP_CUT more hit points, big ones
+ *      (BIG_ENEMIES) lose SOFT_BIG_SHARE of theirs; this fades out linearly until
+ *      SOFT_FADE_UNTIL so there is no sudden jump afterwards
  */
-const EARLY_HP_DISCOUNT = 0.3;
-const EARLY_HP_UNTIL = 10;
+const EASY_WAVES = 3, EASY_HP_CUT = 2;
+const EARLY_HP_DISCOUNT = 0.3, EARLY_HP_UNTIL = 10;
+const SOFT_WAVES = 8, SOFT_FADE_UNTIL = 13, SOFT_HP_CUT = 3, SOFT_BIG_SHARE = 0.5;
+const BIG_ENEMIES = ['ogre', 'boss'];
+
 const earlyHpFactor = waveNo => 1 - EARLY_HP_DISCOUNT * Math.max(0, EARLY_HP_UNTIL - waveNo) / (EARLY_HP_UNTIL - 1);
+/** How much of rule 3 applies: 1 up to SOFT_WAVES, then linearly down to 0 at SOFT_FADE_UNTIL. */
+const softShare = waveNo => clamp((SOFT_FADE_UNTIL - waveNo) / (SOFT_FADE_UNTIL - SOFT_WAVES), 0, 1);
+
+/** Hit points of a meadow enemy after the gentle-start rules. */
+function meadowStartHp(type, hp, waveNo) {
+  if (waveNo <= EASY_WAVES) hp -= EASY_HP_CUT;
+  hp *= earlyHpFactor(waveNo);
+  const share = softShare(waveNo);
+  hp = BIG_ENEMIES.includes(type) ? hp * (1 - SOFT_BIG_SHARE * share) : hp - SOFT_HP_CUT * share;
+  return Math.max(1, hp);
+}
 
 /** Number of regular enemies in a wave: +3 per wave up to 5, +5 to 15, +10 to 30, +15 to 50, +20 after. */
 function waveCount(waveNo) {

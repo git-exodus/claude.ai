@@ -90,7 +90,7 @@ r=await E(()=>{const g=__bw;g.clear();g.sols().length=0;g.S.own.soldier=false;g.
 ok(r===9,'Burg verliert genau 1 Leben pro Treffer',r);
 // T10 boss
 r=await E(()=>{const g=__bw;g.step(.2);g.S.cleared=10;g.S.wave=6;g.hud();return 0});await p.click('#wdown');
-r=await E(()=>{const g=__bw;let boss=false;for(let i=0;i<80;i++){g.setHp(10);g.step(.5);if(g.ens().some(e=>e.boss))boss=true}return {boss,w:g.S.wave}});ok(r.boss&&r.w===5,'Boss in Welle 5',JSON.stringify(r));
+r=await E(()=>{const g=__bw;let boss=false;let w=0;for(let i=0;i<80&&!boss;i++){g.setHp(10);g.step(.5);if(g.ens().some(e=>e.boss)){boss=true;w=g.S.wave}}return {boss,w}});ok(r.boss&&r.w===5,'Boss in Welle 5',JSON.stringify(r));
 // T11 save / load
 await E(()=>{__bw.S.own.soldier=true;__bw.S.lv.sword=37;__bw.S.wave=4;__bw.save()});const s1=await E(()=>JSON.stringify(__bw.S));await p.goto(url);await p.waitForTimeout(200);await p.click('#m-load');await p.click('#slot-0');const s2=await E(()=>JSON.stringify(__bw.S));
 ok(s1===s2,'Speichern und Laden erhält den ganzen Spielstand');

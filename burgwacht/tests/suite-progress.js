@@ -32,9 +32,18 @@ const ok = (c, m, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + m + (x !== 
 
   // ---- Leichtere erste Wellen ----
   r = await E(() => { const g = __bw, o = []; for (const w of [1, 2, 3, 4]) { g.S.cleared = 9; g.S.wave = w; const e = g.spawn('slime'); o.push(+e.max.toFixed(2)); e.dead = true; } g.S.cleared = 0; g.S.wave = 1; return o; });
-  ok(r.join() === '5.6,7.59,9.97,14.36', 'Frühe Wellen: 30 % weniger Leben in Welle 1, dazu weiter 2 HP weniger bis Welle 3', r.join(' / '));
-  r = await E(() => { const g = __bw, o = []; for (const w of [1, 4, 7, 10, 11, 30]) { g.S.cleared = 40; g.S.wave = w; const e = g.spawn('ogre'); const full = 42 * (1 + 0.22 * (w - 1) + 0.015 * (w - 1) * (w - 1)) - (w <= 3 ? 2 : 0); o.push(+(1 - e.max / full).toFixed(3)); e.dead = true; } g.S.cleared = 0; g.S.wave = 1; return o; });
-  ok(r.join() === '0.3,0.2,0.1,0,0,0', 'Der Nachlass sinkt linear von 30 % in Welle 1 auf 0 % ab Welle 10', r.map(x => Math.round(x * 100) + ' %').join(' / '));
+  ok(r.join() === '2.6,4.59,6.97,11.36', 'Schleim-Leben in Welle 1 bis 4 nach allen Nachlässen', r.join(' / '));
+  r = await E(() => { const g = __bw, out = { slime: [], ogre: [], bad: [] };
+    // expected values from the three rules, written out independently of the game code
+    const f = w => 1 + 0.22 * (w - 1) + 0.015 * (w - 1) * (w - 1), early = w => 1 - 0.3 * Math.max(0, 10 - w) / 9, share = w => Math.max(0, Math.min(1, (13 - w) / 5));
+    const before = (hp0, w) => (hp0 * f(w) - (w <= 3 ? 2 : 0)) * early(w);
+    for (const w of [1, 4, 8, 9, 11, 13, 30]) { g.S.cleared = 40; g.S.wave = w;
+      const s = g.spawn('slime'), o = g.spawn('ogre'); s.dead = o.dead = true;
+      const es = Math.max(1, before(10, w) - 3 * share(w)), eo = before(42, w) * (1 - 0.5 * share(w));
+      if (Math.abs(s.max - es) > 1e-6 || Math.abs(o.max - eo) > 1e-6) out.bad.push(w);
+      out.slime.push(+(before(10, w) - s.max).toFixed(1)); out.ogre.push(Math.round((1 - o.max / before(42, w)) * 100)); }
+    g.S.cleared = 0; g.S.wave = 1; return out; });
+  ok(r.bad.length === 0 && r.slime.join() === '3,3,3,2.4,1.2,0,0' && r.ogre.join() === '50,50,50,40,20,0,0', 'Welle 1 bis 8: kleine Gegner 3 HP weniger, dicke 50 %; danach läuft es bis Welle 13 linear aus', 'Welle 1/4/8/9/11/13/30 · Schleim −' + r.slime.join('/') + ' HP · Oger −' + r.ogre.join('/') + ' %');
   r = await E(() => { const g = __bw, c = g.pos(), S = g.S, o = {}; S.own.dagger = S.own.bow = true;
     for (const w of ['sword', 'dagger', 'bow']) { S.active = w; g.hold({ x: c.cx + 60, y: c.cy - 80 }); const l = g.aimLine(); o[w] = l ? [Math.round(Math.atan2(l.y2 - l.y1, l.x2 - l.x1) * 100), Math.round(Math.atan2(-80, 60) * 100), l.x2 < 0 || l.x2 > c.W || l.y2 < 0 || l.y2 > c.H] : null; }
     g.hold(null); o.none = g.aimLine(); S.active = 'sword'; S.own.dagger = S.own.bow = false; return o; });
