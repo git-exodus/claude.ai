@@ -130,6 +130,20 @@ svg { display: block; width: 100%; height: 100%; }
 .toggle.on { background: var(--accent); color: #fff; }
 #credit { margin: 12px 0 0; text-align: center; font-size: 12px; font-weight: 600; color: #8aa0b0; }
 #r-icon { width: 72px; height: 72px; margin: 0 auto 6px; }
+/* Test mode (0.4): red badge, chips in the test panel. */
+#devbadge { position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 64px); left: 50%; transform: translateX(-50%);
+  background: #e5533d; color: #fff; border-radius: 12px; padding: 3px 12px; font-size: 14px; letter-spacing: 1px; pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .25); }
+.big.alt { background: #607d8b; }
+.card h3 { margin: 12px 0 4px; font-size: 15px; text-transform: uppercase; letter-spacing: 1px; color: #6b8296; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+.chip { border-radius: 14px; padding: 8px 11px; background: #e3ebf2; font-size: 15px; }
+.chip.on { background: var(--accent); color: #fff; }
+.chip.danger { background: var(--danger); color: #fff; }
+.chip.wide { width: 100%; margin-top: 14px; }
+.chip:active { transform: translateY(1px); }
+#dv-day { flex: 1; max-width: none; }
+#dv-dayval { min-width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; }
 [hidden] { display: none !important; }
 </style>
 
@@ -168,9 +182,11 @@ svg { display: block; width: 100%; height: 100%; }
       <label class="row">Schlafenszeit <select id="s-sleep"></select></label>
       <label class="row">Aufstehen <select id="s-wake"></select></label>
       <label class="row">Spielzeit pro Tag <select id="s-limit"></select></label>
+      <div class="row">Testmodus <button id="s-dev" class="toggle" type="button"></button></div>
+      <button class="big alt" id="s-devopen" type="button" hidden>Test-Werkzeuge öffnen</button>
       <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
       <button class="big" id="s-close" type="button">Schließen</button>
-      <p id="credit">@made by Brownii (Claude.ai) · v0.3</p>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.4</p>
     </div>
   </div>
   <div id="confirm" class="ov" hidden>
@@ -210,6 +226,23 @@ svg { display: block; width: 100%; height: 100%; }
       <img id="pv-img" alt="Foto von Stegi">
       <p id="pv-text" class="info"></p>
       <button class="big" id="pv-close" type="button">Zurück</button>
+    </div>
+  </div>
+  <div id="devbadge" hidden>TEST</div>
+  <div id="devpanel" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="dev-title">
+      <h2 id="dev-title">Test-Werkzeuge</h2>
+      <p class="info">Nur der Test-Spielstand ändert sich. Stegi deines Kindes bleibt, wie er ist.</p>
+      <div id="dev-body"></div>
+      <button class="big" id="dev-close" type="button">Zum Spiel</button>
+    </div>
+  </div>
+  <div id="dev-confirm" class="ov" hidden>
+    <div class="card" role="dialog" aria-labelledby="dvc-title">
+      <h2 id="dvc-title">Test-Spielstand zurücksetzen?</h2>
+      <p class="info">Der Test-Stegi wird wieder ein Ei, Testfotos und Testuhr werden gelöscht. Der echte Spielstand bleibt.</p>
+      <button class="big danger" id="dvc-yes" type="button">Ja, zurücksetzen</button>
+      <button class="big" id="dvc-no" type="button">Abbrechen</button>
     </div>
   </div>
   <div id="rest" class="ov" hidden>
@@ -260,8 +293,12 @@ function mix(c1, c2, k) {
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.3';
+const VERSION = '0.4';
 const SAVE_KEY = 'stegi-v1';
+/** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
+const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
+/** Time speeds offered in test mode. */
+const DEV_SPEEDS = [1, 10, 60, 600];
 
 /** The five needs, in the order of the top bar. Each is 0 (empty) .. 100 (full). */
 const NEEDS = ['food', 'drink', 'love', 'fun', 'clean'];
@@ -708,16 +745,16 @@ function sanitizeSave(o, t) {
   return b;
 }
 
-/** Loads S from localStorage (or starts a new egg). */
+/** Loads S from localStorage (or starts a new egg). In test mode from the test game (19-dev.js). */
 function loadGame() {
   let raw = null;
-  try { raw = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { raw = null; }
+  try { raw = JSON.parse(localStorage.getItem(dev.on ? TEST_KEYS.save : SAVE_KEY)); } catch (e) { raw = null; }
   Object.assign(S, sanitizeSave(raw, now()));
 }
 
 /** Writes S to localStorage. Ignores errors (private mode, full storage). */
 function save() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* not saved */ }
+  try { localStorage.setItem(dev.on ? TEST_KEYS.save : SAVE_KEY, JSON.stringify(S)); } catch (e) { /* not saved */ }
 }
 
 /** "Alles zurücksetzen": everything back to a new egg, settings included. */
@@ -2550,6 +2587,7 @@ function startParty() {
 /* ---------- update ---------- */
 
 function update(dt) {
+  updateDev(dt);   // test mode: fast time (19-dev.js)
   const t = now();
   game.t += dt;
   tick(t);
@@ -2980,6 +3018,8 @@ function refreshUI() {
   $('playtray').hidden = !(inGame && game.mode === 'play');
   $('musicpad').hidden = !(inGame && game.mode === 'music');
   $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music'].includes(game.mode));
+  $('devbadge').hidden = !dev.on;
+  if (dev.on) $('devbadge').textContent = 'TEST' + (dev.speed > 1 ? ' · ' + dev.speed + '×' : '');
   updateNeedBars();
 }
 
@@ -3082,6 +3122,9 @@ function fillSettings() {
   $('s-sleep').value = S.opts.sleep;
   $('s-wake').value = S.opts.wake;
   $('s-limit').value = S.opts.limit;
+  $('s-dev').textContent = dev.on ? 'an' : 'aus';
+  $('s-dev').classList.toggle('on', dev.on);
+  $('s-devopen').hidden = !dev.on;
   const t = now();
   $('s-info').textContent = hatched()
     ? 'Tag ' + lifeDay(t) + ' von ' + GROWN_DAY + ' · ' + STAGES[stageAt(t)].name
@@ -3106,6 +3149,8 @@ window.__back = () => {
   if (!$('confirm').hidden) { $('confirm').hidden = true; return true; }
   if (!$('settings').hidden) { closeSettings(); return true; }
   if (!$('rest').hidden) { $('rest').hidden = true; return true; }
+  if (!$('dev-confirm').hidden) { $('dev-confirm').hidden = true; return true; }
+  if (!$('devpanel').hidden) { closeDev(); return true; }
   if (!$('places').hidden) { closePlaces(); return true; }
   if (!$('photoview').hidden) { $('photoview').hidden = true; return true; }
   if (!$('album').hidden) { closeAlbum(); return true; }
@@ -3281,6 +3326,7 @@ function start() {
   loadPhotos();
   resize();
   buildUI();
+  buildDev();
   setupInput();
   window.addEventListener('resize', resize);
   // Save when the app goes to the background; on return, time has passed (tick catches up).
@@ -3766,18 +3812,18 @@ function drawWearPreview(c, item, w, h) {
 
 /* ===== 18-photos.js ===== */
 /* 18-photos.js – camera and photo album (0.3). A photo is the game picture (without buttons) as a
- * small JPEG, stored apart from the game in localStorage[PHOTO_KEY]. Automatic photos are taken when
+ * small JPEG, stored apart from the game in localStorage[PHOTO_KEY] (test mode: TEST_KEYS.photos). Automatic photos are taken when
  * he hatches and at every new growth stage; they are kept. When there are PHOTO_MAX photos, the oldest
  * own photo makes room. If the phone's storage is full, old own photos are dropped until it fits. */
 
 let photos = [];
 function loadPhotos() {
-  try { const a = JSON.parse(localStorage.getItem(PHOTO_KEY)); photos = Array.isArray(a) ? a.filter(p => p && typeof p.data === 'string') : []; }
+  try { const a = JSON.parse(localStorage.getItem(dev.on ? TEST_KEYS.photos : PHOTO_KEY)); photos = Array.isArray(a) ? a.filter(p => p && typeof p.data === 'string') : []; }
   catch (e) { photos = []; }
 }
 function savePhotos() {
   for (;;) {
-    try { localStorage.setItem(PHOTO_KEY, JSON.stringify(photos)); return true; }
+    try { localStorage.setItem(dev.on ? TEST_KEYS.photos : PHOTO_KEY, JSON.stringify(photos)); return true; }
     catch (e) {
       const i = photos.findIndex(p => !p.auto);
       if (i < 0) return false;
@@ -3832,6 +3878,183 @@ function showPhoto(i) {
   $('photoview').hidden = false;
 }
 
+/* ===== 19-dev.js ===== */
+/* 19-dev.js – test mode for the parents (0.4): opened in the settings. It switches to a separate
+ * test game (TEST_KEYS), so the child's Stegi, photos and clock are never changed. In test mode:
+ * choose the stage or day, speed up time (DEV_SPEEDS), jump in time, and helpers (needs, places,
+ * presents, visit, weather). Test mode is not remembered: every start of the app is the real game.
+ * A red "TEST" badge shows while it is on. */
+
+const dev = { on: false, speed: 1, realOffset: 0, visitor: 0 };
+
+/** Switches between the real game and the test game. */
+function setTestMode(on) {
+  if (on === dev.on) return;
+  save(); savePhotos();
+  if (on) {
+    dev.realOffset = clock.offset;
+    dev.on = true;
+    let off = NaN;
+    try { off = parseFloat(localStorage.getItem(TEST_KEYS.clock)); } catch (e) { /* none */ }
+    clock.offset = isFinite(off) ? off : clock.offset;
+  } else {
+    saveTestClock();
+    dev.on = false; dev.speed = 1;
+    clock.offset = dev.realOffset;
+    game.weatherTest = null;
+  }
+  loadGame();
+  loadPhotos();
+  resetScreenState();
+  refreshUI();
+}
+
+function saveTestClock() {
+  try { localStorage.setItem(TEST_KEYS.clock, String(clock.offset)); } catch (e) { /* not saved */ }
+}
+
+/** After loading another game: nothing from the old one may stay on screen. */
+function resetScreenState() {
+  endMode();
+  game.mode = 'idle'; game.visit = null; game.flying = null; game.held = null; game.autoPhotoAt = 0;
+  parts.length = 0;
+  Object.assign(pet, { x: 0, tx: 0, jump: 0, jumpV: 0, depth: 0, danceT: 0, eatT: 0, refuseT: 0, giggleT: 0, happyT: 0 });
+  game.sky = skyAt(now());
+}
+
+/** Called every frame: fast time moves the test clock forward. */
+function updateDev(dt) {
+  if (!dev.on || dev.speed <= 1) return;
+  clock.offset += dt * 1000 * (dev.speed - 1);
+  if (Math.random() < dt) saveTestClock();
+}
+
+/* ---------- actions of the test panel ---------- */
+
+const today0 = () => dayIndex(now());
+
+/** Egg with n cracks (0..3); 'hatchday' = ready to hatch today. Stroking can go on today. */
+function devEgg(n) {
+  const fresh = blankSave(now());
+  fresh.name = S.name; fresh.opts = S.opts;
+  fresh.found = S.found; fresh.giftSeen = 0;
+  for (const k of Object.keys(S)) delete S[k];
+  Object.assign(S, fresh);
+  const d = today0();
+  if (n === 'hatchday') { S.egg.cracks = EGG.cracks; S.egg.crackDay = d - 1; }
+  else { S.egg.cracks = n; S.egg.crackDay = n > 0 ? d - 1 : -1; }
+  resetScreenState(); save(); refreshUI();
+}
+
+/** Puts him on day d of his life (hatches him first if needed). No party for the stages skipped. */
+function devDay(d) {
+  if (!hatched()) {
+    S.hatchDay = today0();
+    for (const k of NEEDS) S.needs[k] = START_NEEDS;
+    S.last = now();
+  }
+  S.hatchDay = today0() - d + 1;
+  S.stageSeen = stageAt(now());
+  resetScreenState(); save(); refreshUI();
+}
+const devStage = i => devDay(STAGES[i].day);
+
+/** Time: jump forward h hours, or forward to the next hh:mm. */
+function devJump(h) { clock.offset += h * 3600e3; saveTestClock(); refreshUI(); }
+function devTimeOfDay(minutes) {
+  const ahead = minutesUntil(minuteOfDay(now()), minutes) || 1440;
+  devJump(ahead / 60);
+}
+function devSpeed(x) { dev.speed = x; refreshUI(); fillDev(); }
+
+function devNeeds(v) { for (const k of NEEDS) S.needs[k] = v; save(); refreshUI(); }
+function devArrive() {
+  if (!hatched()) return;
+  arrive(now());   // ignores the two-a-day limit on purpose
+  closeDev();
+}
+function devAllPlaces() { S.found = PLACES.map(p => ({ id: p.id, day: -1 })); save(); fillDev(); }
+function devAllGifts() { S.giftSeen = WEAR_ITEMS.length; save(); fillDev(); }
+function devVisit() {
+  if (!hatched()) return;
+  game.visit = null;
+  startVisit(VISITORS[dev.visitor++ % VISITORS.length]);
+  closeDev();
+}
+function devWeather(w) { game.weatherTest = w === 'auto' ? null : w; fillDev(); }
+function devResetTest() {
+  resetAll();
+  photos = []; savePhotos();
+  clock.offset = dev.realOffset; saveTestClock();
+  resetScreenState(); fillDev(); refreshUI();
+}
+
+/* ---------- the panel ---------- */
+
+const DEV_WEATHER = [['auto', 'Normal'], ['sun', 'Sonne'], ['clouds', 'Wolken'], ['rain', 'Regen'], ['snow', 'Schnee'], ['rainbow', 'Regenbogen']];
+
+function buildDev() {
+  const b = (id, text, cls = '') => '<button class="chip' + cls + '" id="' + id + '" type="button">' + text + '</button>';
+  $('dev-body').innerHTML =
+    '<h3>Stufe</h3><div class="chips">' +
+      b('dv-egg-0', 'Ei') + b('dv-egg-1', 'Ei 1 Riss') + b('dv-egg-2', 'Ei 2 Risse') + b('dv-egg-3', 'Ei 3 Risse') + b('dv-egg-h', 'Schlüpftag') +
+      STAGES.map((st, i) => b('dv-st-' + i, st.name)).join('') + '</div>' +
+    '<label class="row">Tag <input id="dv-day" type="range" min="1" max="' + GROWN_DAY + '" step="1"><b id="dv-dayval"></b></label>' +
+    '<h3>Zeit</h3><p class="info" id="dv-clock"></p><div class="chips">' +
+      DEV_SPEEDS.map(x => b('dv-sp-' + x, x + '×')).join('') + '</div><div class="chips">' +
+      b('dv-h1', '+1 Stunde') + b('dv-d1', '+1 Tag') + b('dv-t7', 'Morgen 7:00') + b('dv-t12', 'Mittag') + b('dv-t1945', 'Abend 19:45') + b('dv-t22', 'Nacht 22:00') + '</div>' +
+    '<h3>Helfer</h3><div class="chips">' +
+      b('dv-full', 'Alles voll') + b('dv-low', 'Fast leer') + b('dv-arrive', 'Sofort ankommen') + b('dv-places', 'Alle Orte') +
+      b('dv-gifts', 'Alle Geschenke') + b('dv-visit', 'Besuch jetzt') + '</div>' +
+    '<h3>Wetter</h3><div class="chips">' + DEV_WEATHER.map(([w, t]) => b('dv-w-' + w, t)).join('') + '</div>' +
+    b('dv-reset', 'Test-Spielstand zurücksetzen', ' danger wide');
+  const on = (id, f) => $(id).addEventListener('click', () => { sound('tap'); f(); fillDev(); });
+  [0, 1, 2, 3].forEach(n => on('dv-egg-' + n, () => devEgg(n)));
+  on('dv-egg-h', () => devEgg('hatchday'));
+  STAGES.forEach((_, i) => on('dv-st-' + i, () => devStage(i)));
+  $('dv-day').addEventListener('input', () => { devDay(+$('dv-day').value); fillDev(); });
+  DEV_SPEEDS.forEach(x => on('dv-sp-' + x, () => devSpeed(x)));
+  on('dv-h1', () => devJump(1)); on('dv-d1', () => devJump(24));
+  on('dv-t7', () => devTimeOfDay(7 * 60)); on('dv-t12', () => devTimeOfDay(12 * 60));
+  on('dv-t1945', () => devTimeOfDay(19 * 60 + 45)); on('dv-t22', () => devTimeOfDay(22 * 60));
+  on('dv-full', () => devNeeds(100)); on('dv-low', () => devNeeds(15));
+  on('dv-arrive', devArrive); on('dv-places', devAllPlaces); on('dv-gifts', devAllGifts); on('dv-visit', devVisit);
+  DEV_WEATHER.forEach(([w]) => on('dv-w-' + w, () => devWeather(w)));
+  $('dv-reset').addEventListener('click', () => { $('dev-confirm').hidden = false; });
+  $('dvc-no').addEventListener('click', () => { $('dev-confirm').hidden = true; });
+  $('dvc-yes').addEventListener('click', () => { $('dev-confirm').hidden = true; devResetTest(); });
+  $('dev-close').addEventListener('click', closeDev);
+  $('s-dev').addEventListener('click', () => { setTestMode(!dev.on); fillSettings(); if (dev.on) openDev(); });
+  $('s-devopen').addEventListener('click', openDev);
+}
+
+/** Shows the current state in the panel (which buttons are "on", clock, day). */
+function fillDev() {
+  if (!dev.on) return;
+  const t = now(), d = new Date(t), mark = (id, v) => $(id) && $(id).classList.toggle('on', !!v);
+  DEV_SPEEDS.forEach(x => mark('dv-sp-' + x, dev.speed === x));
+  DEV_WEATHER.forEach(([w]) => mark('dv-w-' + w, (game.weatherTest || 'auto') === w));
+  const st = hatched() ? stageAt(t) : -1;
+  STAGES.forEach((_, i) => mark('dv-st-' + i, st === i));
+  [0, 1, 2, 3].forEach(n => mark('dv-egg-' + n, !hatched() && S.egg.cracks === n && eggPhase() !== 'hatchday'));
+  mark('dv-egg-h', !hatched() && eggPhase() === 'hatchday');
+  $('dv-day').value = hatched() ? clamp(lifeDay(t), 1, GROWN_DAY) : 1;
+  $('dv-dayval').textContent = hatched() ? lifeDay(t) : 'Ei';
+  $('dv-clock').textContent = 'Testuhr: ' + ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][d.getDay()] + ' ' + d.getDate() + '.' + (d.getMonth() + 1) + '. ' +
+    String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ' Uhr · ' + S.found.length + ' Orte · ' + S.giftSeen + ' Geschenke';
+}
+
+let devClockTimer = 0;
+function openDev() {
+  if (!dev.on) return;
+  closeSettings();
+  fillDev();
+  $('devpanel').hidden = false;
+  clearInterval(devClockTimer);
+  devClockTimer = setInterval(() => { if ($('devpanel').hidden) clearInterval(devClockTimer); else fillDev(); }, 500);
+}
+function closeDev() { $('devpanel').hidden = true; refreshUI(); }
+
 /* ===== 99-debug.js ===== */
 /* 99-debug.js – window.__st: hooks for the tests (tests/*.js). The game itself never uses them.
  * Time travel: __st.setTime('2026-11-20T09:00') or __st.travel(hours) move now() (clock.offset). */
@@ -3852,6 +4075,7 @@ window.__st = {
   pause(p) { paused = p; },
   WEAR_ITEMS, VISITORS, weatherAt, currentWeather, startHide, hideTap, hideSpots, hideSpotAt, playKey, startVisit, planVisit, openGift, giftWaiting, giftPos, wearNow,
   wearUnlocked, openWardrobe, closeWardrobe, takePhoto, openAlbum, closeAlbum, get photos() { return photos; }, loadPhotos, openPlayMenu,
+  dev, setTestMode, devEgg, devDay, devStage, devJump, devTimeOfDay, devSpeed, devNeeds, devArrive, devAllPlaces, devAllGifts, devVisit, devWeather, devResetTest, openDev, closeDev,
   startWalk, arrive, goPlace, openPlaces, closePlaces, foundToday, walkLimitReached, firefliesNow, placePicture, walkFx,
   enterGame, showMenu, startMode, endMode, goToBed, offerFood, removePoop, tapStego, strokeStego, throwBall,
   eggPhase, eggProgress, eggRub, stageAt: () => stageAt(now()), growth: () => growthAt(now()), lifeDay: () => lifeDay(now()),
@@ -3874,7 +4098,7 @@ window.__st = {
   visible() {
     const v = id => !$(id).hidden;
     return { needs: v('needs'), actions: v('actions'), tray: v('tray'), close: v('close'), bed: v('act-bed'),
-      settings: v('settings'), playtray: v('playtray'), musicpad: v('musicpad'), wardrobe: v('wardrobe'), album: v('album'), photoview: v('photoview'), side: v('side'), confirm: v('confirm'), rest: v('rest'), exit: v('m-exit'), menuGone: $('menu').classList.contains('gone') };
+      settings: v('settings'), playtray: v('playtray'), musicpad: v('musicpad'), wardrobe: v('wardrobe'), album: v('album'), photoview: v('photoview'), side: v('side'), devbadge: v('devbadge'), devpanel: v('devpanel'), devopen: v('s-devopen'), confirm: v('confirm'), rest: v('rest'), exit: v('m-exit'), menuGone: $('menu').classList.contains('gone') };
   },
 };
 

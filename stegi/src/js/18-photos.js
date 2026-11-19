@@ -1,16 +1,16 @@
 /* 18-photos.js – camera and photo album (0.3). A photo is the game picture (without buttons) as a
- * small JPEG, stored apart from the game in localStorage[PHOTO_KEY]. Automatic photos are taken when
+ * small JPEG, stored apart from the game in localStorage[PHOTO_KEY] (test mode: TEST_KEYS.photos). Automatic photos are taken when
  * he hatches and at every new growth stage; they are kept. When there are PHOTO_MAX photos, the oldest
  * own photo makes room. If the phone's storage is full, old own photos are dropped until it fits. */
 
 let photos = [];
 function loadPhotos() {
-  try { const a = JSON.parse(localStorage.getItem(PHOTO_KEY)); photos = Array.isArray(a) ? a.filter(p => p && typeof p.data === 'string') : []; }
+  try { const a = JSON.parse(localStorage.getItem(dev.on ? TEST_KEYS.photos : PHOTO_KEY)); photos = Array.isArray(a) ? a.filter(p => p && typeof p.data === 'string') : []; }
   catch (e) { photos = []; }
 }
 function savePhotos() {
   for (;;) {
-    try { localStorage.setItem(PHOTO_KEY, JSON.stringify(photos)); return true; }
+    try { localStorage.setItem(dev.on ? TEST_KEYS.photos : PHOTO_KEY, JSON.stringify(photos)); return true; }
     catch (e) {
       const i = photos.findIndex(p => !p.auto);
       if (i < 0) return false;

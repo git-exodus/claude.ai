@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.3.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.4.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **148 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 37).
+Erwartet: **174 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 37, suite-dev 26).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -67,6 +67,7 @@ stegi/
     ├── suite-ui.js        Bedienung mit echter Maus, Einstellungen, Zurück-Taste, Beenden, Musik, Bildschirmfotos
     ├── suite-places.js    0.2: Babygröße, Wandern (auch bei geschlossener App), 2 Orte pro Tag, Orte-Liste, Glühwürmchen
     ├── suite-extras.js    0.3: Wetter, Geschenke/Verkleiden, Fotos/Album, Besuch, Verstecken, Musik, Spielmenü
+    ├── suite-dev.js       0.4: Testmodus (eigener Spielstand, Stufen, Zeitraffer, Sprünge, Helfer, echter Stand bleibt unberührt)
     └── make-icon.js       kein Test: zeichnet das App-Symbol mit dem Spielcode neu
 ```
 
@@ -139,9 +140,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.3';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.3` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 3`, `versionName '0.3'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.4';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.4` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 4`, `versionName '0.4'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -168,6 +169,7 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 | `16-visit.js` | Besuch planen und ablaufen lassen, die 5 Besucher zeichnen |
 | `17-wardrobe.js` | Geschenke, Kleiderschrank, automatische Kleidung je Ort (`wearNow`) |
 | `18-photos.js` | Kamera, Fotos speichern (eigener Speicherplatz), Album |
+| `19-dev.js` | Testmodus für Eltern: Wechsel auf den Test-Spielstand, Zeitraffer, Stufen, Helfer, Test-Fenster |
 | `11-main.js` | `resize`, Bildschleife, Speichern alle 5 s und beim Verlassen, `start()` |
 | `99-debug.js` | `window.__st` für die Tests (wird vom Spiel nicht benutzt), ruft `start()` auf |
 
@@ -189,7 +191,7 @@ mal `lerp(SIZE_MIN, 1, Wachstum)`.
 
 ---
 
-## 6. Spielwerte (Stand 0.3, Quelle: `src/js/02-config.js`)
+## 6. Spielwerte (Stand 0.4, Quelle: `src/js/02-config.js`)
 
 ### 6.1 Ei und Schlüpfen
 
@@ -307,6 +309,27 @@ danach Liebe +10 und Spaß +10.
 Verstecken: gefunden = Spaß +15; Hinweis nach 5 s, dann alle 4 s. Musik: jeder Ton Spaß +1,5; die
 Hintergrundmusik pausiert dabei.
 
+### 6.13 Testmodus (seit 0.4)
+
+In den Eltern-Einstellungen: „Testmodus an“ wechselt auf einen **eigenen Test-Spielstand**
+(`stegi-test-v1`, Fotos `stegi-test-photos-v1`, eigene Testuhr `stegi-test-clock`). Der echte Stegi,
+seine Fotos und seine Uhr werden dabei nie verändert. Oben steht ein rotes Schild „TEST“ (mit Tempo).
+Der Testmodus wird nicht gemerkt: Jeder Neustart der App beginnt mit dem echten Spielstand; der
+Test-Stegi und die Testuhr bleiben aber für das nächste Mal erhalten.
+
+Im Fenster „Test-Werkzeuge“ (Knopf in den Einstellungen, öffnet sich beim Einschalten):
+- **Stufe:** Ei, Ei mit 1/2/3 Rissen (heute darf weiter gestreichelt werden), Schlüpftag, Baby, Kind,
+  Jugendlicher, Fast groß, Ganz groß; Schieberegler Tag 1–30. Übersprungene Stufen werden nicht gefeiert.
+- **Zeit:** Tempo 1×, 10×, 60×, 600× (600× = 10 Minuten pro Sekunde); Sprünge +1 Stunde, +1 Tag und
+  zur nächsten 7:00 / 12:00 / 19:45 / 22:00 (immer vorwärts). Alles läuft mit: Bedürfnisse, Tag/Nacht,
+  Wanderung, Ei-Tage, Geschenke, Besuch.
+- **Helfer:** alles voll (100), fast leer (15), sofort ankommen (neuer Ort, ohne 2-pro-Tag-Grenze),
+  alle Orte, alle Geschenke (in den Kleiderschrank), Besuch jetzt (bei jedem Druck der nächste Freund).
+- **Wetter:** Normal, Sonne, Wolken, Regen, Schnee, Regenbogen (trockene Orte bleiben trotzdem sonnig).
+- **Test-Spielstand zurücksetzen** (mit Rückfrage): Test-Ei, Testfotos und Testuhr neu.
+
+Hinweis: Ist der Testmodus an, wirkt auch „Alles zurücksetzen“ in den Einstellungen nur auf den Test-Stegi.
+
 ---
 
 ## 7. Spielstand
@@ -352,6 +375,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.4 | Testmodus für Eltern: eigener Test-Spielstand, Stufen wählen, Zeitraffer bis 600×, Zeitsprünge, Helfer, Wetter wählen |
 | 0.3 | Spielen-Menü mit Verstecken und Musik (er tanzt), 12 Kleidungsstücke als Geschenke, Fotos und Album, Besuch von 5 Freunden, Wetter (Sonne, Wolken, Regen, Schnee, Regenbogen) |
 | 0.2 | Farbe schiefergrau, Baby 30 % kleiner, Platten +50 %, Schwanzstacheln +25 %, App-Symbol Ei, Wandern zu 30 Orten mit Orte-Liste, Glühwürmchen |
 | 0.1 | Runde 1: Hauptmenü mit Stego/Ei, Ei mit 3 Rissen und Schlüpfen, 5 Wachstumsstufen in 30 Tagen, 5 Bedürfnisse, Essen, Trinken, Streicheln, Baden, Zähneputzen, Ball, Kacka, Schlafen 20–7 Uhr mit Tag/Nacht-Himmel, Geräusche und Spieluhr, Eltern-Einstellungen mit Spielzeit-Grenze und „Alles zurücksetzen“ |
@@ -360,7 +384,7 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Alles bisher Vereinbarte ist gebaut (0.1–0.3). Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
+Alles bisher Vereinbarte ist gebaut (0.1–0.4). Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):
 - Benachrichtigungen am Handy („Stegi hat Hunger“, „Stegi ist angekommen“) – braucht Android-Code.

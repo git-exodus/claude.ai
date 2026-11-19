@@ -33,9 +33,11 @@
       <label class="row">Schlafenszeit <select id="s-sleep"></select></label>
       <label class="row">Aufstehen <select id="s-wake"></select></label>
       <label class="row">Spielzeit pro Tag <select id="s-limit"></select></label>
+      <div class="row">Testmodus <button id="s-dev" class="toggle" type="button"></button></div>
+      <button class="big alt" id="s-devopen" type="button" hidden>Test-Werkzeuge öffnen</button>
       <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
       <button class="big" id="s-close" type="button">Schließen</button>
-      <p id="credit">@made by Brownii (Claude.ai) · v0.3</p>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.4</p>
     </div>
   </div>
   <div id="confirm" class="ov" hidden>
@@ -75,6 +77,23 @@
       <img id="pv-img" alt="Foto von Stegi">
       <p id="pv-text" class="info"></p>
       <button class="big" id="pv-close" type="button">Zurück</button>
+    </div>
+  </div>
+  <div id="devbadge" hidden>TEST</div>
+  <div id="devpanel" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="dev-title">
+      <h2 id="dev-title">Test-Werkzeuge</h2>
+      <p class="info">Nur der Test-Spielstand ändert sich. Stegi deines Kindes bleibt, wie er ist.</p>
+      <div id="dev-body"></div>
+      <button class="big" id="dev-close" type="button">Zum Spiel</button>
+    </div>
+  </div>
+  <div id="dev-confirm" class="ov" hidden>
+    <div class="card" role="dialog" aria-labelledby="dvc-title">
+      <h2 id="dvc-title">Test-Spielstand zurücksetzen?</h2>
+      <p class="info">Der Test-Stegi wird wieder ein Ei, Testfotos und Testuhr werden gelöscht. Der echte Spielstand bleibt.</p>
+      <button class="big danger" id="dvc-yes" type="button">Ja, zurücksetzen</button>
+      <button class="big" id="dvc-no" type="button">Abbrechen</button>
     </div>
   </div>
   <div id="rest" class="ov" hidden>

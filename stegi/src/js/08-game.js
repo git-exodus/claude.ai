@@ -226,6 +226,7 @@ function startParty() {
 /* ---------- update ---------- */
 
 function update(dt) {
+  updateDev(dt);   // test mode: fast time (19-dev.js)
   const t = now();
   game.t += dt;
   tick(t);

@@ -1,8 +1,12 @@
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.3';
+const VERSION = '0.4';
 const SAVE_KEY = 'stegi-v1';
+/** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
+const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
+/** Time speeds offered in test mode. */
+const DEV_SPEEDS = [1, 10, 60, 600];
 
 /** The five needs, in the order of the top bar. Each is 0 (empty) .. 100 (full). */
 const NEEDS = ['food', 'drink', 'love', 'fun', 'clean'];

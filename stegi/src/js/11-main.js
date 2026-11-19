@@ -34,6 +34,7 @@ function start() {
   loadPhotos();
   resize();
   buildUI();
+  buildDev();
   setupInput();
   window.addEventListener('resize', resize);
   // Save when the app goes to the background; on return, time has passed (tick catches up).

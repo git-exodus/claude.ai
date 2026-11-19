@@ -92,16 +92,16 @@ function sanitizeSave(o, t) {
   return b;
 }
 
-/** Loads S from localStorage (or starts a new egg). */
+/** Loads S from localStorage (or starts a new egg). In test mode from the test game (19-dev.js). */
 function loadGame() {
   let raw = null;
-  try { raw = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { raw = null; }
+  try { raw = JSON.parse(localStorage.getItem(dev.on ? TEST_KEYS.save : SAVE_KEY)); } catch (e) { raw = null; }
   Object.assign(S, sanitizeSave(raw, now()));
 }
 
 /** Writes S to localStorage. Ignores errors (private mode, full storage). */
 function save() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* not saved */ }
+  try { localStorage.setItem(dev.on ? TEST_KEYS.save : SAVE_KEY, JSON.stringify(S)); } catch (e) { /* not saved */ }
 }
 
 /** "Alles zurücksetzen": everything back to a new egg, settings included. */

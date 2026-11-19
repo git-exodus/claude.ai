@@ -74,6 +74,8 @@ function refreshUI() {
   $('playtray').hidden = !(inGame && game.mode === 'play');
   $('musicpad').hidden = !(inGame && game.mode === 'music');
   $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music'].includes(game.mode));
+  $('devbadge').hidden = !dev.on;
+  if (dev.on) $('devbadge').textContent = 'TEST' + (dev.speed > 1 ? ' · ' + dev.speed + '×' : '');
   updateNeedBars();
 }
 
@@ -176,6 +178,9 @@ function fillSettings() {
   $('s-sleep').value = S.opts.sleep;
   $('s-wake').value = S.opts.wake;
   $('s-limit').value = S.opts.limit;
+  $('s-dev').textContent = dev.on ? 'an' : 'aus';
+  $('s-dev').classList.toggle('on', dev.on);
+  $('s-devopen').hidden = !dev.on;
   const t = now();
   $('s-info').textContent = hatched()
     ? 'Tag ' + lifeDay(t) + ' von ' + GROWN_DAY + ' · ' + STAGES[stageAt(t)].name
@@ -200,6 +205,8 @@ window.__back = () => {
   if (!$('confirm').hidden) { $('confirm').hidden = true; return true; }
   if (!$('settings').hidden) { closeSettings(); return true; }
   if (!$('rest').hidden) { $('rest').hidden = true; return true; }
+  if (!$('dev-confirm').hidden) { $('dev-confirm').hidden = true; return true; }
+  if (!$('devpanel').hidden) { closeDev(); return true; }
   if (!$('places').hidden) { closePlaces(); return true; }
   if (!$('photoview').hidden) { $('photoview').hidden = true; return true; }
   if (!$('album').hidden) { closeAlbum(); return true; }
