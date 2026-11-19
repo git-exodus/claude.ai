@@ -25,7 +25,7 @@ window.__st = {
   eggPhase, eggProgress, eggRub, stageAt: () => stageAt(now()), growth: () => growthAt(now()), lifeDay: () => lifeDay(now()),
   lowest: lowestNeed, limitReached, save, load: loadGame, sanitizeSave, resetAll, blankSave,
   /** Drawing functions (used to render the app icon, see README 4.2). */
-  draw: { stego: drawStego, egg: drawEgg, nest: drawNest },
+  draw: { stego: drawStego, egg: drawEgg, nest: drawNest, foreground: drawForeground },
   /** The stego palette object (tests and previews may change it in place). */
   colors: STEGO_COLORS,
   /** Screen positions for touches. */

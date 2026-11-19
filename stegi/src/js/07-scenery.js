@@ -67,12 +67,16 @@ function drawSkyLife(c, sky, time, placeId, weather, sunX, sunY) {
   }
 }
 
-/** Things in front of his feet (drawn after him), moving gently in the wind. L = light 0..1 (night darker). */
-function drawForeground(c, placeId, time, L) {
+/** Things in front of his feet (drawn after him), moving gently in the wind. L = light 0..1 (night darker).
+ *  scroll = pixels walked (0.6.1): on the way everything slides out of the picture like the ground –
+ *  the band at his feet at the speed of the path (1.0), the things further down a bit faster (1.3). */
+function drawForeground(c, placeId, time, L, scroll = 0) {
   const fg = fgOf(placeId), d = k => mix('#1d2a4a', k, clamp(L * 1.1, 0.25, 1)), r = mulberry(77);
   const wind = x => Math.sin(time * 1.8 + x * 0.05) * 4 * U;
+  const span = W + 60 * U;
+  const slide = (x, speed) => scroll ? ((x - scroll * speed) % span + span) % span - 30 * U : x;
   // Row of positions: a band just in front of his feet and some lower down near the screen edge.
-  const spot = i => ({ x: r() * W, y: (i % 2 ? standY + (8 + r() * 26) * U : standY + 40 * U + r() * (H - standY - 50 * U)) });
+  const spot = i => { const near = i % 2, x = r() * W; return { x: slide(x, near ? 1 : 1.3), y: (near ? standY + (8 + r() * 26) * U : standY + 40 * U + r() * (H - standY - 50 * U)) }; };
   if (fg.kind === 'grass' || fg.kind === 'dune') {
     const cols = fg.colors || (fg.kind === 'dune' ? ['#9ab55a', '#b5c46a'] : ['#3f8a2e', '#5aa83c', '#3f8a2e']);
     const n = fg.kind === 'dune' ? 10 : 26;
@@ -115,7 +119,7 @@ function drawForeground(c, placeId, time, L) {
   // Flowers swaying on a stem.
   if (fg.flowers) {
     for (let i = 0; i < 5; i++) {
-      const x = W * (0.08 + i * 0.21) + r() * 20 * U, y = H - (30 + r() * 60) * U, sw = Math.sin(time * 2 + i) * 3 * U;
+      const x = slide(W * (0.08 + i * 0.21) + r() * 20 * U, 1.3), y = H - (30 + r() * 60) * U, sw = Math.sin(time * 2 + i) * 3 * U;
       c.strokeStyle = d('#3f8a2e'); c.lineWidth = 2.5 * U;
       c.beginPath(); c.moveTo(x, y + 20 * U); c.quadraticCurveTo(x + sw, y + 8 * U, x + sw, y); c.stroke();
       c.fillStyle = d(fg.flowers[i % fg.flowers.length]);

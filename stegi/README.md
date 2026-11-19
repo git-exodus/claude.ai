@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.6.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.6.1.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **218 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 36, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 9).
+Erwartet: **221 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 36, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -144,9 +144,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.6';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.6` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 7`, `versionName '0.6'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.6.1';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.6.1` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 8`, `versionName '0.6.1'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -265,7 +265,10 @@ Musik an/aus, Schlafenszeit 18:00–22:00, Aufstehen 5:30–9:00 (je halbe Stund
   entdeckten Ort. Die Zeit läuft auch bei geschlossener App weiter (`tick`), nachts ruht sie.
 - **Höchstens 2 neue Orte pro Kalendertag** (`WALK_PER_DAY`), danach schüttelt er beim Knopf den Kopf.
   Sind alle 30 entdeckt, wandert er ohne Grenze zu einem zufälligen bekannten Ort.
-- Kacka bleibt beim Losgehen am alten Ort; unterwegs fällt keine neue an.
+- Kacka bleibt beim Losgehen am alten Ort; unterwegs fällt keine neue an. Ein fälliges Geschenk wird unterwegs
+  nicht gezeigt (es stünde sonst still auf dem fahrenden Boden) und liegt nach dem Ankommen wieder neben ihm.
+- Unterwegs scrollen alle Ebenen mit (`walkFx.scroll`): Hügel 0,15/0,35, Bäume 0,7, Weg 1,0, Vordergrund an
+  den Füßen 1,0, Gras und Blumen ganz vorne 1,3. Neue Dinge im Bild beim Wandern immer mitscrollen lassen.
 - Ankunft an einem **neuen** Ort: beim nächsten Hinsehen Fanfare, Konfetti und ein Bild mit dem Namen (4 s).
 - Orte-Liste (Landkarte): entdeckte Orte antippen = sofort dort (eine laufende Wanderung endet).
 - Die 30 Orte: Wiese (Start), Dschungel, Savanne, Vulkan, Kleine Insel, Am Fluss, Auf einer Wolke, Strand,
@@ -405,6 +408,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.6.1 | Unterwegs wandern Gras und Blumen im Vordergrund mit dem Weg aus dem Bild (standen still); das Geschenk wartet unterwegs unsichtbar und liegt nach dem Ankommen wieder da |
 | 0.6 | Neues Aussehen: Stego mit Licht und Schatten, größere Augen, Augenbrauen, Bäckchen, rundlicheres Baby, Stauchen/Strecken; Kleinigkeiten von selbst (schnuppern, staunen, freuen, hüpfen); höherer Horizont; Sonnenstrahlen, Vögel; Vordergrund für alle 30 Orte; Schmetterlinge und springende Fische |
 | 0.5.1 | Fehler behoben: In der APK lag der unsichtbare Beenden-Knopf über Trinken, Baden, Spielen und Zähneputzen und schloss die App; neuer Test im APK-Modus |
 | 0.5 | Fototagebuch mit 2 eigenen Fotos pro Tag und Meilensteine (auch neuer Ort), Bild fliegt zum Album, Löschen durch Halten, Fehler behoben: Fotos gingen verloren, wenn das Gerät nicht speichert; Hinweis in den Einstellungen |

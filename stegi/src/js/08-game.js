@@ -522,12 +522,13 @@ function drawWorld() {
     const hd = game.hide, depth = hd ? pet.depth : 0;
     const sy = lerp(standY, groundY + 76 * U, smooth(depth)), ss = stegoSize * lerp(1, hd ? hd.sMin : 1, smooth(depth));
     if (hd && hd.phase === 'found') drawHideSpots(ctx);
-    if (giftWaiting() && game.mode === 'idle' && !asleepNow()) { const gp = giftPos(); drawGift(ctx, gp.x, gp.y, U, game.t); }
+    // The present waits where he stops: not shown on the way (it would stand still on the moving ground, 0.6.1).
+    if (giftWaiting() && game.mode === 'idle' && !asleepNow() && !S.walk) { const gp = giftPos(); drawGift(ctx, gp.x, gp.y, U, game.t); }
     if (game.visit && game.visit.kind !== 'ptero' && game.visit.kind !== 'butterflies') drawVisitor(ctx, game.visit, game.t);
     game.stegoInfo = drawStego(ctx, sx, sy, ss, look);
     if (hd && hd.phase !== 'found') drawHideSpots(ctx);
     if (game.visit && (game.visit.kind === 'ptero' || game.visit.kind === 'butterflies')) drawVisitor(ctx, game.visit, game.t);
-    drawForeground(ctx, placeId, game.t, sky.light);   // grass, flowers ... in front of him (0.6)
+    drawForeground(ctx, placeId, game.t, sky.light, placeId === 'travel' ? walkFx.scroll : 0);   // grass, flowers ... in front of him (0.6; scrolls on the way since 0.6.1)
     drawGroundLife(ctx, placeId, game.t, sky, weather);
     if (game.mode === 'bath') {
       drawTub(ctx, W / 2 + 6 * U, standY + 6 * U, tubW, 'front');
