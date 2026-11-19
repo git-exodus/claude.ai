@@ -83,6 +83,16 @@ svg { display: block; width: 100%; height: 100%; }
 .ptile.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 #photolist .empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px 0; }
 #photolist .empty svg { width: 54px; height: 54px; }
+#atabs { display: flex; gap: 6px; justify-content: center; margin: 2px 0 6px; }
+#b-camera { position: relative; }
+#b-camera.full { opacity: .45; }
+#b-camera .cnt { position: absolute; right: -4px; bottom: -4px; background: #e5533d; color: #fff; font-size: 11px; border-radius: 9px; padding: 1px 5px; }
+#pv-delete { position: relative; overflow: hidden; }
+#pv-delete .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(0, 0, 0, .25); }
+#pv-delete .txt { position: relative; }
+.flyphoto { position: fixed; z-index: 50; border-radius: 8px; border: 3px solid #fff; box-shadow: 0 6px 20px rgba(0, 0, 0, .35); pointer-events: none;
+  transition: left .7s cubic-bezier(.5, 0, .7, 1), top .7s cubic-bezier(.5, 0, .7, 1), width .7s, height .7s, opacity .25s .6s; }
+.warn { margin: 4px 0 6px; padding: 8px 10px; border-radius: 12px; background: #fde3dd; color: #a33a26; font-size: 14px; font-weight: 700; }
 #pv-img { display: block; width: 100%; max-height: 60vh; object-fit: contain; border-radius: 14px; background: #000; margin-bottom: 8px; }
 
 /* Bottom action buttons. */
@@ -145,6 +155,7 @@ svg { display: block; width: 100%; height: 100%; }
 #dv-day { flex: 1; max-width: none; }
 #dv-dayval { min-width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; }
 [hidden] { display: none !important; }
+.mini.nope { animation: wobble .4s; }
 </style>
 
 <div id="game">
@@ -176,6 +187,7 @@ svg { display: block; width: 100%; height: 100%; }
     <div class="card" role="dialog" aria-labelledby="s-title">
       <h2 id="s-title">Einstellungen</h2>
       <p id="s-info" class="info"></p>
+      <p id="s-storage" class="warn" hidden>Dieses Gerät speichert nicht. Fortschritt und Fotos gehen beim Schließen verloren. Bitte die App oder den Link benutzen.</p>
       <label class="row">Name <input id="s-name" type="text" maxlength="12" autocomplete="off"></label>
       <div class="row">Geräusche <button id="s-sound" class="toggle" type="button"></button></div>
       <div class="row">Musik <button id="s-music" class="toggle" type="button"></button></div>
@@ -186,7 +198,7 @@ svg { display: block; width: 100%; height: 100%; }
       <button class="big alt" id="s-devopen" type="button" hidden>Test-Werkzeuge öffnen</button>
       <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
       <button class="big" id="s-close" type="button">Schließen</button>
-      <p id="credit">@made by Brownii (Claude.ai) · v0.4</p>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.5</p>
     </div>
   </div>
   <div id="confirm" class="ov" hidden>
@@ -216,6 +228,7 @@ svg { display: block; width: 100%; height: 100%; }
   <div id="album" class="ov" hidden>
     <div class="card wide" role="dialog" aria-labelledby="a-title">
       <h2 id="a-title">Fotoalbum</h2>
+      <div id="atabs"><button id="at-diary" class="chip on" type="button">Fototagebuch</button><button id="at-mile" class="chip" type="button">Meilensteine</button></div>
       <p id="photocount" class="info"></p>
       <div id="photolist"></div>
       <button class="big" id="a-close" type="button">Schließen</button>
@@ -225,6 +238,7 @@ svg { display: block; width: 100%; height: 100%; }
     <div class="card" role="dialog" aria-label="Foto">
       <img id="pv-img" alt="Foto von Stegi">
       <p id="pv-text" class="info"></p>
+      <button class="big danger" id="pv-delete" type="button"><span class="fill"></span><span class="txt">Löschen (3 Sekunden halten)</span></button>
       <button class="big" id="pv-close" type="button">Zurück</button>
     </div>
   </div>
@@ -293,7 +307,7 @@ function mix(c1, c2, k) {
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.4';
+const VERSION = '0.5';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -424,9 +438,14 @@ const WEAR_ITEMS = [
 ];
 const wearItem = id => WEAR_ITEMS.find(w => w.id === id);
 
-/** Photos (0.3): at most PHOTO_MAX; when full, the oldest own photo goes (automatic ones stay).
- *  Stored apart from the game in localStorage[PHOTO_KEY] as small JPEGs (PHOTO_W pixels wide). */
-const PHOTO_MAX = 40;
+/** Photos (0.5): two albums. "Fototagebuch" = own photos, at most PHOTO_PER_DAY a calendar day and
+ *  PHOTO_OWN_MAX in all (then the oldest goes). "Meilensteine" = automatic photos (hatching, every new
+ *  stage, every new place), never removed. Stored apart from the game in localStorage[PHOTO_KEY] as small
+ *  JPEGs (PHOTO_W pixels wide). A photo is never dropped because storing failed (it stays until the app closes). */
+const PHOTO_PER_DAY = 2;
+const PHOTO_OWN_MAX = 100;
+/** Seconds the delete button in the big photo view must be held. */
+const PHOTO_DELETE_HOLD = 3;
 const PHOTO_KEY = 'stegi-photos-v1';
 const PHOTO_W = 240;
 
@@ -2381,7 +2400,7 @@ const game = {
   stegoInfo: null,   // last result of drawStego (mouth, head, box)
   hide: null,        // hide and seek (15-play.js)
   visit: null,       // visitor on screen (16-visit.js)
-  photoPending: null, flash: 0, autoPhotoAt: 0,   // camera (18-photos.js)
+  photoPending: null, flash: 0, autoPhotoAt: 0, autoPhoto: null,   // camera and milestone photos (18-photos.js)
   weatherTest: null, // tests only: forces the weather
 };
 
@@ -2460,7 +2479,7 @@ function finishHatch() {
     { vx: rnd(-160, 160) * U, vy: rnd(-260, -120) * U, g: 600, color: i % 2 ? '#fff4d6' : '#9ad9b0', size: 8, max: 1.6 });
   confetti();
   pet.x = 0; pet.tx = 0; pet.jumpV = 260 * U; pet.giggleT = 1.5;
-  game.autoPhotoAt = game.t + 1.6;   // first photo for the album
+  game.autoPhotoAt = game.t + 1.6; game.autoPhoto = { kind: 'hatch' };   // first milestone photo
 }
 
 function confetti() {
@@ -2608,7 +2627,7 @@ function update(dt) {
     if (addPlayTime(dt)) showRest();
   }
   updateMusic(!game.sky.night && game.mode !== 'music');
-  if (game.autoPhotoAt && game.t >= game.autoPhotoAt) { game.autoPhotoAt = 0; takePhoto(true); }
+  if (game.autoPhotoAt && game.t >= game.autoPhotoAt) { game.autoPhotoAt = 0; const a = game.autoPhoto || { kind: 'stage' }; takePhoto(a.kind, a.label); }
   game.flash = Math.max(0, game.flash - dt * 2.5);
 }
 
@@ -2698,7 +2717,7 @@ function updatePet(dt, sleeping) {
   else if (low.value < NEED_SAD && game.t > (a.whine || 12)) { a.whine = game.t + rnd(18, 28); sound('whine'); }
   if (isSleepy(now()) && game.t > (a.yawn || 4)) { a.yawn = game.t + rnd(14, 22); pet.yawnT = 1.6; sound('yawn'); }
   // Stage-up party once a second check.
-  if (stageAt(now()) > S.stageSeen) { S.stageSeen = stageAt(now()); save(); startParty(); game.autoPhotoAt = game.t + 1.6; }
+  if (stageAt(now()) > S.stageSeen) { S.stageSeen = stageAt(now()); save(); startParty(); game.autoPhotoAt = game.t + 1.6; game.autoPhoto = { kind: 'stage', label: STAGES[S.stageSeen].name }; }
 }
 
 function updateBath(dt) {
@@ -2978,7 +2997,10 @@ function buildUI() {
   // 0.3: wardrobe, album, camera, play menu, music pad.
   $('b-wear').innerHTML = iconSVG('hat'); $('b-wear').addEventListener('click', openWardrobe);
   $('b-album').innerHTML = iconSVG('album'); $('b-album').addEventListener('click', openAlbum);
-  $('b-camera').innerHTML = iconSVG('camera'); $('b-camera').addEventListener('click', () => { if (hatched()) takePhoto(false); });
+  $('b-camera').innerHTML = iconSVG('camera') + '<span class="cnt" hidden></span>'; $('b-camera').addEventListener('click', cameraTap);
+  $('at-diary').addEventListener('click', () => openAlbum('diary'));
+  $('at-mile').addEventListener('click', () => openAlbum('mile'));
+  setupPhotoDelete();
   $('w-close').addEventListener('click', closeWardrobe);
   $('a-close').addEventListener('click', closeAlbum);
   $('pv-close').addEventListener('click', () => { $('photoview').hidden = true; });
@@ -3018,6 +3040,7 @@ function refreshUI() {
   $('playtray').hidden = !(inGame && game.mode === 'play');
   $('musicpad').hidden = !(inGame && game.mode === 'music');
   $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music'].includes(game.mode));
+  refreshCamera();
   $('devbadge').hidden = !dev.on;
   if (dev.on) $('devbadge').textContent = 'TEST' + (dev.speed > 1 ? ' · ' + dev.speed + '×' : '');
   updateNeedBars();
@@ -3122,6 +3145,7 @@ function fillSettings() {
   $('s-sleep').value = S.opts.sleep;
   $('s-wake').value = S.opts.wake;
   $('s-limit').value = S.opts.limit;
+  $('s-storage').hidden = storageOk && checkStorage();
   $('s-dev').textContent = dev.on ? 'an' : 'aus';
   $('s-dev').classList.toggle('on', dev.on);
   $('s-devopen').hidden = !dev.on;
@@ -3401,6 +3425,7 @@ function updateTravel(dt, sleeping) {
     save();
     startParty();
     showBanner(id);
+    game.autoPhotoAt = game.t + 1.8; game.autoPhoto = { kind: 'place' };   // milestone photo of the new place
   }
 }
 
@@ -3811,71 +3836,166 @@ function drawWearPreview(c, item, w, h) {
 }
 
 /* ===== 18-photos.js ===== */
-/* 18-photos.js – camera and photo album (0.3). A photo is the game picture (without buttons) as a
- * small JPEG, stored apart from the game in localStorage[PHOTO_KEY] (test mode: TEST_KEYS.photos). Automatic photos are taken when
- * he hatches and at every new growth stage; they are kept. When there are PHOTO_MAX photos, the oldest
- * own photo makes room. If the phone's storage is full, old own photos are dropped until it fits. */
+/* 18-photos.js – camera and photo albums (0.3, reworked in 0.5).
+ *   Fototagebuch  own photos (camera button), at most PHOTO_PER_DAY per calendar day, PHOTO_OWN_MAX in all.
+ *   Meilensteine  automatic photos: hatching, every new growth stage, every new place. Never removed.
+ * Every photo shows the day of his life, so the album shows how he grew. A photo is the game picture
+ * (without buttons) as a small JPEG, stored apart from the game in localStorage[PHOTO_KEY]
+ * (test mode: TEST_KEYS.photos). If storing fails (a viewer that keeps no data, or full storage), the
+ * photo stays in the album until the app closes and the settings show a warning (storageOk). */
 
+/** Photo: { t, day (day of life), place, auto (true = milestone), kind: 'own'|'hatch'|'stage'|'place', label } */
 let photos = [];
+/** false once saving to the device failed (shown in the settings). */
+let storageOk = true;
+
 function loadPhotos() {
-  try { const a = JSON.parse(localStorage.getItem(dev.on ? TEST_KEYS.photos : PHOTO_KEY)); photos = Array.isArray(a) ? a.filter(p => p && typeof p.data === 'string') : []; }
-  catch (e) { photos = []; }
-}
-function savePhotos() {
-  for (;;) {
-    try { localStorage.setItem(dev.on ? TEST_KEYS.photos : PHOTO_KEY, JSON.stringify(photos)); return true; }
-    catch (e) {
-      const i = photos.findIndex(p => !p.auto);
-      if (i < 0) return false;
-      photos.splice(i, 1);
-    }
-  }
+  try {
+    const a = JSON.parse(localStorage.getItem(dev.on ? TEST_KEYS.photos : PHOTO_KEY));
+    photos = Array.isArray(a) ? a.filter(p => p && typeof p.data === 'string')
+      .map(p => ({ ...p, kind: p.kind || (p.auto ? 'stage' : 'own') })) : [];   // photos from 0.3/0.4 have no kind
+  } catch (e) { photos = []; }
 }
 
-/** Asks for a photo; it is taken right after the next picture is drawn (see drawWorld). */
-function takePhoto(auto = false) {
-  game.photoPending = auto ? 'auto' : 'own';
-  if (!auto) { game.flash = 1; sound('shutter'); }
+/** Stores all photos; never removes one because of an error. Returns true if it worked. */
+function savePhotos() {
+  try { localStorage.setItem(dev.on ? TEST_KEYS.photos : PHOTO_KEY, JSON.stringify(photos)); storageOk = true; return true; }
+  catch (e) { storageOk = false; return false; }
+}
+
+/** Does this device keep data at all? (Some HTML viewers on phones do not.) */
+function checkStorage() {
+  try { localStorage.setItem('stegi-probe', '1'); localStorage.removeItem('stegi-probe'); return true; }
+  catch (e) { return false; }
+}
+
+const ownPhotos = () => photos.filter(p => !p.auto);
+/** Own photos taken today (calendar day). */
+function ownToday() { const d = dayIndex(now()); return ownPhotos().filter(p => dayIndex(p.t) === d).length; }
+const cameraFull = () => ownToday() >= PHOTO_PER_DAY;
+
+/** Camera button: an own photo, if today's two are not used up. */
+function cameraTap() {
+  if (!hatched()) return;
+  if (cameraFull()) { sound('refuse'); const b = $('b-camera'); b.classList.remove('nope'); void b.offsetWidth; b.classList.add('nope'); return; }
+  takePhoto('own');
+}
+
+/** Asks for a photo; it is taken right after the next picture is drawn (see drawWorld).
+ *  kind 'own' (camera) or a milestone: 'hatch' | 'stage' | 'place'. */
+function takePhoto(kind = 'own', label = '') {
+  game.photoPending = { kind, label };
+  if (kind === 'own') { game.flash = 1; sound('shutter'); }
 }
 
 /** Called at the end of drawWorld, before the flash is drawn: copies the canvas into a photo. */
 function capturePhoto() {
-  const kind = game.photoPending;
+  const { kind, label } = game.photoPending;
   game.photoPending = null;
   const pw = PHOTO_W, ph = Math.round(PHOTO_W * H / W);
   const c = document.createElement('canvas'); c.width = pw; c.height = ph;
   c.getContext('2d').drawImage(cv, 0, 0, cv.width, cv.height, 0, 0, pw, ph);
   let data;
   try { data = c.toDataURL('image/jpeg', 0.72); } catch (e) { return; }
-  photos.push({ t: now(), day: lifeDay(now()), place: S.walk ? 'travel' : S.place, auto: kind === 'auto', data });
-  while (photos.length > PHOTO_MAX) {
-    const i = photos.findIndex(p => !p.auto);
-    photos.splice(i < 0 ? 0 : i, 1);
-  }
+  const photo = { t: now(), day: lifeDay(now()), place: S.walk ? 'travel' : S.place, auto: kind !== 'own', kind, label, data };
+  photos.push(photo);
+  while (ownPhotos().length > PHOTO_OWN_MAX) photos.splice(photos.indexOf(ownPhotos()[0]), 1);
   savePhotos();
+  if (kind === 'own') flyToAlbum(data);
+  refreshCamera();
+}
+
+/** A small copy of the photo flies from the middle of the screen into the album button. */
+function flyToAlbum(data) {
+  const img = document.createElement('img');
+  img.className = 'flyphoto'; img.src = data; img.alt = '';
+  const w0 = W * 0.5, h0 = w0 * H / W;
+  Object.assign(img.style, { left: (W - w0) / 2 + 'px', top: (H - h0) / 2 + 'px', width: w0 + 'px', height: h0 + 'px' });
+  $('game').appendChild(img);
+  const r = $('b-album').getBoundingClientRect();
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    Object.assign(img.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.width * H / W + 'px', opacity: 0 });
+  }));
+  setTimeout(() => img.remove(), 1100);
+}
+
+/** Camera button state: greyed out with "2/2" when today's own photos are used up. */
+function refreshCamera() {
+  const b = $('b-camera');
+  if (!b) return;
+  const n = ownToday();
+  b.classList.toggle('full', n >= PHOTO_PER_DAY);
+  b.querySelector('.cnt').textContent = n + '/' + PHOTO_PER_DAY;
+  b.querySelector('.cnt').hidden = n === 0;
+}
+
+/** Text under a photo: day of life, and for milestones what happened. */
+function photoCaption(p, long) {
+  const day = 'Tag ' + Math.max(1, p.day);
+  const what = p.kind === 'hatch' ? 'Geschlüpft' : p.kind === 'place' ? placeById(p.place).name : p.kind === 'stage' ? (p.label || 'Gewachsen') : '';
+  if (!long) return what ? day + ' · ' + what : day;
+  const d = new Date(p.t);
+  return day + ' · ' + d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear() + (what ? ' · ' + what : p.place && p.place !== 'travel' ? ' · ' + placeById(p.place).name : '');
 }
 
 /* ---------- album ---------- */
 
-function openAlbum() {
+let albumTab = 'diary';
+function openAlbum(tab) {
   sound('tap');
+  if (tab) albumTab = tab;
+  $('a-title').textContent = dev.on ? 'Test-Fotos' : 'Fotoalbum';
+  $('at-diary').classList.toggle('on', albumTab === 'diary');
+  $('at-mile').classList.toggle('on', albumTab === 'mile');
   const list = $('photolist');
-  if (!photos.length) list.innerHTML = '<p class="info empty">' + iconSVG('camera') + 'Noch keine Fotos.</p>';
-  else list.innerHTML = photos.map((p, i) => '<button class="ptile photo" id="ph-' + i + '" type="button" aria-label="Foto"><img alt="" src="' + p.data + '">' +
-    '<span>Tag ' + Math.max(1, p.day) + '</span></button>').reverse().join('');
-  photos.forEach((p, i) => { const el = $('ph-' + i); if (el) el.addEventListener('click', () => showPhoto(i)); });
-  $('photocount').textContent = photos.length + ' von ' + PHOTO_MAX + ' Fotos';
+  const shown = photos.map((p, i) => ({ p, i })).filter(x => (albumTab === 'mile') === !!x.p.auto).reverse();
+  if (!shown.length) list.innerHTML = '<p class="info empty">' + iconSVG('camera') + (albumTab === 'mile' ? 'Hier kommen Fotos vom Schlüpfen, vom Wachsen und von neuen Orten hin.' : 'Noch keine Fotos. Mit der Kamera gehen 2 Fotos pro Tag.') + '</p>';
+  else list.innerHTML = shown.map(({ p, i }) => '<button class="ptile photo" id="ph-' + i + '" type="button" aria-label="Foto"><img alt="" src="' + p.data + '"><span>' + photoCaption(p) + '</span></button>').join('');
+  shown.forEach(({ i }) => $('ph-' + i).addEventListener('click', () => showPhoto(i)));
+  const left = PHOTO_PER_DAY - ownToday();
+  $('photocount').textContent = albumTab === 'mile' ? shown.length + ' Meilensteine'
+    : shown.length + ' Fotos · heute ' + (left > 0 ? 'noch ' + left + (left === 1 ? ' Foto' : ' Fotos') : 'keine mehr');
   $('album').hidden = false;
 }
 function closeAlbum() { $('album').hidden = true; $('photoview').hidden = true; }
 
+let viewing = -1;
 function showPhoto(i) {
   const p = photos[i];
+  viewing = i;
   $('pv-img').src = p.data;
-  const d = new Date(p.t);
-  $('pv-text').textContent = 'Tag ' + Math.max(1, p.day) + ' · ' + d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear() +
-    (p.place && p.place !== 'travel' ? ' · ' + placeById(p.place).name : '');
+  $('pv-text').textContent = photoCaption(p, true);
+  $('pv-delete').hidden = !!p.auto;   // only own photos can be deleted
   $('photoview').hidden = false;
+}
+
+/** Delete button in the big view: must be held PHOTO_DELETE_HOLD seconds (so the child does not delete by accident). */
+function setupPhotoDelete() {
+  const b = $('pv-delete'), fill = b.querySelector('.fill');
+  let hold = null;
+  const stop = () => { if (hold) cancelAnimationFrame(hold.raf); hold = null; fill.style.width = '0'; };
+  b.addEventListener('pointerdown', e => {
+    e.preventDefault(); stop();
+    const start = performance.now();
+    const step = () => {
+      const k = (performance.now() - start) / 1000 / PHOTO_DELETE_HOLD;
+      fill.style.width = Math.min(100, k * 100) + '%';
+      if (k >= 1) { stop(); deletePhoto(viewing); return; }
+      hold.raf = requestAnimationFrame(step);
+    };
+    hold = { raf: requestAnimationFrame(step) };
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+}
+
+function deletePhoto(i) {
+  if (!photos[i] || photos[i].auto) return;
+  photos.splice(i, 1);
+  savePhotos();
+  sound('pop');
+  $('photoview').hidden = true;
+  refreshCamera();
+  openAlbum();
 }
 
 /* ===== 19-dev.js ===== */
@@ -4076,6 +4196,7 @@ window.__st = {
   WEAR_ITEMS, VISITORS, weatherAt, currentWeather, startHide, hideTap, hideSpots, hideSpotAt, playKey, startVisit, planVisit, openGift, giftWaiting, giftPos, wearNow,
   wearUnlocked, openWardrobe, closeWardrobe, takePhoto, openAlbum, closeAlbum, get photos() { return photos; }, loadPhotos, openPlayMenu,
   dev, setTestMode, devEgg, devDay, devStage, devJump, devTimeOfDay, devSpeed, devNeeds, devArrive, devAllPlaces, devAllGifts, devVisit, devWeather, devResetTest, openDev, closeDev,
+  cameraTap, ownToday, cameraFull, deletePhoto, showPhoto, get storageOk() { return storageOk; }, checkStorage,
   startWalk, arrive, goPlace, openPlaces, closePlaces, foundToday, walkLimitReached, firefliesNow, placePicture, walkFx,
   enterGame, showMenu, startMode, endMode, goToBed, offerFood, removePoop, tapStego, strokeStego, throwBall,
   eggPhase, eggProgress, eggRub, stageAt: () => stageAt(now()), growth: () => growthAt(now()), lifeDay: () => lifeDay(now()),

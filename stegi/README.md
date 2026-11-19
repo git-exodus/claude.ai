@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.4.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.5.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **174 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 37, suite-dev 26).
+Erwartet: **192 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 36, suite-dev 26, suite-photos 19).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -67,6 +67,7 @@ stegi/
     ├── suite-ui.js        Bedienung mit echter Maus, Einstellungen, Zurück-Taste, Beenden, Musik, Bildschirmfotos
     ├── suite-places.js    0.2: Babygröße, Wandern (auch bei geschlossener App), 2 Orte pro Tag, Orte-Liste, Glühwürmchen
     ├── suite-extras.js    0.3: Wetter, Geschenke/Verkleiden, Fotos/Album, Besuch, Verstecken, Musik, Spielmenü
+    ├── suite-photos.js    0.5: Fototagebuch (2 pro Tag), Meilensteine, Löschen, Testalbum, Gerät ohne Speicher
     ├── suite-dev.js       0.4: Testmodus (eigener Spielstand, Stufen, Zeitraffer, Sprünge, Helfer, echter Stand bleibt unberührt)
     └── make-icon.js       kein Test: zeichnet das App-Symbol mit dem Spielcode neu
 ```
@@ -107,7 +108,8 @@ Rechts das Zahnrad für die Eltern.
 | Musik | (Spielen → Note) 6 farbige Xylophon-Stäbe und 2 Trommeln; bei jedem Ton tanzt er |
 | Geschenk | liegt neben ihm und hüpft; antippen = auspacken und anziehen |
 | Verkleiden | Partyhut-Knopf: alle 12 Teile, antippen = an, nochmal = aus; noch nicht fällige als Geschenkpaket |
-| Foto | Kamera-Knopf: Klick und Blitz; Album zeigt alle Fotos, antippen = groß mit Tag, Datum und Ort |
+| Foto | Kamera-Knopf: Klick, Blitz, ein kleines Bild fliegt zum Album; höchstens 2 eigene Fotos pro Tag, dann ist die Kamera grau („2/2“) |
+| Album | zwei Reiter: **Fototagebuch** (eigene Fotos) und **Meilensteine** (automatisch); unter jedem Bild der Tag; antippen = groß mit Tag, Datum und Ort; eigene Fotos löschen: Knopf 3 Sekunden halten |
 | Kacka | Häufchen mit Fliegen antippen: Pling, weg |
 | Licht aus | ab 19:30: er legt sich schlafen |
 | Wandern | er läuft los, die Landschaft zieht vorbei, oben ein Balken von den Fußspuren zur Landkarte; nach 1 Stunde wacher Zeit (auch bei geschlossener App) ist er an einem neuen Ort und wartet dort |
@@ -140,9 +142,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.4';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.4` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 4`, `versionName '0.4'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.5';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.5` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 5`, `versionName '0.5'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -168,7 +170,7 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 | `15-play.js` | Verstecken (`game.hide`, `pet.depth`) und Musik (`playKey`, Tanzen) |
 | `16-visit.js` | Besuch planen und ablaufen lassen, die 5 Besucher zeichnen |
 | `17-wardrobe.js` | Geschenke, Kleiderschrank, automatische Kleidung je Ort (`wearNow`) |
-| `18-photos.js` | Kamera, Fotos speichern (eigener Speicherplatz), Album |
+| `18-photos.js` | Kamera (2 pro Tag), Meilenstein-Fotos, Speichern (Fehler behalten das Foto), Album mit zwei Reitern, Löschen durch Halten |
 | `19-dev.js` | Testmodus für Eltern: Wechsel auf den Test-Spielstand, Zeitraffer, Stufen, Helfer, Test-Fenster |
 | `11-main.js` | `resize`, Bildschleife, Speichern alle 5 s und beim Verlassen, `start()` |
 | `99-debug.js` | `window.__st` für die Tests (wird vom Spiel nicht benutzt), ruft `start()` auf |
@@ -290,11 +292,19 @@ Wolken und Regen wird der Himmel grauer, die Sonne verschwindet.
 Pro Platz ein Teil. Am Strand und in der Wüste trägt er automatisch eine Sonnenbrille, im Schnee und
 im Eisland einen Schal, aber nur wenn der Platz frei ist (eigene Sachen haben Vorrang).
 
-### 6.10 Fotos (seit 0.3)
+### 6.10 Fotos (seit 0.3, Fototagebuch seit 0.5)
 
-Höchstens 40 Fotos (240 px breite JPEGs, eigener Speicher `stegi-photos-v1`). Automatische Fotos beim
-Schlüpfen und bei jeder neuen Stufe bleiben immer; ist das Album voll, fällt das älteste eigene Foto weg.
-„Alles zurücksetzen“ löscht auch die Fotos.
+- **Fototagebuch:** eigene Fotos (Kamera), höchstens **2 pro Kalendertag** (`PHOTO_PER_DAY`), insgesamt
+  höchstens 100 (`PHOTO_OWN_MAX`, dann geht das älteste). Löschen nur in der großen Ansicht, Knopf 3 s halten.
+- **Meilensteine:** automatisch 1,6–1,8 s nach dem Schlüpfen, jeder neuen Wachstumsstufe und jedem neu
+  entdeckten Ort (höchstens 1 + 4 + 29 = 34); werden nie gelöscht.
+- Unter jedem Bild „Tag n“ (Tag seines Lebens), bei Meilensteinen dazu „Geschlüpft“, der Stufen- oder Ortsname.
+- 240 px breite JPEGs (Qualität 0,72) in `stegi-photos-v1` (Test: `stegi-test-photos-v1`). Fotos aus 0.3/0.4
+  ohne `kind` werden beim Laden einsortiert (automatisch → Meilenstein, sonst Tagebuch).
+- **Speichert das Gerät nicht** (manche HTML-Viewer auf dem Handy): Fotos bleiben bis zum Schließen im Album
+  (bis 0.4 wurden sie dann sofort verworfen – Fehler), und die Einstellungen zeigen einen roten Hinweis.
+  Dort merkt sich auch das Spiel selbst nichts; zum Spielen die APK oder den Link nehmen.
+- „Alles zurücksetzen“ löscht auch die Fotos. Im Testmodus heißt das Album „Test-Fotos“.
 
 ### 6.11 Besuch (seit 0.3)
 
@@ -375,6 +385,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.5 | Fototagebuch mit 2 eigenen Fotos pro Tag und Meilensteine (auch neuer Ort), Bild fliegt zum Album, Löschen durch Halten, Fehler behoben: Fotos gingen verloren, wenn das Gerät nicht speichert; Hinweis in den Einstellungen |
 | 0.4 | Testmodus für Eltern: eigener Test-Spielstand, Stufen wählen, Zeitraffer bis 600×, Zeitsprünge, Helfer, Wetter wählen |
 | 0.3 | Spielen-Menü mit Verstecken und Musik (er tanzt), 12 Kleidungsstücke als Geschenke, Fotos und Album, Besuch von 5 Freunden, Wetter (Sonne, Wolken, Regen, Schnee, Regenbogen) |
 | 0.2 | Farbe schiefergrau, Baby 30 % kleiner, Platten +50 %, Schwanzstacheln +25 %, App-Symbol Ei, Wandern zu 30 Orten mit Orte-Liste, Glühwürmchen |
@@ -384,9 +395,9 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Alles bisher Vereinbarte ist gebaut (0.1–0.4). Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
+Alles bisher Vereinbarte ist gebaut (0.1–0.5). Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):
 - Benachrichtigungen am Handy („Stegi hat Hunger“, „Stegi ist angekommen“) – braucht Android-Code.
-- Fotos löschen oder aufs Handy speichern (heute nur ansehen).
+- Fotos aufs Handy speichern (heute nur im Spiel ansehen).
 - Signierter Release-Build für den Play Store.

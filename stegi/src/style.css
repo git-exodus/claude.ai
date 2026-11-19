@@ -78,6 +78,16 @@ svg { display: block; width: 100%; height: 100%; }
 .ptile.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 #photolist .empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px 0; }
 #photolist .empty svg { width: 54px; height: 54px; }
+#atabs { display: flex; gap: 6px; justify-content: center; margin: 2px 0 6px; }
+#b-camera { position: relative; }
+#b-camera.full { opacity: .45; }
+#b-camera .cnt { position: absolute; right: -4px; bottom: -4px; background: #e5533d; color: #fff; font-size: 11px; border-radius: 9px; padding: 1px 5px; }
+#pv-delete { position: relative; overflow: hidden; }
+#pv-delete .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(0, 0, 0, .25); }
+#pv-delete .txt { position: relative; }
+.flyphoto { position: fixed; z-index: 50; border-radius: 8px; border: 3px solid #fff; box-shadow: 0 6px 20px rgba(0, 0, 0, .35); pointer-events: none;
+  transition: left .7s cubic-bezier(.5, 0, .7, 1), top .7s cubic-bezier(.5, 0, .7, 1), width .7s, height .7s, opacity .25s .6s; }
+.warn { margin: 4px 0 6px; padding: 8px 10px; border-radius: 12px; background: #fde3dd; color: #a33a26; font-size: 14px; font-weight: 700; }
 #pv-img { display: block; width: 100%; max-height: 60vh; object-fit: contain; border-radius: 14px; background: #000; margin-bottom: 8px; }
 
 /* Bottom action buttons. */
@@ -140,3 +150,4 @@ svg { display: block; width: 100%; height: 100%; }
 #dv-day { flex: 1; max-width: none; }
 #dv-dayval { min-width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; }
 [hidden] { display: none !important; }
+.mini.nope { animation: wobble .4s; }

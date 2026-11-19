@@ -18,6 +18,7 @@ window.__st = {
   WEAR_ITEMS, VISITORS, weatherAt, currentWeather, startHide, hideTap, hideSpots, hideSpotAt, playKey, startVisit, planVisit, openGift, giftWaiting, giftPos, wearNow,
   wearUnlocked, openWardrobe, closeWardrobe, takePhoto, openAlbum, closeAlbum, get photos() { return photos; }, loadPhotos, openPlayMenu,
   dev, setTestMode, devEgg, devDay, devStage, devJump, devTimeOfDay, devSpeed, devNeeds, devArrive, devAllPlaces, devAllGifts, devVisit, devWeather, devResetTest, openDev, closeDev,
+  cameraTap, ownToday, cameraFull, deletePhoto, showPhoto, get storageOk() { return storageOk; }, checkStorage,
   startWalk, arrive, goPlace, openPlaces, closePlaces, foundToday, walkLimitReached, firefliesNow, placePicture, walkFx,
   enterGame, showMenu, startMode, endMode, goToBed, offerFood, removePoop, tapStego, strokeStego, throwBall,
   eggPhase, eggProgress, eggRub, stageAt: () => stageAt(now()), growth: () => growthAt(now()), lifeDay: () => lifeDay(now()),

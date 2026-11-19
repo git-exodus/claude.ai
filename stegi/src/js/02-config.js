@@ -1,7 +1,7 @@
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.4';
+const VERSION = '0.5';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -132,9 +132,14 @@ const WEAR_ITEMS = [
 ];
 const wearItem = id => WEAR_ITEMS.find(w => w.id === id);
 
-/** Photos (0.3): at most PHOTO_MAX; when full, the oldest own photo goes (automatic ones stay).
- *  Stored apart from the game in localStorage[PHOTO_KEY] as small JPEGs (PHOTO_W pixels wide). */
-const PHOTO_MAX = 40;
+/** Photos (0.5): two albums. "Fototagebuch" = own photos, at most PHOTO_PER_DAY a calendar day and
+ *  PHOTO_OWN_MAX in all (then the oldest goes). "Meilensteine" = automatic photos (hatching, every new
+ *  stage, every new place), never removed. Stored apart from the game in localStorage[PHOTO_KEY] as small
+ *  JPEGs (PHOTO_W pixels wide). A photo is never dropped because storing failed (it stays until the app closes). */
+const PHOTO_PER_DAY = 2;
+const PHOTO_OWN_MAX = 100;
+/** Seconds the delete button in the big photo view must be held. */
+const PHOTO_DELETE_HOLD = 3;
 const PHOTO_KEY = 'stegi-photos-v1';
 const PHOTO_W = 240;
 

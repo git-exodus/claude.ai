@@ -61,6 +61,7 @@ function updateTravel(dt, sleeping) {
     save();
     startParty();
     showBanner(id);
+    game.autoPhotoAt = game.t + 1.8; game.autoPhoto = { kind: 'place' };   // milestone photo of the new place
   }
 }
 

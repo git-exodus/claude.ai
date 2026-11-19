@@ -1,4 +1,4 @@
-/* suite-extras.js – 0.3: weather, presents and dressing up, photos and album, visitors,
+/* suite-extras.js – 0.3: weather, presents and dressing up, photos and album (details: suite-photos), visitors,
  * hide and seek, music with dancing, the play menu and the new buttons. */
 const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } = require('./lib');
 
@@ -95,13 +95,11 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   await ev(() => __st.step(0.2));
   g = await ev(() => ({ n: __st.photos.length, last: __st.photos[__st.photos.length - 1], shutter: __st.soundLog.some(s => s.name === 'shutter') }));
   R.ok(g.n === before + 1 && !g.last.auto && g.last.data.startsWith('data:image/jpeg') && g.shutter, 'Kamera-Knopf: Klick, Blitz, Foto im Album', g.n);
-  g = await ev(() => { for (let i = 0; i < 45; i++) { __st.takePhoto(); __st.step(1 / 30); } return { n: __st.photos.length, autos: __st.photos.filter(p => p.auto).length }; });
-  R.ok(g.n === 40 && g.autos >= 2, 'Höchstens 40 Fotos, automatische bleiben erhalten', JSON.stringify(g));
   g = await ev(() => { try { return JSON.parse(localStorage.getItem('stegi-photos-v1')).length; } catch (e) { return -1; } });
-  R.ok(g === 40, 'Fotos sind gespeichert (eigener Speicherplatz)', g);
+  R.ok(g === 3, 'Fotos sind gespeichert (eigener Speicherplatz)', g);
   await page.click('#b-album');
-  g = await ev(() => ({ open: __st.visible().album, n: document.querySelectorAll('#photolist .photo').length, count: document.getElementById('photocount').textContent }));
-  R.ok(g.open && g.n === 40 && g.count === '40 von 40 Fotos', 'Album zeigt alle Fotos', JSON.stringify(g));
+  g = await ev(() => ({ open: __st.visible().album, n: document.querySelectorAll('#photolist .photo').length }));
+  R.ok(g.open && g.n === 1, 'Album zeigt das eigene Foto im Fototagebuch (mehr in suite-photos)', JSON.stringify(g));
   await shot('extras-album');
   await page.click('#photolist .photo');
   R.ok(await ev(() => __st.visible().photoview && /^Tag \d+/.test(document.getElementById('pv-text').textContent)), 'Foto antippen: groß mit Tag und Datum');
@@ -174,7 +172,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   await page.addInitScript(o => { window.__stOffset = o; }, offset);
   await page.goto(GAME_URL);
   g = await ev(() => { __st.pause(true); return { seen: __st.S.giftSeen, wear: __st.S.wear, photos: __st.photos.length, visit: __st.S.visitDone }; });
-  R.ok(g.seen === 12 && g.wear.head === 'crown' && g.wear.neck === 'scarf' && g.photos === 40 && g.visit, 'Nach Neustart: Kleider, Fotos und Besuch gespeichert', JSON.stringify(g));
+  R.ok(g.seen === 12 && g.wear.head === 'crown' && g.wear.neck === 'scarf' && g.photos === 3 && g.visit, 'Nach Neustart: Kleider, Fotos und Besuch gespeichert', JSON.stringify(g));
 
   R.ok(errors.length === 0, 'Keine Fehler in der Konsole', errors.join(' | '));
   await browser.close();

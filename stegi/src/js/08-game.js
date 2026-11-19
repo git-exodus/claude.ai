@@ -20,7 +20,7 @@ const game = {
   stegoInfo: null,   // last result of drawStego (mouth, head, box)
   hide: null,        // hide and seek (15-play.js)
   visit: null,       // visitor on screen (16-visit.js)
-  photoPending: null, flash: 0, autoPhotoAt: 0,   // camera (18-photos.js)
+  photoPending: null, flash: 0, autoPhotoAt: 0, autoPhoto: null,   // camera and milestone photos (18-photos.js)
   weatherTest: null, // tests only: forces the weather
 };
 
@@ -99,7 +99,7 @@ function finishHatch() {
     { vx: rnd(-160, 160) * U, vy: rnd(-260, -120) * U, g: 600, color: i % 2 ? '#fff4d6' : '#9ad9b0', size: 8, max: 1.6 });
   confetti();
   pet.x = 0; pet.tx = 0; pet.jumpV = 260 * U; pet.giggleT = 1.5;
-  game.autoPhotoAt = game.t + 1.6;   // first photo for the album
+  game.autoPhotoAt = game.t + 1.6; game.autoPhoto = { kind: 'hatch' };   // first milestone photo
 }
 
 function confetti() {
@@ -247,7 +247,7 @@ function update(dt) {
     if (addPlayTime(dt)) showRest();
   }
   updateMusic(!game.sky.night && game.mode !== 'music');
-  if (game.autoPhotoAt && game.t >= game.autoPhotoAt) { game.autoPhotoAt = 0; takePhoto(true); }
+  if (game.autoPhotoAt && game.t >= game.autoPhotoAt) { game.autoPhotoAt = 0; const a = game.autoPhoto || { kind: 'stage' }; takePhoto(a.kind, a.label); }
   game.flash = Math.max(0, game.flash - dt * 2.5);
 }
 
@@ -337,7 +337,7 @@ function updatePet(dt, sleeping) {
   else if (low.value < NEED_SAD && game.t > (a.whine || 12)) { a.whine = game.t + rnd(18, 28); sound('whine'); }
   if (isSleepy(now()) && game.t > (a.yawn || 4)) { a.yawn = game.t + rnd(14, 22); pet.yawnT = 1.6; sound('yawn'); }
   // Stage-up party once a second check.
-  if (stageAt(now()) > S.stageSeen) { S.stageSeen = stageAt(now()); save(); startParty(); game.autoPhotoAt = game.t + 1.6; }
+  if (stageAt(now()) > S.stageSeen) { S.stageSeen = stageAt(now()); save(); startParty(); game.autoPhotoAt = game.t + 1.6; game.autoPhoto = { kind: 'stage', label: STAGES[S.stageSeen].name }; }
 }
 
 function updateBath(dt) {

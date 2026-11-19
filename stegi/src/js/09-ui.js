@@ -34,7 +34,10 @@ function buildUI() {
   // 0.3: wardrobe, album, camera, play menu, music pad.
   $('b-wear').innerHTML = iconSVG('hat'); $('b-wear').addEventListener('click', openWardrobe);
   $('b-album').innerHTML = iconSVG('album'); $('b-album').addEventListener('click', openAlbum);
-  $('b-camera').innerHTML = iconSVG('camera'); $('b-camera').addEventListener('click', () => { if (hatched()) takePhoto(false); });
+  $('b-camera').innerHTML = iconSVG('camera') + '<span class="cnt" hidden></span>'; $('b-camera').addEventListener('click', cameraTap);
+  $('at-diary').addEventListener('click', () => openAlbum('diary'));
+  $('at-mile').addEventListener('click', () => openAlbum('mile'));
+  setupPhotoDelete();
   $('w-close').addEventListener('click', closeWardrobe);
   $('a-close').addEventListener('click', closeAlbum);
   $('pv-close').addEventListener('click', () => { $('photoview').hidden = true; });
@@ -74,6 +77,7 @@ function refreshUI() {
   $('playtray').hidden = !(inGame && game.mode === 'play');
   $('musicpad').hidden = !(inGame && game.mode === 'music');
   $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music'].includes(game.mode));
+  refreshCamera();
   $('devbadge').hidden = !dev.on;
   if (dev.on) $('devbadge').textContent = 'TEST' + (dev.speed > 1 ? ' · ' + dev.speed + '×' : '');
   updateNeedBars();
@@ -178,6 +182,7 @@ function fillSettings() {
   $('s-sleep').value = S.opts.sleep;
   $('s-wake').value = S.opts.wake;
   $('s-limit').value = S.opts.limit;
+  $('s-storage').hidden = storageOk && checkStorage();
   $('s-dev').textContent = dev.on ? 'an' : 'aus';
   $('s-dev').classList.toggle('on', dev.on);
   $('s-devopen').hidden = !dev.on;
