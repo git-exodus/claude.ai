@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.5.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.5.1.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **192 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 36, suite-dev 26, suite-photos 19).
+Erwartet: **209 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 36, suite-dev 26, suite-photos 19, suite-apk 17).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -68,6 +68,7 @@ stegi/
     ├── suite-places.js    0.2: Babygröße, Wandern (auch bei geschlossener App), 2 Orte pro Tag, Orte-Liste, Glühwürmchen
     ├── suite-extras.js    0.3: Wetter, Geschenke/Verkleiden, Fotos/Album, Besuch, Verstecken, Musik, Spielmenü
     ├── suite-photos.js    0.5: Fototagebuch (2 pro Tag), Meilensteine, Löschen, Testalbum, Gerät ohne Speicher
+    ├── suite-apk.js       0.5.1: wie in der APK (mit Beenden-Knopf): kein Knopf verdeckt, nur Beenden im Menü schließt
     ├── suite-dev.js       0.4: Testmodus (eigener Spielstand, Stufen, Zeitraffer, Sprünge, Helfer, echter Stand bleibt unberührt)
     └── make-icon.js       kein Test: zeichnet das App-Symbol mit dem Spielcode neu
 ```
@@ -142,9 +143,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.5';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.5` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 5`, `versionName '0.5'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.5.1';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.5.1` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 6`, `versionName '0.5.1'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -373,6 +374,9 @@ Fallstricke:
 
 ## 9. Bekannte Eigenheiten
 
+- **Hauptmenü im Spiel:** Es muss unsichtbar *und* untastbar sein (`#menu.gone`, `pointer-events: none`). Bis 0.5
+  war es nur durchsichtig, und der Beenden-Knopf (gibt es nur in der APK) schloss die App. Im Browser fiel
+  das nicht auf; `suite-apk.js` testet deshalb mit nachgebautem `window.Android`.
 - **Nur im Emulator getestet** (Chromium, 360×740). Auf einem echten Handy noch nicht ausprobiert.
   Wie die Geräusche und die Musik klingen, ist ungeprüft.
 - Keine Benachrichtigungen, wenn die App zu ist (bewusst nicht in Runde 1).
@@ -385,6 +389,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.5.1 | Fehler behoben: In der APK lag der unsichtbare Beenden-Knopf über Trinken, Baden, Spielen und Zähneputzen und schloss die App; neuer Test im APK-Modus |
 | 0.5 | Fototagebuch mit 2 eigenen Fotos pro Tag und Meilensteine (auch neuer Ort), Bild fliegt zum Album, Löschen durch Halten, Fehler behoben: Fotos gingen verloren, wenn das Gerät nicht speichert; Hinweis in den Einstellungen |
 | 0.4 | Testmodus für Eltern: eigener Test-Spielstand, Stufen wählen, Zeitraffer bis 600×, Zeitsprünge, Helfer, Wetter wählen |
 | 0.3 | Spielen-Menü mit Verstecken und Musik (er tanzt), 12 Kleidungsstücke als Geschenke, Fotos und Album, Besuch von 5 Freunden, Wetter (Sonne, Wolken, Regen, Schnee, Regenbogen) |

@@ -117,7 +117,10 @@ svg { display: block; width: 100%; height: 100%; }
 /* Main menu: name on top, "Beenden" below, the stego in the middle is on the canvas. */
 #menu { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
   padding: max(48px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom)); pointer-events: none; transition: opacity .5s; }
-#menu.gone { opacity: 0; }
+/* In the game the menu is gone completely: invisible AND not touchable (until 0.5 only invisible, so the
+   hidden "Beenden" button closed the APK when the middle buttons were tapped). */
+#menu.gone { opacity: 0; visibility: hidden; transition: opacity .5s, visibility 0s .5s; }
+#menu.gone, #menu.gone * { pointer-events: none !important; }
 #menu h1 { margin: 0; font-family: 'Lilita One', 'Nunito', sans-serif; font-weight: 400; font-size: 64px; color: #fff;
   letter-spacing: 1px; text-shadow: 0 4px 0 #3d7a2c, 0 8px 18px rgba(0, 0, 0, .25); }
 #menu button { pointer-events: auto; }
@@ -197,7 +200,7 @@ svg { display: block; width: 100%; height: 100%; }
       <button class="big alt" id="s-devopen" type="button" hidden>Test-Werkzeuge öffnen</button>
       <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
       <button class="big" id="s-close" type="button">Schließen</button>
-      <p id="credit">@made by Brownii (Claude.ai) · v0.5</p>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.5.1</p>
     </div>
   </div>
   <div id="confirm" class="ov" hidden>
@@ -306,7 +309,7 @@ function mix(c1, c2, k) {
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.5';
+const VERSION = '0.5.1';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -3023,6 +3026,7 @@ function refreshUI() {
   const inGame = game.screen === 'game', egg = !hatched() || game.mode === 'hatch';
   const sleeping = asleepNow();
   $('menu').classList.toggle('gone', inGame);
+  $('m-exit').hidden = !window.Android || inGame;   // only in the APK, and only in the main menu
   $('m-title').textContent = S.name;
   $('needs').hidden = !inGame || egg;
   $('needs').classList.toggle('dim', sleeping);

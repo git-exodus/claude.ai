@@ -61,6 +61,7 @@ function refreshUI() {
   const inGame = game.screen === 'game', egg = !hatched() || game.mode === 'hatch';
   const sleeping = asleepNow();
   $('menu').classList.toggle('gone', inGame);
+  $('m-exit').hidden = !window.Android || inGame;   // only in the APK, and only in the main menu
   $('m-title').textContent = S.name;
   $('needs').hidden = !inGame || egg;
   $('needs').classList.toggle('dim', sleeping);
