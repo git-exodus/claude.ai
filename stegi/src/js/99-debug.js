@@ -20,6 +20,8 @@ window.__st = {
   lowest: lowestNeed, limitReached, save, load: loadGame, sanitizeSave, resetAll, blankSave,
   /** Drawing functions (used to render the app icon, see README 4.2). */
   draw: { stego: drawStego, egg: drawEgg },
+  /** The stego palette object (tests and previews may change it in place). */
+  colors: STEGO_COLORS,
   /** Screen positions for touches. */
   pos() {
     const i = game.stegoInfo;

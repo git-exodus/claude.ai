@@ -16,14 +16,14 @@ const PLATE_COUNT = [4, 5, 6, 7, 7];
 /**
  * Draws the stego standing on the ground at screen point (x, y).
  *   size  pixel length of a fully grown stego; o.g (growth 0..1) shrinks him to SIZE_MIN.
- *   o     { g, stage, t, dir (1 = looks right), pose ('stand'|'walk'|'lie'), walk (phase),
+ *   o     { colors (optional palette, default STEGO_COLORS), g, stage, t, dir (1 = looks right), pose ('stand'|'walk'|'lie'), walk (phase),
  *           eyes ('open'|'happy'|'closed'|'sad'), blink (0..1), mouth ('smile'|'open'|'chew'|
  *           'sad'|'yawn'|'grin'|'closed'), headDown (0..1), wiggle (0..1), dirt (0..1),
  *           jump (px up), wag (0..1) }
  * Returns screen positions: mouth {x, y}, head {x, y, r}, box {x, y, w, h} (for touches).
  */
 function drawStego(c, x, y, size, o) {
-  const C = STEGO_COLORS, t = o.t || 0, g = o.g || 0, stage = o.stage || 0;
+  const C = o.colors || STEGO_COLORS, t = o.t || 0, g = o.g || 0, stage = o.stage || 0;
   const k = size * lerp(SIZE_MIN, 1, g) / 260;      // pixels per unit
   const dir = o.dir || 1, lie = o.pose === 'lie';
   const hs = lerp(1.5, 1.0, g);                       // head scale: babies have big heads
@@ -53,7 +53,7 @@ function drawStego(c, x, y, size, o) {
   const tailLen = lerp(38, 78, g), wagA = Math.sin(t * (o.wag ? 9 : 2.2)) * (o.wag ? 7 : 3);
   const tipX = cx - rx - tailLen, tipY = cy - 6 + wagA + (lie ? 10 : 0);
   if (stage >= 1) {
-    const sp = lerp(4, 20, g);
+    const sp = lerp(4, 25, g);   // tail spikes grow with him (+25 % since 0.2)
     c.fillStyle = C.nail; c.strokeStyle = C.plateLine; c.lineWidth = 2;
     // Up to four spikes near the tail tip, pointing up and backwards (two from stage 1, four from stage 3).
     const spikes = stage >= 3 ? [[5, -0.5], [9, 0.25], [17, -0.35], [21, 0.4]] : [[7, -0.4], [17, 0.3]];
@@ -95,7 +95,7 @@ function drawStego(c, x, y, size, o) {
   leg(38, 0, true);
 
   // ---- back plates (behind the body) ----
-  const n = PLATE_COUNT[stage], plateBase = lerp(13, 26, g);
+  const n = PLATE_COUNT[stage], plateBase = lerp(13, 39, g);   // plates grow from baby to grown (+50 % since 0.2)
   for (let i = 0; i < n; i++) {
     const f = n === 1 ? 0.5 : i / (n - 1);
     const a = lerp(Math.PI * 1.13, Math.PI * 1.86, f);

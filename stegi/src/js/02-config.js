@@ -53,7 +53,7 @@ const STAGES = [
   { day: 30, name: 'Ganz groß' },
 ];
 const GROWN_DAY = 30;
-const SIZE_MIN = 0.55;
+const SIZE_MIN = 0.385;   // baby = 38.5 % of the grown size (0.55 until 0.1, then 30 % smaller)
 
 /** Poop: after every MEALS pieces of food, a poop appears DELAY_MIN minutes later (at most MAX lie around).
  *  Every poop lying around makes "clean" drop one time faster. */
