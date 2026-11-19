@@ -1,0 +1,73 @@
+/* Stegi – all styles. Big round buttons for small fingers, soft colours. */
+:root { --ink: #23405a; --card: rgba(255, 255, 255, 0.96); --accent: #4caf50; --danger: #e5533d; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; margin: 0; background: #6dbb4f; overflow: hidden; }
+body { font-family: 'Nunito', system-ui, sans-serif; font-weight: 800; color: var(--ink);
+  user-select: none; -webkit-user-select: none; touch-action: none; overscroll-behavior: none; }
+#game { position: fixed; inset: 0; overflow: hidden; touch-action: none; }
+#c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+button { font: inherit; color: inherit; border: 0; cursor: pointer; touch-action: manipulation; }
+svg { display: block; width: 100%; height: 100%; }
+
+/* Needs: five icons with a fill bar, top of the screen. */
+#needs { position: absolute; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 64px;
+  display: flex; gap: 6px; justify-content: flex-start; pointer-events: none; transition: opacity .4s; }
+#needs.dim { opacity: .45; }
+.need { flex: 0 1 52px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: rgba(255, 255, 255, .82); border-radius: 16px; padding: 5px 4px 6px; box-shadow: 0 2px 6px rgba(0, 0, 0, .12); }
+.need .ico { width: 30px; height: 30px; }
+.need .bar { width: 38px; height: 8px; border-radius: 4px; background: rgba(0, 0, 0, .12); overflow: hidden; }
+.need .bar b { display: block; height: 100%; border-radius: 4px; background: #5cc15a; transition: width .4s, background .4s; }
+.need.low { animation: wobble 1s ease-in-out infinite; }
+@keyframes wobble { 0%, 100% { transform: rotate(0) } 25% { transform: rotate(-8deg) } 75% { transform: rotate(8deg) } }
+
+/* Gear: must be held for 3 s (ring fills), so the child does not open it by accident. */
+#gear { position: absolute; top: max(10px, env(safe-area-inset-top)); right: 10px; width: 46px; height: 46px; padding: 9px;
+  border-radius: 50%; background: rgba(40, 60, 90, .35); --p: 0; }
+#gear .ring { position: absolute; inset: -3px; border-radius: 50%;
+  background: conic-gradient(#ffd54f calc(var(--p) * 1turn), transparent 0);
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 62%); mask: radial-gradient(circle, transparent 60%, #000 62%); }
+
+/* Bottom action buttons. */
+#actions { position: absolute; left: 0; right: 0; bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex; justify-content: center; gap: 8px; padding: 0 8px; flex-wrap: wrap; }
+.round { width: 62px; height: 62px; border-radius: 50%; background: var(--card); padding: 13px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, .15), 0 6px 14px rgba(0, 0, 0, .15); transition: transform .1s; }
+.round:active { transform: translateY(3px) scale(.95); box-shadow: 0 1px 0 rgba(0, 0, 0, .15); }
+.round.glow { animation: glow 1.4s ease-in-out infinite; }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 213, 79, .9), 0 6px 14px rgba(0, 0, 0, .15) } 50% { box-shadow: 0 0 0 10px rgba(255, 213, 79, 0), 0 6px 14px rgba(0, 0, 0, .15) } }
+#act-bed { background: #2c3570; }
+#close { position: absolute; right: 14px; bottom: max(16px, env(safe-area-inset-bottom)); }
+
+/* Food tray. */
+#tray { position: absolute; left: 10px; right: 84px; bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex; gap: 6px; justify-content: center; background: rgba(255, 255, 255, .7); border-radius: 22px; padding: 6px; }
+#tray .food { flex: 0 1 58px; height: 58px; border-radius: 16px; background: #fff; padding: 2px; touch-action: none; }
+#tray canvas { width: 100%; height: 100%; pointer-events: none; }
+
+/* Main menu: name on top, "Beenden" below, the stego in the middle is on the canvas. */
+#menu { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: max(48px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom)); pointer-events: none; transition: opacity .5s; }
+#menu.gone { opacity: 0; }
+#menu h1 { margin: 0; font-family: 'Lilita One', 'Nunito', sans-serif; font-weight: 400; font-size: 64px; color: #fff;
+  letter-spacing: 1px; text-shadow: 0 4px 0 #3d7a2c, 0 8px 18px rgba(0, 0, 0, .25); }
+#menu button { pointer-events: auto; }
+
+/* Big buttons, overlays and cards. */
+.big { display: block; width: 100%; min-height: 54px; border-radius: 18px; background: var(--accent); color: #fff; font-size: 20px;
+  padding: 10px 18px; margin: 8px 0 0; box-shadow: 0 4px 0 rgba(0, 0, 0, .18); }
+.big:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0, 0, 0, .18); }
+.big.danger { background: var(--danger); }
+#m-exit { width: auto; min-width: 200px; background: #ffffff; color: var(--ink); }
+.ov { position: absolute; inset: 0; background: rgba(20, 30, 60, .45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.card { width: 100%; max-width: 380px; max-height: 100%; overflow-y: auto; background: var(--card); border-radius: 26px; padding: 18px 18px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .3); touch-action: pan-y; }
+.card h2 { margin: 0 0 6px; font-family: 'Lilita One', 'Nunito', sans-serif; font-weight: 400; font-size: 28px; text-align: center; }
+.info { margin: 0 0 8px; text-align: center; font-weight: 600; font-size: 15px; color: #4a6276; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 2px; border-bottom: 1px solid rgba(0, 0, 0, .07); font-size: 17px; }
+.row input, .row select { font: inherit; font-size: 17px; color: var(--ink); border: 2px solid #cfe0ea; border-radius: 12px; padding: 6px 10px; background: #fff; max-width: 55%; }
+.toggle { min-width: 74px; border-radius: 20px; padding: 7px 12px; background: #cfd8dc; color: #546e7a; }
+.toggle.on { background: var(--accent); color: #fff; }
+#credit { margin: 12px 0 0; text-align: center; font-size: 12px; font-weight: 600; color: #8aa0b0; }
+#r-icon { width: 72px; height: 72px; margin: 0 auto 6px; }
+[hidden] { display: none !important; }
