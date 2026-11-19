@@ -5,6 +5,7 @@ den kompletten Spielordner (`burgwacht/` bzw. `stegi/`) zum Zeitpunkt der Sicher
 
 | Ordner | Version | Gesichert vor |
 |---|---|---|
+| `stegi-v0.5.1` | Stegi 0.5.1 | neues Design: Stego mit Licht und Schatten, Gesichter und Bewegungen, höherer Horizont, Vordergrund, Tiere |
 | `stegi-v0.4` | Stegi 0.4 | Fototagebuch (2 eigene Fotos pro Tag), Meilensteine, Foto-Fehler bei fehlendem Speicher |
 | `stegi-v0.3` | Stegi 0.3 | Testmodus mit eigenem Spielstand, Zeitraffer, Stufen und Helfern |
 | `stegi-v0.2` | Stegi 0.2 | Verstecken, Musik mit Tanzen, Verkleiden, Fotoalbum, Besuch, Wetter |
