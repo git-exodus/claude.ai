@@ -59,6 +59,27 @@ svg { display: block; width: 100%; height: 100%; }
 .ptile i { font-style: normal; font-family: 'Lilita One', 'Nunito', sans-serif; font-size: 34px; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .15); }
 .ptile.nope { animation: wobble .4s; }
 
+/* 0.3: play menu, music pad, wardrobe, album. */
+#playtray { position: absolute; left: 0; right: 84px; bottom: max(12px, env(safe-area-inset-bottom)); display: flex; justify-content: center; gap: 14px; }
+#musicpad { position: absolute; left: 8px; right: 84px; bottom: max(10px, env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 5px; justify-content: center; }
+#musicpad .key { flex: 1 1 0; max-width: 46px; border-radius: 10px; box-shadow: 0 4px 0 rgba(0, 0, 0, .2); touch-action: none; }
+#musicpad .key:active, #musicpad .key.hit { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0, 0, 0, .2); }
+#musicpad .drum { flex: 0 0 auto; width: 56px; height: 56px; border-radius: 50%; border: 5px solid #8d6e63; box-shadow: 0 4px 0 rgba(0, 0, 0, .2); touch-action: none; }
+#musicpad .drum.small { width: 44px; height: 44px; }
+#musicpad .drum.hit, #musicpad .drum:active { transform: translateY(3px) scale(.95); }
+#wearlist { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 4px; }
+.wtile { aspect-ratio: 5 / 4; border-radius: 14px; padding: 0; overflow: hidden; background: #e8f4ff; }
+.wtile canvas { width: 100%; height: 100%; display: block; }
+.wtile.on { outline: 4px solid #5cc15a; outline-offset: -4px; }
+.wtile.locked { background: #eef1f5; }
+.wtile.nope { animation: wobble .4s; }
+#photolist { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 4px; }
+.ptile.photo { aspect-ratio: 9 / 16; }
+.ptile.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#photolist .empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px 0; }
+#photolist .empty svg { width: 54px; height: 54px; }
+#pv-img { display: block; width: 100%; max-height: 60vh; object-fit: contain; border-radius: 14px; background: #000; margin-bottom: 8px; }
+
 /* Bottom action buttons. */
 #actions { position: absolute; left: 0; right: 0; bottom: max(12px, env(safe-area-inset-bottom));
   display: flex; justify-content: center; gap: 8px; padding: 0 8px; flex-wrap: wrap; }

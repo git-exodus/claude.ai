@@ -7,7 +7,7 @@ const ACTIONS = [
   { id: 'food', icon: 'food', label: 'Essen', run: () => startMode('eat') },
   { id: 'drink', icon: 'drink', label: 'Trinken', run: () => startMode('drink') },
   { id: 'bath', icon: 'bath', label: 'Baden', run: () => startMode('bath') },
-  { id: 'ball', icon: 'fun', label: 'Ball spielen', run: () => startMode('ball') },
+  { id: 'play', icon: 'play', label: 'Spielen', run: () => openPlayMenu() },
   { id: 'brush', icon: 'brush', label: 'Zähne putzen', run: () => startMode('brush') },
   { id: 'walk', icon: 'walk', label: 'Wandern', run: () => startWalk() },
   { id: 'bed', icon: 'bed', label: 'Licht aus', run: () => goToBed() },
@@ -31,6 +31,17 @@ function buildUI() {
   $('r-icon').innerHTML = iconSVG('bed');
   $('b-map').innerHTML = iconSVG('map');
   $('b-map').addEventListener('click', openPlaces);
+  // 0.3: wardrobe, album, camera, play menu, music pad.
+  $('b-wear').innerHTML = iconSVG('hat'); $('b-wear').addEventListener('click', openWardrobe);
+  $('b-album').innerHTML = iconSVG('album'); $('b-album').addEventListener('click', openAlbum);
+  $('b-camera').innerHTML = iconSVG('camera'); $('b-camera').addEventListener('click', () => { if (hatched()) takePhoto(false); });
+  $('w-close').addEventListener('click', closeWardrobe);
+  $('a-close').addEventListener('click', closeAlbum);
+  $('pv-close').addEventListener('click', () => { $('photoview').hidden = true; });
+  $('play-ball').innerHTML = iconSVG('fun'); $('play-ball').addEventListener('click', () => startMode('ball'));
+  $('play-hide').innerHTML = iconSVG('hide'); $('play-hide').addEventListener('click', () => startMode('hide'));
+  $('play-music').innerHTML = iconSVG('music'); $('play-music').addEventListener('click', () => startMode('music'));
+  buildMusicPad();
   $('pl-close').addEventListener('click', closePlaces);
   $('walkbar').querySelector('.foot').innerHTML = iconSVG('walk');
   $('walkbar').querySelector('.flag').innerHTML = iconSVG('map');
@@ -60,7 +71,9 @@ function refreshUI() {
   if (S.walk) $('walkbar').querySelector('b').style.width = (100 * S.walk.sec / WALK_SECONDS).toFixed(1) + '%';
   $('act-bed').classList.add('glow');
   $('tray').hidden = !(inGame && game.mode === 'eat');
-  $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball'].includes(game.mode));
+  $('playtray').hidden = !(inGame && game.mode === 'play');
+  $('musicpad').hidden = !(inGame && game.mode === 'music');
+  $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music'].includes(game.mode));
   updateNeedBars();
 }
 
@@ -145,6 +158,7 @@ function setupSettings() {
   $('c-no').addEventListener('click', () => { $('confirm').hidden = true; });
   $('c-yes').addEventListener('click', () => {
     resetAll();
+    photos = []; savePhotos();   // "everything" includes the album (stored separately)
     $('confirm').hidden = true;
     closeSettings();
     game.mode = 'idle'; game.ball = null; game.bath = null; game.brush = null;
@@ -187,9 +201,32 @@ window.__back = () => {
   if (!$('settings').hidden) { closeSettings(); return true; }
   if (!$('rest').hidden) { $('rest').hidden = true; return true; }
   if (!$('places').hidden) { closePlaces(); return true; }
+  if (!$('photoview').hidden) { $('photoview').hidden = true; return true; }
+  if (!$('album').hidden) { closeAlbum(); return true; }
+  if (!$('wardrobe').hidden) { closeWardrobe(); return true; }
   if (game.screen === 'game') {
     if (!['idle', 'hatch', 'party'].includes(game.mode)) { endMode(); return true; }
     showMenu(); return true;
   }
   return false;
 };
+
+/** The play button opens a small menu: ball, hide and seek, music. */
+function openPlayMenu() {
+  if (!hatched() || asleepNow() || game.mode !== 'idle') return;
+  sound('tap');
+  game.mode = 'play'; game.modeT = 0;
+  refreshUI();
+}
+
+/** Six coloured xylophone bars (higher = shorter) and two drums. */
+function buildMusicPad() {
+  const cols = ['#e53935', '#fb8c00', '#fdd835', '#43a047', '#1e88e5', '#8e24aa'];
+  $('musicpad').innerHTML = '<button class="drum" id="mk-6" type="button" aria-label="Trommel" style="background:#ffe0b2"></button>' +
+    cols.map((c, i) => '<button class="key" id="mk-' + i + '" type="button" aria-label="Ton" style="background:' + c + ';height:' + (96 - i * 8) + 'px"></button>').join('') +
+    '<button class="drum small" id="mk-7" type="button" aria-label="kleine Trommel" style="background:#fff3e0"></button>';
+  for (let i = 0; i < 8; i++) {
+    const el = $('mk-' + i);
+    el.addEventListener('pointerdown', e => { e.preventDefault(); unlockAudio(); playKey(i); el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 120); });
+  }
+}

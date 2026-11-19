@@ -44,23 +44,26 @@ async function openPage(browser, { quiet = true, scale = 1, android = false } = 
 
 /**
  * Loads the game with empty storage at the given local time and stops the real-time loop,
- * so only __st.step() moves the game on (exact, repeatable tests).
+ * so only __st.step() moves the game on (exact, repeatable tests). Visitors are switched off.
  */
 async function loadClean(page, time = '2026-11-20T10:00') {
   await page.goto(GAME_URL);
   await page.evaluate(() => localStorage.clear());
   await page.goto(GAME_URL);
-  await page.evaluate(t => { __st.setTime(t); __st.S.last = __st.now(); __st.S.created = __st.now(); __st.pause(true); __st.step(0.2); }, time);
+  // Visitors off: they come at a random time (hatchQuick(page, { visits: true }) turns them on again).
+  await page.evaluate(t => { __st.debugFlags.visit = false; __st.setTime(t); __st.S.last = __st.now(); __st.S.created = __st.now(); __st.pause(true); __st.step(0.2); }, time);
 }
 
-/** From the egg to a freshly hatched baby (4 calendar days), then into the game. Returns nothing. */
-async function hatchQuick(page) {
-  await page.evaluate(() => {
+/** From the egg to a freshly hatched baby (4 calendar days), then into the game.
+ *  visits = false switches visitors off (they come at a random time; only suite-extras tests them). */
+async function hatchQuick(page, { visits = false } = {}) {
+  await page.evaluate(visits => {
+    __st.debugFlags.visit = visits;
     __st.enterGame(); __st.step(1);
     for (let d = 0; d < 3; d++) { __st.eggRub(120); __st.travel(24); }
     __st.eggRub(16); __st.step(2.5); __st.step(3.5);
     __st.S.last = __st.now();
-  });
+  }, visits);
 }
 
 /** Sets the local clock time of the current game day (keeps the date), e.g. at(page, 19, 45). */

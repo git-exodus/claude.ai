@@ -118,18 +118,27 @@ const SOUNDS = {
   fanfare: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.35, { at: i * 0.14, vol: 0.12, type: 'triangle' })); tone(1047, 0.8, { at: 0.56, vol: 0.1, type: 'triangle' }); },
   // Soft tap on a button.
   tap: () => { tone(660, 0.08, { vol: 0.06, type: 'triangle' }); },
+  // 0.3: xylophone bar i (0..5) and drum i (0 = big boom, 1 = small tap) for the music game.
+  xylo: i => { const f = midi([72, 74, 76, 79, 81, 84][i] || 72); tone(f, 0.9, { vol: 0.16 }); tone(f * 4, 0.25, { vol: 0.04 }); },
+  drum: i => { if (i) { noise(0.12, { freq: 2500, q: 0.8, vol: 0.3 }); } else { tone(110, 0.35, { f2: 45, vol: 0.4, type: 'sine' }); noise(0.08, { freq: 300, vol: 0.2 }); } },
+  // Camera click.
+  shutter: () => { noise(0.05, { freq: 4000, q: 1, vol: 0.3 }); noise(0.07, { at: 0.08, freq: 3000, q: 1, vol: 0.25 }); },
+  // Wrong hiding place: a soft "boing".
+  nope: () => { tone(300, 0.2, { f2: 200, vol: 0.08, type: 'triangle' }); },
+  // A visitor says hello.
+  hello: () => { tone(660, 0.18, { vol: 0.1, type: 'triangle' }); tone(880, 0.25, { at: 0.2, vol: 0.1, type: 'triangle' }); },
   // Happy "hm!" when lying down / waking up.
   happy: () => { tone(500, 0.15, { f2: 700, vol: 0.1, type: 'triangle' }); tone(700, 0.2, { at: 0.15, f2: 900, vol: 0.1, type: 'triangle' }); },
 };
 
-/** Plays a sound effect if sound is on and allowed. */
-function sound(name) {
+/** Plays a sound effect if sound is on and allowed. arg is passed on (e.g. which xylophone bar). */
+function sound(name, arg) {
   soundLog.push({ name, t: performance.now() });
   if (soundLog.length > 200) soundLog.shift();
   if (!S.opts.sound) return;
   const a = getAudio();
   if (!a || a.state !== 'running') return;
-  try { SOUNDS[name](); } catch (e) { /* audio problems never stop the game */ }
+  try { SOUNDS[name](arg); } catch (e) { /* audio problems never stop the game */ }
 }
 
 /* ---------- Music: a gentle music-box tune, only by day ---------- */

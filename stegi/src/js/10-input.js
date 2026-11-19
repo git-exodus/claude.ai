@@ -39,8 +39,8 @@ function onMove(e) {
   if (asleepNow()) return;
   if (game.mode === 'brush' && game.brush && !game.brush.done) { game.brush.x = e.clientX; game.brush.y = e.clientY; game.rubbing = 0.25; return; }
   if (game.mode === 'bath') { game.rubbing = 0.25; return; }
-  if (game.mode === 'ball') return;
-  if ((game.mode === 'idle' || game.mode === 'eat') && game.stegoInfo && inBox(e.clientX, e.clientY, game.stegoInfo.box)) strokeStego(d);
+  if (['ball', 'hide', 'music'].includes(game.mode)) return;
+  if ((game.mode === 'idle' || game.mode === 'eat' || game.mode === 'play') && game.stegoInfo && inBox(e.clientX, e.clientY, game.stegoInfo.box)) strokeStego(d);
 }
 
 function onUp(e) {
@@ -67,6 +67,11 @@ function onUp(e) {
   if (!hatched()) {
     if (eggHit(x, y) && game.mode !== 'hatch') { eggFx.wobbleV += 1.2; sound(isNight(now()) ? 'murmur' : 'egg'); }
     return;
+  }
+  if (game.mode === 'hide') { const i = hideSpotAt(x, y); if (i >= 0) hideTap(i); return; }
+  if (giftWaiting() && game.mode === 'idle' && !asleepNow()) {
+    const gp = giftPos();
+    if (dist(x, y, gp.x, gp.y - 25 * U) < 45 * U) { openGift(); return; }
   }
   for (let i = 0; i < S.poops.length; i++) {
     const p = poopPos(i);

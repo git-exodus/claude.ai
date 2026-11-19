@@ -1,7 +1,7 @@
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.2';
+const VERSION = '0.3';
 const SAVE_KEY = 'stegi-v1';
 
 /** The five needs, in the order of the top bar. Each is 0 (empty) .. 100 (full). */
@@ -116,11 +116,45 @@ const PLACES = [
 ];
 const placeById = id => PLACES.find(p => p.id === id) || PLACES[0];
 
+/** Dressing up (0.3): 12 things, one per slot (head / eyes / neck). Each becomes a present on its day of
+ *  life (every 2–3 days, the first on the hatch day); opening the present puts it on. */
+const WEAR_ITEMS = [
+  { id: 'bow', slot: 'head', day: 1 }, { id: 'sunglasses', slot: 'eyes', day: 3 },
+  { id: 'party', slot: 'head', day: 6 }, { id: 'scarf', slot: 'neck', day: 8 },
+  { id: 'sunhat', slot: 'head', day: 11 }, { id: 'glasses', slot: 'eyes', day: 13 },
+  { id: 'beanie', slot: 'head', day: 16 }, { id: 'crown', slot: 'head', day: 18 },
+  { id: 'bowtie', slot: 'neck', day: 21 }, { id: 'flowers', slot: 'head', day: 23 },
+  { id: 'pirate', slot: 'head', day: 26 }, { id: 'wizard', slot: 'head', day: 28 },
+];
+const wearItem = id => WEAR_ITEMS.find(w => w.id === id);
+
+/** Photos (0.3): at most PHOTO_MAX; when full, the oldest own photo goes (automatic ones stay).
+ *  Stored apart from the game in localStorage[PHOTO_KEY] as small JPEGs (PHOTO_W pixels wide). */
+const PHOTO_MAX = 40;
+const PHOTO_KEY = 'stegi-photos-v1';
+const PHOTO_W = 240;
+
+/** Visitors (0.3): at most one a day at a random time between VISIT_FROM and an hour before bedtime;
+ *  they stay VISIT_SECONDS and leave love and fun behind. */
+const VISITORS = ['trex', 'ptero', 'trike', 'turtle', 'butterflies'];
+const VISIT_FROM = 9 * 60;
+const VISIT_SECONDS = 60;
+const VISIT_LOVE = 10, VISIT_FUN = 10;
+
+/** Hide and seek: fun for every time he is found. Music: fun for every note played. */
+const HIDE_FUN = 15;
+const MUSIC_FUN = 1.5;
+
+/** Weather (0.3), the same all day, chosen from the day number: share of sun / clouds / rain;
+ *  in December–February rain falls as snow; after 15:00 a rainy day turns into a rainbow. */
+const WEATHER_SHARES = { sun: 0.45, clouds: 0.25, rain: 0.30 };
+const RAINBOW_FROM = 15 * 60;
+
 /** Seconds the gear button must be held to open the parents' settings. */
 const GEAR_HOLD = 3;
 
 /** Switches for the tests (window.__stQuiet = true before load turns music off). */
-const debugFlags = { music: !window.__stQuiet };
+const debugFlags = { music: !window.__stQuiet, visit: true };   // visit: false = no visitors (tests that must not depend on chance)
 
 /** Icons used both as inline SVG (buttons) and on the canvas (thought bubbles).
  *  Coordinates are in a 24x24 box. Each part: d = SVG path, fill and/or stroke (+ w = width). */
@@ -171,6 +205,36 @@ const ICONS = {
     { d: 'M8 3v16M16 5v16', stroke: '#e0c070', w: 1.2 },
     { d: 'M5 14c2-3 5 1 7-2s4-1 6-4', stroke: '#e5533d', w: 1.8 },
     { d: 'M17 5.5l1.6 1.6M18.6 5.5L17 7.1', stroke: '#e5533d', w: 1.6 },
+  ],
+  play: [
+    { d: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0z', fill: '#ffcc33' },
+    { d: 'M3 8.5c6 2.5 12 2.5 18 0M3 15.5c6-2.5 12-2.5 18 0', stroke: '#e53935', w: 2.2 },
+  ],
+  hide: [
+    { d: 'M2 20c0-5 3-8 6-8 0-4 3-7 6-6 3-2 7 1 7 5 2 1 2 5 1 9z', fill: '#4f9a3c' },
+    { d: 'M9.5 15a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0zM14 15a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0z', fill: '#fff' },
+    { d: 'M10.5 15.3a.6.6 0 1 0 1.2 0a.6.6 0 1 0-1.2 0zM15 15.3a.6.6 0 1 0 1.2 0a.6.6 0 1 0-1.2 0z', fill: '#222' },
+  ],
+  music: [
+    { d: 'M9 18V5l11-2v13', stroke: '#7e57c2', w: 2.2 },
+    { d: 'M3 18a3 2.5 0 1 0 6 0a3 2.5 0 1 0-6 0zM14 16a3 2.5 0 1 0 6 0a3 2.5 0 1 0-6 0z', fill: '#7e57c2' },
+  ],
+  hat: [
+    { d: 'M7 17l3-13 7 13z', fill: '#ff7096' },
+    { d: 'M8.6 11l5.6-1M7.8 14.5l7.4-1.4', stroke: '#ffd54f', w: 1.6 },
+    { d: 'M8.5 3.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0-3.6 0z', fill: '#ffd54f' },
+    { d: 'M3 18.5c4-2 14-2 18 0', stroke: '#7e57c2', w: 2.4 },
+  ],
+  album: [
+    { d: 'M3 4h18v16H3z', fill: '#ffffff', stroke: '#8d6e63', w: 1.6 },
+    { d: 'M5 6h14v10H5z', fill: '#8fd3ff' },
+    { d: 'M5 16l5-6 4 4 2-2 3 4z', fill: '#5cc15a' },
+    { d: 'M15 8.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0z', fill: '#ffd54f' },
+  ],
+  camera: [
+    { d: 'M2 8h5l2-3h6l2 3h5v12H2z', fill: '#455a64' },
+    { d: 'M8 13.5a4 4 0 1 0 8 0a4 4 0 1 0-8 0z', fill: '#90caf9', stroke: '#ffffff', w: 1.6 },
+    { d: 'M18 10h2', stroke: '#ffd54f', w: 2 },
   ],
   close: [
     { d: 'M6 6l12 12M18 6L6 18', stroke: '#e5533d', w: 3.4 },

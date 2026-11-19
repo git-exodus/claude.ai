@@ -63,6 +63,27 @@ svg { display: block; width: 100%; height: 100%; }
 .ptile i { font-style: normal; font-family: 'Lilita One', 'Nunito', sans-serif; font-size: 34px; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .15); }
 .ptile.nope { animation: wobble .4s; }
 
+/* 0.3: play menu, music pad, wardrobe, album. */
+#playtray { position: absolute; left: 0; right: 84px; bottom: max(12px, env(safe-area-inset-bottom)); display: flex; justify-content: center; gap: 14px; }
+#musicpad { position: absolute; left: 8px; right: 84px; bottom: max(10px, env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 5px; justify-content: center; }
+#musicpad .key { flex: 1 1 0; max-width: 46px; border-radius: 10px; box-shadow: 0 4px 0 rgba(0, 0, 0, .2); touch-action: none; }
+#musicpad .key:active, #musicpad .key.hit { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0, 0, 0, .2); }
+#musicpad .drum { flex: 0 0 auto; width: 56px; height: 56px; border-radius: 50%; border: 5px solid #8d6e63; box-shadow: 0 4px 0 rgba(0, 0, 0, .2); touch-action: none; }
+#musicpad .drum.small { width: 44px; height: 44px; }
+#musicpad .drum.hit, #musicpad .drum:active { transform: translateY(3px) scale(.95); }
+#wearlist { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 4px; }
+.wtile { aspect-ratio: 5 / 4; border-radius: 14px; padding: 0; overflow: hidden; background: #e8f4ff; }
+.wtile canvas { width: 100%; height: 100%; display: block; }
+.wtile.on { outline: 4px solid #5cc15a; outline-offset: -4px; }
+.wtile.locked { background: #eef1f5; }
+.wtile.nope { animation: wobble .4s; }
+#photolist { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 4px; }
+.ptile.photo { aspect-ratio: 9 / 16; }
+.ptile.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#photolist .empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px 0; }
+#photolist .empty svg { width: 54px; height: 54px; }
+#pv-img { display: block; width: 100%; max-height: 60vh; object-fit: contain; border-radius: 14px; background: #000; margin-bottom: 8px; }
+
 /* Bottom action buttons. */
 #actions { position: absolute; left: 0; right: 0; bottom: max(12px, env(safe-area-inset-bottom));
   display: flex; justify-content: center; gap: 8px; padding: 0 8px; flex-wrap: wrap; }
@@ -117,11 +138,20 @@ svg { display: block; width: 100%; height: 100%; }
   <button id="gear" type="button" aria-label="Einstellungen für Eltern (3 Sekunden gedrückt halten)"><span class="ring"></span></button>
   <div id="side" hidden>
     <button id="b-map" class="mini" type="button" aria-label="Orte"></button>
+    <button id="b-wear" class="mini" type="button" aria-label="Verkleiden"></button>
+    <button id="b-album" class="mini" type="button" aria-label="Fotoalbum"></button>
+    <button id="b-camera" class="mini" type="button" aria-label="Foto machen"></button>
   </div>
   <div id="walkbar" hidden><span class="foot"></span><i><b></b></i><span class="flag"></span></div>
   <div id="banner" hidden><canvas width="240" height="135"></canvas><b></b></div>
   <div id="actions" hidden></div>
   <div id="tray" hidden></div>
+  <div id="playtray" hidden>
+    <button class="round" id="play-ball" type="button" aria-label="Ball spielen"></button>
+    <button class="round" id="play-hide" type="button" aria-label="Verstecken"></button>
+    <button class="round" id="play-music" type="button" aria-label="Musik machen"></button>
+  </div>
+  <div id="musicpad" hidden></div>
   <button id="close" class="round" type="button" aria-label="Fertig" hidden></button>
   <div id="menu">
     <h1 id="m-title">Stegi</h1>
@@ -139,13 +169,13 @@ svg { display: block; width: 100%; height: 100%; }
       <label class="row">Spielzeit pro Tag <select id="s-limit"></select></label>
       <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
       <button class="big" id="s-close" type="button">Schließen</button>
-      <p id="credit">@made by Brownii (Claude.ai) · v0.2</p>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.3</p>
     </div>
   </div>
   <div id="confirm" class="ov" hidden>
     <div class="card" role="dialog" aria-labelledby="c-title">
       <h2 id="c-title">Wirklich alles löschen?</h2>
-      <p class="info">Stegi wird wieder ein Ei. Alle Tage und Einstellungen sind dann weg. Das kann man nicht rückgängig machen.</p>
+      <p class="info">Stegi wird wieder ein Ei. Alle Tage, Fotos, Kleider und Einstellungen sind dann weg. Das kann man nicht rückgängig machen.</p>
       <button class="big danger" id="c-yes" type="button">Ja, alles löschen</button>
       <button class="big" id="c-no" type="button">Abbrechen</button>
     </div>
@@ -156,6 +186,29 @@ svg { display: block; width: 100%; height: 100%; }
       <p id="placecount" class="info"></p>
       <div id="placelist"></div>
       <button class="big" id="pl-close" type="button">Schließen</button>
+    </div>
+  </div>
+  <div id="wardrobe" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="w-title">
+      <h2 id="w-title">Verkleiden</h2>
+      <p class="info">Antippen zum Anziehen, nochmal antippen zum Ausziehen.</p>
+      <div id="wearlist"></div>
+      <button class="big" id="w-close" type="button">Fertig</button>
+    </div>
+  </div>
+  <div id="album" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="a-title">
+      <h2 id="a-title">Fotoalbum</h2>
+      <p id="photocount" class="info"></p>
+      <div id="photolist"></div>
+      <button class="big" id="a-close" type="button">Schließen</button>
+    </div>
+  </div>
+  <div id="photoview" class="ov" hidden>
+    <div class="card" role="dialog" aria-label="Foto">
+      <img id="pv-img" alt="Foto von Stegi">
+      <p id="pv-text" class="info"></p>
+      <button class="big" id="pv-close" type="button">Zurück</button>
     </div>
   </div>
   <div id="rest" class="ov" hidden>
@@ -206,7 +259,7 @@ function mix(c1, c2, k) {
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.2';
+const VERSION = '0.3';
 const SAVE_KEY = 'stegi-v1';
 
 /** The five needs, in the order of the top bar. Each is 0 (empty) .. 100 (full). */
@@ -321,11 +374,45 @@ const PLACES = [
 ];
 const placeById = id => PLACES.find(p => p.id === id) || PLACES[0];
 
+/** Dressing up (0.3): 12 things, one per slot (head / eyes / neck). Each becomes a present on its day of
+ *  life (every 2–3 days, the first on the hatch day); opening the present puts it on. */
+const WEAR_ITEMS = [
+  { id: 'bow', slot: 'head', day: 1 }, { id: 'sunglasses', slot: 'eyes', day: 3 },
+  { id: 'party', slot: 'head', day: 6 }, { id: 'scarf', slot: 'neck', day: 8 },
+  { id: 'sunhat', slot: 'head', day: 11 }, { id: 'glasses', slot: 'eyes', day: 13 },
+  { id: 'beanie', slot: 'head', day: 16 }, { id: 'crown', slot: 'head', day: 18 },
+  { id: 'bowtie', slot: 'neck', day: 21 }, { id: 'flowers', slot: 'head', day: 23 },
+  { id: 'pirate', slot: 'head', day: 26 }, { id: 'wizard', slot: 'head', day: 28 },
+];
+const wearItem = id => WEAR_ITEMS.find(w => w.id === id);
+
+/** Photos (0.3): at most PHOTO_MAX; when full, the oldest own photo goes (automatic ones stay).
+ *  Stored apart from the game in localStorage[PHOTO_KEY] as small JPEGs (PHOTO_W pixels wide). */
+const PHOTO_MAX = 40;
+const PHOTO_KEY = 'stegi-photos-v1';
+const PHOTO_W = 240;
+
+/** Visitors (0.3): at most one a day at a random time between VISIT_FROM and an hour before bedtime;
+ *  they stay VISIT_SECONDS and leave love and fun behind. */
+const VISITORS = ['trex', 'ptero', 'trike', 'turtle', 'butterflies'];
+const VISIT_FROM = 9 * 60;
+const VISIT_SECONDS = 60;
+const VISIT_LOVE = 10, VISIT_FUN = 10;
+
+/** Hide and seek: fun for every time he is found. Music: fun for every note played. */
+const HIDE_FUN = 15;
+const MUSIC_FUN = 1.5;
+
+/** Weather (0.3), the same all day, chosen from the day number: share of sun / clouds / rain;
+ *  in December–February rain falls as snow; after 15:00 a rainy day turns into a rainbow. */
+const WEATHER_SHARES = { sun: 0.45, clouds: 0.25, rain: 0.30 };
+const RAINBOW_FROM = 15 * 60;
+
 /** Seconds the gear button must be held to open the parents' settings. */
 const GEAR_HOLD = 3;
 
 /** Switches for the tests (window.__stQuiet = true before load turns music off). */
-const debugFlags = { music: !window.__stQuiet };
+const debugFlags = { music: !window.__stQuiet, visit: true };   // visit: false = no visitors (tests that must not depend on chance)
 
 /** Icons used both as inline SVG (buttons) and on the canvas (thought bubbles).
  *  Coordinates are in a 24x24 box. Each part: d = SVG path, fill and/or stroke (+ w = width). */
@@ -376,6 +463,36 @@ const ICONS = {
     { d: 'M8 3v16M16 5v16', stroke: '#e0c070', w: 1.2 },
     { d: 'M5 14c2-3 5 1 7-2s4-1 6-4', stroke: '#e5533d', w: 1.8 },
     { d: 'M17 5.5l1.6 1.6M18.6 5.5L17 7.1', stroke: '#e5533d', w: 1.6 },
+  ],
+  play: [
+    { d: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0z', fill: '#ffcc33' },
+    { d: 'M3 8.5c6 2.5 12 2.5 18 0M3 15.5c6-2.5 12-2.5 18 0', stroke: '#e53935', w: 2.2 },
+  ],
+  hide: [
+    { d: 'M2 20c0-5 3-8 6-8 0-4 3-7 6-6 3-2 7 1 7 5 2 1 2 5 1 9z', fill: '#4f9a3c' },
+    { d: 'M9.5 15a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0zM14 15a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0z', fill: '#fff' },
+    { d: 'M10.5 15.3a.6.6 0 1 0 1.2 0a.6.6 0 1 0-1.2 0zM15 15.3a.6.6 0 1 0 1.2 0a.6.6 0 1 0-1.2 0z', fill: '#222' },
+  ],
+  music: [
+    { d: 'M9 18V5l11-2v13', stroke: '#7e57c2', w: 2.2 },
+    { d: 'M3 18a3 2.5 0 1 0 6 0a3 2.5 0 1 0-6 0zM14 16a3 2.5 0 1 0 6 0a3 2.5 0 1 0-6 0z', fill: '#7e57c2' },
+  ],
+  hat: [
+    { d: 'M7 17l3-13 7 13z', fill: '#ff7096' },
+    { d: 'M8.6 11l5.6-1M7.8 14.5l7.4-1.4', stroke: '#ffd54f', w: 1.6 },
+    { d: 'M8.5 3.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0-3.6 0z', fill: '#ffd54f' },
+    { d: 'M3 18.5c4-2 14-2 18 0', stroke: '#7e57c2', w: 2.4 },
+  ],
+  album: [
+    { d: 'M3 4h18v16H3z', fill: '#ffffff', stroke: '#8d6e63', w: 1.6 },
+    { d: 'M5 6h14v10H5z', fill: '#8fd3ff' },
+    { d: 'M5 16l5-6 4 4 2-2 3 4z', fill: '#5cc15a' },
+    { d: 'M15 8.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0z', fill: '#ffd54f' },
+  ],
+  camera: [
+    { d: 'M2 8h5l2-3h6l2 3h5v12H2z', fill: '#455a64' },
+    { d: 'M8 13.5a4 4 0 1 0 8 0a4 4 0 1 0-8 0z', fill: '#90caf9', stroke: '#ffffff', w: 1.6 },
+    { d: 'M18 10h2', stroke: '#ffd54f', w: 2 },
   ],
   close: [
     { d: 'M6 6l12 12M18 6L6 18', stroke: '#e5533d', w: 3.4 },
@@ -524,6 +641,10 @@ function blankSave(t) {
     found: [{ id: 'meadow', day: -1 }],
     walk: null,              // { sec } awake seconds walked so far, or null
     newPlace: null,          // id of a place reached but not yet celebrated
+    // 0.3: what he wears per slot (null = nothing), how many presents were opened, today's visit.
+    wear: { head: null, eyes: null, neck: null },
+    giftSeen: 0,
+    visitDay: -1, visitAt: 0, visitDone: false,
   };
 }
 
@@ -574,6 +695,15 @@ function sanitizeSave(o, t) {
   b.place = b.found.some(f => f.id === o.place) ? o.place : 'meadow';
   b.walk = o.walk && typeof o.walk.sec === 'number' ? { sec: num(o.walk.sec, 0, WALK_SECONDS, 0) } : null;
   b.newPlace = b.found.some(f => f.id === o.newPlace) ? o.newPlace : null;
+  b.giftSeen = Math.round(num(o.giftSeen, 0, WEAR_ITEMS.length, 0));
+  const opened = WEAR_ITEMS.slice(0, b.giftSeen).map(w => w.id);
+  for (const slot of ['head', 'eyes', 'neck']) {
+    const id = o.wear && o.wear[slot];
+    b.wear[slot] = opened.includes(id) && wearItem(id).slot === slot ? id : null;
+  }
+  b.visitDay = num(o.visitDay, -1, 1e6, -1);
+  b.visitAt = num(o.visitAt, 0, 1e14, 0);
+  b.visitDone = o.visitDone === true;
   return b;
 }
 
@@ -797,18 +927,27 @@ const SOUNDS = {
   fanfare: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.35, { at: i * 0.14, vol: 0.12, type: 'triangle' })); tone(1047, 0.8, { at: 0.56, vol: 0.1, type: 'triangle' }); },
   // Soft tap on a button.
   tap: () => { tone(660, 0.08, { vol: 0.06, type: 'triangle' }); },
+  // 0.3: xylophone bar i (0..5) and drum i (0 = big boom, 1 = small tap) for the music game.
+  xylo: i => { const f = midi([72, 74, 76, 79, 81, 84][i] || 72); tone(f, 0.9, { vol: 0.16 }); tone(f * 4, 0.25, { vol: 0.04 }); },
+  drum: i => { if (i) { noise(0.12, { freq: 2500, q: 0.8, vol: 0.3 }); } else { tone(110, 0.35, { f2: 45, vol: 0.4, type: 'sine' }); noise(0.08, { freq: 300, vol: 0.2 }); } },
+  // Camera click.
+  shutter: () => { noise(0.05, { freq: 4000, q: 1, vol: 0.3 }); noise(0.07, { at: 0.08, freq: 3000, q: 1, vol: 0.25 }); },
+  // Wrong hiding place: a soft "boing".
+  nope: () => { tone(300, 0.2, { f2: 200, vol: 0.08, type: 'triangle' }); },
+  // A visitor says hello.
+  hello: () => { tone(660, 0.18, { vol: 0.1, type: 'triangle' }); tone(880, 0.25, { at: 0.2, vol: 0.1, type: 'triangle' }); },
   // Happy "hm!" when lying down / waking up.
   happy: () => { tone(500, 0.15, { f2: 700, vol: 0.1, type: 'triangle' }); tone(700, 0.2, { at: 0.15, f2: 900, vol: 0.1, type: 'triangle' }); },
 };
 
-/** Plays a sound effect if sound is on and allowed. */
-function sound(name) {
+/** Plays a sound effect if sound is on and allowed. arg is passed on (e.g. which xylophone bar). */
+function sound(name, arg) {
   soundLog.push({ name, t: performance.now() });
   if (soundLog.length > 200) soundLog.shift();
   if (!S.opts.sound) return;
   const a = getAudio();
   if (!a || a.state !== 'running') return;
-  try { SOUNDS[name](); } catch (e) { /* audio problems never stop the game */ }
+  try { SOUNDS[name](arg); } catch (e) { /* audio problems never stop the game */ }
 }
 
 /* ---------- Music: a gentle music-box tune, only by day ---------- */
@@ -868,7 +1007,7 @@ const PLATE_COUNT = [4, 5, 6, 7, 7];
  *   o     { colors (optional palette, default STEGO_COLORS), g, stage, t, dir (1 = looks right), pose ('stand'|'walk'|'lie'), walk (phase),
  *           eyes ('open'|'happy'|'closed'|'sad'), blink (0..1), mouth ('smile'|'open'|'chew'|
  *           'sad'|'yawn'|'grin'|'closed'), headDown (0..1), wiggle (0..1), dirt (0..1),
- *           jump (px up), wag (0..1) }
+ *           jump (px up), wag (0..1), wear ({ head, eyes, neck } item ids, 0.3) }
  * Returns screen positions: mouth {x, y}, head {x, y, r}, box {x, y, w, h} (for touches).
  */
 function drawStego(c, x, y, size, o) {
@@ -1076,6 +1215,8 @@ function drawStego(c, x, y, size, o) {
   } else {
     c.beginPath(); c.moveTo(mx - 8 * hs, my - 1 * hs); c.quadraticCurveTo(mx, my + 7 * hs, mx + 8 * hs, my - 2 * hs); c.stroke();
   }
+  // Things he wears (0.3): drawn with the head, so they tilt when he drinks.
+  if (o.wear) drawWear(c, o.wear, { hx, hy, hs, ex, ey, er, t });
   c.restore();   // head rotation
 
   c.restore();
@@ -1091,6 +1232,112 @@ function drawStego(c, x, y, size, o) {
   const width = (hx + 45 * hs - tipX + 10) * k;
   const top = y - (o.jump || 0) + (cy - ry - plateBase * 1.1) * k;
   return { mouth: m, head: { x: h.x, y: h.y, r: 28 * hs * k }, box: { x: left, y: top, w: width, h: y - top }, k };
+}
+
+/**
+ * Accessories in the stego's unit space (inside drawStego, after the head).
+ *   w  { head, eyes, neck } ids from WEAR_ITEMS (or null)
+ *   g  { hx, hy (skull centre), hs (head scale), ex, ey, er (eye), t }
+ */
+function drawWear(c, w, g) {
+  const { hx, hy, hs, ex, ey, er } = g;
+  const S_ = v => v * hs;
+  c.save();
+  c.lineJoin = 'round'; c.lineCap = 'round'; c.lineWidth = 2.2; c.strokeStyle = '#2c343b';
+  // ---- neck ----
+  if (w.neck === 'scarf') {
+    // A striped band around the neck behind the head, one end hanging down.
+    const x = hx - S_(30), y = hy + S_(4);
+    c.fillStyle = '#e53935';
+    c.beginPath(); c.moveTo(x - S_(6), y + S_(10)); c.lineTo(x - S_(20), y + S_(36)); c.lineTo(x - S_(6), y + S_(40)); c.lineTo(x + S_(6), y + S_(12)); c.closePath(); c.fill(); c.stroke();
+    c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.beginPath(); c.moveTo(x - S_(17), y + S_(32)); c.lineTo(x - S_(8), y + S_(35)); c.stroke(); c.strokeStyle = '#2c343b'; c.lineWidth = 2.2;
+    c.save(); c.translate(x, y); c.rotate(0.18);
+    c.beginPath(); c.ellipse(0, 0, S_(12), S_(20), 0, 0, TAU); c.fill(); c.stroke();
+    c.save(); c.clip(); c.fillStyle = '#ffffff'; c.fillRect(-S_(13), -S_(9), S_(26), S_(5)); c.fillRect(-S_(13), S_(4), S_(26), S_(5)); c.restore();
+    c.restore();
+  } else if (w.neck === 'bowtie') {
+    const x = hx - S_(14), y = hy + S_(19);
+    c.fillStyle = '#e53935';
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x - S_(10), y - S_(7)); c.lineTo(x - S_(10), y + S_(7)); c.closePath();
+    c.moveTo(x, y); c.lineTo(x + S_(10), y - S_(7)); c.lineTo(x + S_(10), y + S_(7)); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#b71c1c'; c.beginPath(); c.arc(x, y, S_(3.2), 0, TAU); c.fill(); c.stroke();
+  }
+  // ---- eyes ----
+  if (w.eyes === 'glasses' || w.eyes === 'sunglasses') {
+    // Two lenses: the near one round the eye, the far one peeking out behind the snout; a frame bar to the ear.
+    const sun = w.eyes === 'sunglasses', frame = sun ? '#ff4f87' : '#3e2723';
+    const lens = (x, y, rx, ry) => {
+      c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, TAU);
+      if (sun) { c.fillStyle = '#1b1b24'; c.fill(); } else { c.fillStyle = 'rgba(200,230,255,0.25)'; c.fill(); }
+      c.strokeStyle = frame; c.lineWidth = 2.8; c.stroke();
+    };
+    const fx = hx + S_(16), fy = ey + S_(1);
+    lens(fx, fy, er * 0.75, er * 0.95);
+    c.strokeStyle = frame; c.lineWidth = 2.8;
+    c.beginPath(); c.moveTo(ex - er * 1.3, ey - S_(1)); c.lineTo(hx - S_(23), ey + S_(2)); c.moveTo(ex + er * 1.3, ey - S_(1)); c.lineTo(fx - er * 0.7, fy - S_(1)); c.stroke();
+    lens(ex, ey, er * 1.35, er * 1.2);
+    if (sun) { c.fillStyle = 'rgba(255,255,255,0.6)'; c.beginPath(); c.ellipse(ex + er * 0.45, ey - er * 0.45, er * 0.45, er * 0.2, -0.5, 0, TAU); c.fill(); }
+    c.strokeStyle = '#2c343b'; c.lineWidth = 2.2;
+  }
+  // ---- head ----
+  const top = hy - S_(19), tx = hx - S_(4);
+  c.strokeStyle = '#2c343b'; c.lineWidth = 2.2;
+  if (w.head === 'bow') {
+    const x = hx - S_(10), y = top + S_(1);
+    c.fillStyle = '#ff6fa5';
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x - S_(13), y - S_(9)); c.lineTo(x - S_(12), y + S_(8)); c.closePath();
+    c.moveTo(x, y); c.lineTo(x + S_(13), y - S_(10)); c.lineTo(x + S_(13), y + S_(7)); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#e0457f'; c.beginPath(); c.arc(x, y, S_(4), 0, TAU); c.fill(); c.stroke();
+  } else if (w.head === 'party') {
+    c.save(); c.translate(tx, top + S_(3)); c.rotate(-0.25);
+    c.fillStyle = '#42a5f5';
+    c.beginPath(); c.moveTo(-S_(12), 0); c.lineTo(0, -S_(34)); c.lineTo(S_(12), 0); c.closePath(); c.fill(); c.stroke();
+    c.save(); c.clip(); c.fillStyle = '#ffd54f';
+    for (let i = 0; i < 3; i++) c.fillRect(-S_(14), -S_(9 + i * 10), S_(28), S_(4));
+    c.restore();
+    c.fillStyle = '#ff5c8a'; c.beginPath(); c.arc(0, -S_(35), S_(4.5), 0, TAU); c.fill(); c.stroke();
+    c.restore();
+  } else if (w.head === 'sunhat') {
+    c.fillStyle = '#f2d27a';
+    c.beginPath(); c.ellipse(tx, top + S_(3), S_(32), S_(7), -0.08, 0, TAU); c.fill(); c.stroke();
+    c.beginPath(); c.ellipse(tx, top - S_(3), S_(15), S_(12), 0, Math.PI, TAU); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#e53935'; c.fillRect(tx - S_(15), top - S_(2), S_(30), S_(4));
+  } else if (w.head === 'beanie') {
+    c.fillStyle = '#e53935';
+    c.beginPath(); c.moveTo(tx - S_(20), top + S_(7)); c.quadraticCurveTo(tx - S_(18), top - S_(16), tx + S_(4), top - S_(14));
+    c.quadraticCurveTo(tx - S_(16), top - S_(30), tx - S_(30), top - S_(22)); c.quadraticCurveTo(tx - S_(16), top - S_(12), tx + S_(18), top + S_(6)); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(tx - S_(1), top + S_(6), S_(20), S_(5), 0.05, 0, TAU); c.fill(); c.stroke();
+    c.beginPath(); c.arc(tx - S_(31), top - S_(22), S_(5), 0, TAU); c.fill(); c.stroke();
+  } else if (w.head === 'crown') {
+    c.fillStyle = '#ffca28';
+    c.beginPath(); c.moveTo(tx - S_(14), top + S_(4));
+    for (const [px, py] of [[-14, -12], [-7, -3], [0, -16], [7, -3], [14, -12], [14, 4]]) c.lineTo(tx + S_(px), top + S_(py));
+    c.closePath(); c.fill(); c.stroke();
+    for (const [px, col] of [[-7, '#e53935'], [0, '#42a5f5'], [7, '#66bb6a']]) { c.fillStyle = col; c.beginPath(); c.arc(tx + S_(px), top + S_(0), S_(2.4), 0, TAU); c.fill(); }
+  } else if (w.head === 'flowers') {
+    for (let i = 0; i < 7; i++) {
+      const a = Math.PI * (1.08 + i * 0.14), x = hx + Math.cos(a) * S_(25), y = hy + Math.sin(a) * S_(21);
+      c.fillStyle = ['#ff8fb1', '#ffffff', '#ffd54f', '#b39ddb'][i % 4];
+      for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(x + Math.cos(k * TAU / 5) * S_(3.2), y + Math.sin(k * TAU / 5) * S_(3.2), S_(2.6), 0, TAU); c.fill(); }
+      c.fillStyle = '#ff9800'; c.beginPath(); c.arc(x, y, S_(1.8), 0, TAU); c.fill();
+    }
+  } else if (w.head === 'pirate') {
+    c.fillStyle = '#263238';
+    c.beginPath(); c.moveTo(tx - S_(26), top + S_(4)); c.quadraticCurveTo(tx - S_(18), top - S_(10), tx - S_(10), top - S_(14));
+    c.quadraticCurveTo(tx, top - S_(24), tx + S_(10), top - S_(14)); c.quadraticCurveTo(tx + S_(18), top - S_(10), tx + S_(26), top + S_(4));
+    c.quadraticCurveTo(tx, top - S_(4), tx - S_(26), top + S_(4)); c.fill(); c.stroke();
+    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(tx, top - S_(9), S_(4), 0, TAU); c.fill();
+    c.fillStyle = '#263238'; c.fillRect(tx - S_(2.4), top - S_(9), S_(1.6), S_(1.6)); c.fillRect(tx + S_(0.8), top - S_(9), S_(1.6), S_(1.6));
+  } else if (w.head === 'wizard') {
+    c.save(); c.translate(tx, top + S_(3)); c.rotate(-0.18);
+    c.fillStyle = '#3949ab';
+    c.beginPath(); c.ellipse(0, 0, S_(26), S_(6), 0, 0, TAU); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(-S_(14), -S_(2)); c.quadraticCurveTo(-S_(4), -S_(30), S_(10), -S_(44)); c.quadraticCurveTo(S_(6), -S_(22), S_(14), -S_(2)); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#ffeb3b';
+    for (const [px, py] of [[-4, -12], [5, -24], [3, -6]]) { c.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? S_(1.4) : S_(3.4), a = i * Math.PI / 5 - Math.PI / 2; c.lineTo(S_(px) + Math.cos(a) * r, S_(py) + Math.sin(a) * r); } c.fill(); }
+    c.restore();
+  }
+  c.restore();
 }
 
 /* ===== 07-draw-scene.js ===== */
@@ -1417,7 +1664,7 @@ function drawThought(c, x, y, icon, t) {
 /* ---------- particles ---------- */
 
 const parts = [];
-/** Adds a particle. kind: heart, sparkle, bubble, confetti, zzz, crumb, drop, shell, star. */
+/** Adds a particle. kind: heart, sparkle, bubble, confetti, zzz, crumb, drop, shell, star, note. */
 function addPart(kind, x, y, o = {}) {
   if (parts.length > 260) parts.shift();
   parts.push({ kind, x, y, vx: o.vx ?? rnd(-20, 20) * U, vy: o.vy ?? rnd(-60, -30) * U, g: o.g ?? 0, life: 0,
@@ -1452,6 +1699,10 @@ function drawParts(c) {
     } else if (p.kind === 'crumb' || p.kind === 'shell') {
       c.rotate(p.rot); c.fillStyle = p.color;
       c.beginPath(); c.moveTo(-p.size, 0); c.lineTo(0, -p.size * 0.8); c.lineTo(p.size, p.size * 0.3); c.closePath(); c.fill();
+    } else if (p.kind === 'note') {   // a music note: head, stem, flag
+      c.fillStyle = p.color; c.strokeStyle = p.color; c.lineWidth = p.size * 0.22;
+      c.beginPath(); c.ellipse(0, 0, p.size * 0.55, p.size * 0.42, -0.4, 0, TAU); c.fill();
+      c.beginPath(); c.moveTo(p.size * 0.48, -p.size * 0.1); c.lineTo(p.size * 0.48, -p.size * 1.6); c.quadraticCurveTo(p.size * 1.1, -p.size * 1.2, p.size * 1.0, -p.size * 0.7); c.stroke();
     } else if (p.kind === 'drop') {
       c.fillStyle = '#7fd0ff'; c.beginPath(); c.ellipse(0, 0, p.size * 0.35, p.size * 0.6, 0, 0, TAU); c.fill();
     }
@@ -2076,7 +2327,8 @@ function placePicture(id, w, h) {
 
 /** Screen and activity state.
  *  screen: 'menu' | 'game'.  trans: 0 = menu camera .. 1 = game camera (animated).
- *  mode:   'idle' | 'eat' | 'drink' | 'bath' | 'brush' | 'ball' | 'hatch' | 'party'. */
+ *  mode:   'idle' | 'eat' | 'drink' | 'bath' | 'brush' | 'ball' | 'hatch' | 'party'
+ *          | 'play' (menu: ball, hide, music) | 'hide' | 'music' (0.3). */
 const game = {
   screen: 'menu', trans: 0, mode: 'idle', modeT: 0, t: 0,
   flying: null,      // food on its way to the mouth: { id, x, y, sx, sy, k }
@@ -2089,6 +2341,10 @@ const game = {
   amb: {},           // next time (game.t) of each ambient sound
   sky: null,
   stegoInfo: null,   // last result of drawStego (mouth, head, box)
+  hide: null,        // hide and seek (15-play.js)
+  visit: null,       // visitor on screen (16-visit.js)
+  photoPending: null, flash: 0, autoPhotoAt: 0,   // camera (18-photos.js)
+  weatherTest: null, // tests only: forces the weather
 };
 
 /** The stego as an actor on screen. x is the offset from the screen centre in pixels. */
@@ -2096,6 +2352,8 @@ const pet = {
   x: 0, tx: 0, dir: 1, walk: 0, moving: false, jump: 0, jumpV: 0,
   blink: 0, nextBlink: 3, happyT: 0, giggleT: 0, eatT: 0, refuseT: 0, yawnT: 0,
   wiggle: 0, petDist: 0, purrT: 0,
+  danceT: 0,   // > 0 while he dances to the music
+  depth: 0,    // 0 = in front .. 1 = far back behind a hiding place
 };
 
 /** Egg animation state. */
@@ -2164,6 +2422,7 @@ function finishHatch() {
     { vx: rnd(-160, 160) * U, vy: rnd(-260, -120) * U, g: 600, color: i % 2 ? '#fff4d6' : '#9ad9b0', size: 8, max: 1.6 });
   confetti();
   pet.x = 0; pet.tx = 0; pet.jumpV = 260 * U; pet.giggleT = 1.5;
+  game.autoPhotoAt = game.t + 1.6;   // first photo for the album
 }
 
 function confetti() {
@@ -2180,12 +2439,14 @@ function endMode() {
   game.mode = 'idle'; game.modeT = 0;
   game.held = null; game.flying = null; game.bath = null; game.brush = null;
   if (game.ball) game.ball = null;
+  game.hide = null; pet.depth = 0; pet.danceT = 0;
   pet.tx = 0;
   refreshUI();
 }
 
 /** Starts an activity from a bottom button. */
 function startMode(m) {
+  if (game.mode === 'play' && m !== 'play') game.mode = 'idle';   // chosen from the play menu
   if (!hatched() || asleepNow() || game.mode !== 'idle') return;
   sound('tap');
   if (m === 'drink') {
@@ -2196,6 +2457,7 @@ function startMode(m) {
   }
   if (m === 'bath') game.bath = { phase: 'scrub', t: 0 };
   if (m === 'brush') game.brush = { x: W * 0.75, y: standY - 60 * U, progress: 0, done: false, t: 0, scrubT: 0 };
+  if (m === 'hide') { game.mode = 'hide'; startHide(); refreshUI(); return; }
   if (m === 'ball') game.ball = { x: Math.min(W - 40 * U, W / 2 + 140 * U), h: 0, vx: 0, vh: 0, rot: 0, carried: false, thrown: false };
   game.mode = m; game.modeT = 0;
   if (m !== 'ball') pet.tx = 0;
@@ -2306,7 +2568,9 @@ function update(dt) {
   if (game.screen === 'game' && game.trans >= 1 && document.visibilityState !== 'hidden') {
     if (addPlayTime(dt)) showRest();
   }
-  updateMusic(!game.sky.night);
+  updateMusic(!game.sky.night && game.mode !== 'music');
+  if (game.autoPhotoAt && game.t >= game.autoPhotoAt) { game.autoPhotoAt = 0; takePhoto(true); }
+  game.flash = Math.max(0, game.flash - dt * 2.5);
 }
 
 function updateEgg(dt) {
@@ -2341,6 +2605,7 @@ function updatePet(dt, sleeping) {
   pet.refuseT = Math.max(0, pet.refuseT - dt);
   pet.yawnT = Math.max(0, pet.yawnT - dt);
   pet.wiggle = Math.max(0, pet.wiggle - dt * 1.5);
+  pet.danceT = Math.max(0, pet.danceT - dt);
   // Jumping.
   if (pet.jumpV || pet.jump > 0) {
     pet.jump += pet.jumpV * dt; pet.jumpV -= 900 * U * dt;
@@ -2351,13 +2616,13 @@ function updatePet(dt, sleeping) {
   if (pet.nextBlink < 0) { pet.blink = 0.15; pet.nextBlink = rnd(2.5, 5); }
   pet.blink = Math.max(0, pet.blink - dt);
   // Walking towards tx.
-  const speed = (game.mode === 'ball' ? 260 : 120) * U, dx = pet.tx - pet.x;
+  const speed = (game.mode === 'ball' || game.mode === 'hide' ? 260 : 120) * U, dx = pet.tx - pet.x;
   pet.moving = Math.abs(dx) > 3 * U && !sleeping;
   if (pet.moving) {
     pet.x += Math.sign(dx) * Math.min(Math.abs(dx), speed * dt);
     pet.dir = Math.sign(dx);
     pet.walk += dt * 12;
-  } else if (game.mode !== 'ball' && !sleeping) pet.dir = 1;
+  } else if (!['ball', 'hide', 'music'].includes(game.mode) && !(game.visit && game.visit.phase === 'stay') && !sleeping) pet.dir = 1;
   if (walkingNow()) pet.walk += dt * 6;   // slow steps on the way (the landscape scrolls, 13-travel)
   updateTravel(dt, sleeping);
 
@@ -2375,6 +2640,8 @@ function updatePet(dt, sleeping) {
   if (game.mode === 'bath') updateBath(dt);
   if (game.mode === 'brush') updateBrush(dt);
   if (game.mode === 'ball') updateBall(dt);
+  if (game.mode === 'hide') updateHide(dt);
+  updateVisit(dt, sleeping);
   if (game.mode === 'party' && game.modeT > 3) { game.mode = 'idle'; refreshUI(); }
   if (game.mode === 'party' && pet.jump === 0 && game.modeT < 2.4) { pet.jumpV = 200 * U; }
 
@@ -2392,7 +2659,7 @@ function updatePet(dt, sleeping) {
   else if (low.value < NEED_SAD && game.t > (a.whine || 12)) { a.whine = game.t + rnd(18, 28); sound('whine'); }
   if (isSleepy(now()) && game.t > (a.yawn || 4)) { a.yawn = game.t + rnd(14, 22); pet.yawnT = 1.6; sound('yawn'); }
   // Stage-up party once a second check.
-  if (stageAt(now()) > S.stageSeen) { S.stageSeen = stageAt(now()); save(); startParty(); }
+  if (stageAt(now()) > S.stageSeen) { S.stageSeen = stageAt(now()); save(); startParty(); game.autoPhotoAt = game.t + 1.6; }
 }
 
 function updateBath(dt) {
@@ -2494,7 +2761,7 @@ function stegoLook() {
   const sleeping = asleepNow(), low = lowestNeed();
   const o = { g: growthAt(now()), stage: stageAt(now()), t: game.t, dir: pet.dir, pose: 'stand', walk: pet.walk,
     eyes: 'open', mouth: 'smile', blink: pet.blink > 0 ? 1 : 0, jump: pet.jump, wiggle: pet.wiggle,
-    dirt: clamp((50 - S.needs.clean) / 50, 0, 1), headDown: 0, wag: 0 };
+    dirt: clamp((50 - S.needs.clean) / 50, 0, 1), headDown: 0, wag: 0, wear: wearNow() };
   if (sleeping) { o.pose = 'lie'; o.eyes = 'closed'; o.mouth = 'closed'; o.blink = 0; return o; }
   if (pet.moving || walkingNow()) o.pose = 'walk';
   if (game.mode === 'drink') { o.headDown = smooth(Math.min(game.modeT, 2.6 - game.modeT) / 0.4); o.mouth = 'open'; o.eyes = 'happy'; }
@@ -2503,15 +2770,13 @@ function stegoLook() {
   else if (game.mode === 'brush') { o.mouth = game.brush.done ? 'smile' : 'grin'; o.eyes = game.brush.done ? 'happy' : 'open'; }
   else if (game.mode === 'eat') { o.mouth = 'open'; }
   else if (pet.yawnT > 0) { o.mouth = 'yawn'; o.eyes = 'closed'; }
+  else if (pet.danceT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; o.wiggle = 1; }
   else if (pet.giggleT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; }
   else if (pet.happyT > 0) { o.eyes = 'happy'; o.wag = 1; }
   else if (low.value < NEED_SAD) { o.eyes = 'sad'; o.mouth = 'sad'; }
   if (game.ball && game.ball.carried) o.mouth = 'open';
   return o;
 }
-
-/** Today's weather (0.3 fills this in; until then always sunny). */
-function currentWeather() { return 'sun'; }
 
 /** Camera: zoomed in on the stego in the menu, normal in the game. */
 function cameraZoom() {
@@ -2537,7 +2802,15 @@ function drawWorld() {
     const tubW = game.stegoInfo ? game.stegoInfo.box.w * 0.8 : stegoSize * 0.6;
     if (game.mode === 'bath') drawTub(ctx, W / 2 + 6 * U, standY + 6 * U, tubW, 'back');
     if (game.mode === 'drink') drawBowl(ctx, game.bowlX, standY + 4 * U, 72 * U, 1 - clamp(game.modeT / 2.6, 0, 1));
-    game.stegoInfo = drawStego(ctx, sx, standY, stegoSize, look);
+    // Hide and seek: far back he is drawn smaller and higher up (behind a hiding place).
+    const hd = game.hide, depth = hd ? pet.depth : 0;
+    const sy = lerp(standY, groundY + 76 * U, smooth(depth)), ss = stegoSize * lerp(1, hd ? hd.sMin : 1, smooth(depth));
+    if (hd && hd.phase === 'found') drawHideSpots(ctx);
+    if (giftWaiting() && game.mode === 'idle' && !asleepNow()) { const gp = giftPos(); drawGift(ctx, gp.x, gp.y, U, game.t); }
+    if (game.visit && game.visit.kind !== 'ptero' && game.visit.kind !== 'butterflies') drawVisitor(ctx, game.visit, game.t);
+    game.stegoInfo = drawStego(ctx, sx, sy, ss, look);
+    if (hd && hd.phase !== 'found') drawHideSpots(ctx);
+    if (game.visit && (game.visit.kind === 'ptero' || game.visit.kind === 'butterflies')) drawVisitor(ctx, game.visit, game.t);
     if (game.mode === 'bath') {
       drawTub(ctx, W / 2 + 6 * U, standY + 6 * U, tubW, 'front');
       if (game.bath.phase === 'scrub' && S.needs.clean < 100) drawRubHint(game.stegoInfo.box);
@@ -2545,6 +2818,7 @@ function drawWorld() {
     if (game.ball) drawBall(ctx, game.ball.x, ballY(), BALL_R * U, game.ball.rot);
     if (game.flying) drawFood(ctx, game.flying.id, game.flying.x, game.flying.y, 46 * U);
   }
+  drawWeather(ctx, weather, game.t);
   drawNightShade(ctx, sky);
   if (firefliesNow(t, placeId === 'travel' ? 'meadow' : placeId, weather)) drawFireflies(ctx, game.t);
   drawParts(ctx);
@@ -2555,6 +2829,10 @@ function drawWorld() {
     if (low.value < NEED_LOW) { const h = game.stegoInfo.head; drawThought(ctx, h.x + 10 * U, h.y - 60 * U, low.need, game.t); }
   }
   ctx.restore();
+
+  // A photo shows the picture as it is now (no finger things, no flash).
+  if (game.photoPending) capturePhoto();
+  if (game.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,' + game.flash.toFixed(2) + ')'; ctx.fillRect(0, 0, W, H); }
 
   // Things that follow the finger are drawn without the camera.
   if (game.held) drawFood(ctx, game.held.id, game.held.x, game.held.y, 56 * U);
@@ -2634,7 +2912,7 @@ const ACTIONS = [
   { id: 'food', icon: 'food', label: 'Essen', run: () => startMode('eat') },
   { id: 'drink', icon: 'drink', label: 'Trinken', run: () => startMode('drink') },
   { id: 'bath', icon: 'bath', label: 'Baden', run: () => startMode('bath') },
-  { id: 'ball', icon: 'fun', label: 'Ball spielen', run: () => startMode('ball') },
+  { id: 'play', icon: 'play', label: 'Spielen', run: () => openPlayMenu() },
   { id: 'brush', icon: 'brush', label: 'Zähne putzen', run: () => startMode('brush') },
   { id: 'walk', icon: 'walk', label: 'Wandern', run: () => startWalk() },
   { id: 'bed', icon: 'bed', label: 'Licht aus', run: () => goToBed() },
@@ -2658,6 +2936,17 @@ function buildUI() {
   $('r-icon').innerHTML = iconSVG('bed');
   $('b-map').innerHTML = iconSVG('map');
   $('b-map').addEventListener('click', openPlaces);
+  // 0.3: wardrobe, album, camera, play menu, music pad.
+  $('b-wear').innerHTML = iconSVG('hat'); $('b-wear').addEventListener('click', openWardrobe);
+  $('b-album').innerHTML = iconSVG('album'); $('b-album').addEventListener('click', openAlbum);
+  $('b-camera').innerHTML = iconSVG('camera'); $('b-camera').addEventListener('click', () => { if (hatched()) takePhoto(false); });
+  $('w-close').addEventListener('click', closeWardrobe);
+  $('a-close').addEventListener('click', closeAlbum);
+  $('pv-close').addEventListener('click', () => { $('photoview').hidden = true; });
+  $('play-ball').innerHTML = iconSVG('fun'); $('play-ball').addEventListener('click', () => startMode('ball'));
+  $('play-hide').innerHTML = iconSVG('hide'); $('play-hide').addEventListener('click', () => startMode('hide'));
+  $('play-music').innerHTML = iconSVG('music'); $('play-music').addEventListener('click', () => startMode('music'));
+  buildMusicPad();
   $('pl-close').addEventListener('click', closePlaces);
   $('walkbar').querySelector('.foot').innerHTML = iconSVG('walk');
   $('walkbar').querySelector('.flag').innerHTML = iconSVG('map');
@@ -2687,7 +2976,9 @@ function refreshUI() {
   if (S.walk) $('walkbar').querySelector('b').style.width = (100 * S.walk.sec / WALK_SECONDS).toFixed(1) + '%';
   $('act-bed').classList.add('glow');
   $('tray').hidden = !(inGame && game.mode === 'eat');
-  $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball'].includes(game.mode));
+  $('playtray').hidden = !(inGame && game.mode === 'play');
+  $('musicpad').hidden = !(inGame && game.mode === 'music');
+  $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music'].includes(game.mode));
   updateNeedBars();
 }
 
@@ -2772,6 +3063,7 @@ function setupSettings() {
   $('c-no').addEventListener('click', () => { $('confirm').hidden = true; });
   $('c-yes').addEventListener('click', () => {
     resetAll();
+    photos = []; savePhotos();   // "everything" includes the album (stored separately)
     $('confirm').hidden = true;
     closeSettings();
     game.mode = 'idle'; game.ball = null; game.bath = null; game.brush = null;
@@ -2814,12 +3106,35 @@ window.__back = () => {
   if (!$('settings').hidden) { closeSettings(); return true; }
   if (!$('rest').hidden) { $('rest').hidden = true; return true; }
   if (!$('places').hidden) { closePlaces(); return true; }
+  if (!$('photoview').hidden) { $('photoview').hidden = true; return true; }
+  if (!$('album').hidden) { closeAlbum(); return true; }
+  if (!$('wardrobe').hidden) { closeWardrobe(); return true; }
   if (game.screen === 'game') {
     if (!['idle', 'hatch', 'party'].includes(game.mode)) { endMode(); return true; }
     showMenu(); return true;
   }
   return false;
 };
+
+/** The play button opens a small menu: ball, hide and seek, music. */
+function openPlayMenu() {
+  if (!hatched() || asleepNow() || game.mode !== 'idle') return;
+  sound('tap');
+  game.mode = 'play'; game.modeT = 0;
+  refreshUI();
+}
+
+/** Six coloured xylophone bars (higher = shorter) and two drums. */
+function buildMusicPad() {
+  const cols = ['#e53935', '#fb8c00', '#fdd835', '#43a047', '#1e88e5', '#8e24aa'];
+  $('musicpad').innerHTML = '<button class="drum" id="mk-6" type="button" aria-label="Trommel" style="background:#ffe0b2"></button>' +
+    cols.map((c, i) => '<button class="key" id="mk-' + i + '" type="button" aria-label="Ton" style="background:' + c + ';height:' + (96 - i * 8) + 'px"></button>').join('') +
+    '<button class="drum small" id="mk-7" type="button" aria-label="kleine Trommel" style="background:#fff3e0"></button>';
+  for (let i = 0; i < 8; i++) {
+    const el = $('mk-' + i);
+    el.addEventListener('pointerdown', e => { e.preventDefault(); unlockAudio(); playKey(i); el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 120); });
+  }
+}
 
 /* ===== 10-input.js ===== */
 /* 10-input.js – touches on the canvas and on the food tray.
@@ -2863,8 +3178,8 @@ function onMove(e) {
   if (asleepNow()) return;
   if (game.mode === 'brush' && game.brush && !game.brush.done) { game.brush.x = e.clientX; game.brush.y = e.clientY; game.rubbing = 0.25; return; }
   if (game.mode === 'bath') { game.rubbing = 0.25; return; }
-  if (game.mode === 'ball') return;
-  if ((game.mode === 'idle' || game.mode === 'eat') && game.stegoInfo && inBox(e.clientX, e.clientY, game.stegoInfo.box)) strokeStego(d);
+  if (['ball', 'hide', 'music'].includes(game.mode)) return;
+  if ((game.mode === 'idle' || game.mode === 'eat' || game.mode === 'play') && game.stegoInfo && inBox(e.clientX, e.clientY, game.stegoInfo.box)) strokeStego(d);
 }
 
 function onUp(e) {
@@ -2891,6 +3206,11 @@ function onUp(e) {
   if (!hatched()) {
     if (eggHit(x, y) && game.mode !== 'hatch') { eggFx.wobbleV += 1.2; sound(isNight(now()) ? 'murmur' : 'egg'); }
     return;
+  }
+  if (game.mode === 'hide') { const i = hideSpotAt(x, y); if (i >= 0) hideTap(i); return; }
+  if (giftWaiting() && game.mode === 'idle' && !asleepNow()) {
+    const gp = giftPos();
+    if (dist(x, y, gp.x, gp.y - 25 * U) < 45 * U) { openGift(); return; }
   }
   for (let i = 0; i < S.poops.length; i++) {
     const p = poopPos(i);
@@ -2957,6 +3277,7 @@ function frame(ts) {
 
 function start() {
   loadGame();
+  loadPhotos();
   resize();
   buildUI();
   setupInput();
@@ -3097,6 +3418,419 @@ function drawFireflies(c, time) {
   }
 }
 
+/* ===== 14-weather.js ===== */
+/* 14-weather.js – today's weather (0.3): one per calendar day, chosen from the day number so it
+ * stays the same all day and after a restart. Places change it: dry places stay sunny, cold places
+ * get snow instead of rain, the cave has none. Rain turns into a rainbow after RAINBOW_FROM.
+ * Weather values: 'sun' | 'clouds' | 'rain' | 'snow' | 'rainbow'. */
+
+/** Weather at time t for a place. game.weatherTest (tests only) overrides the day's weather. */
+function weatherAt(t, placeId) {
+  const d = dayIndex(t), month = new Date(t).getMonth();
+  let w = game.weatherTest;
+  if (!w) {
+    const r = mulberry(d * 7919 + 13)();
+    w = r < WEATHER_SHARES.sun ? 'sun' : r < WEATHER_SHARES.sun + WEATHER_SHARES.clouds ? 'clouds' : 'rain';
+    if (w === 'rain' && (month === 11 || month <= 1)) w = 'snow';   // December to February
+  }
+  const pl = placeById(placeId);
+  if (pl.indoor) return 'sun';
+  if (pl.dry && (w === 'rain' || w === 'snow')) return 'sun';
+  if (pl.cold && w === 'rain') w = 'snow';
+  if (w === 'rain' && minuteOfDay(t) >= RAINBOW_FROM) w = 'rainbow';
+  return w;
+}
+
+/** Weather where he is right now (on the way: like the meadow). */
+function currentWeather() {
+  const id = !hatched() || S.walk ? 'meadow' : S.place;
+  return weatherAt(now(), id);
+}
+
+/** Rain or snow falling over the whole picture (drawn after the place, before the night shade). */
+function drawWeather(c, w, time) {
+  if (w === 'rain') {
+    c.strokeStyle = 'rgba(200,225,255,0.65)'; c.lineWidth = 1.6 * U; c.lineCap = 'round';
+    c.beginPath();
+    const r = mulberry(5);
+    for (let i = 0; i < 70; i++) {
+      const x0 = r() * (W + 60 * U), sp = (500 + r() * 200) * U, ph = r() * 10;
+      const y = ((time * sp + ph * H) % (H + 40 * U)) - 20 * U, x = x0 - (y / H) * 60 * U;
+      c.moveTo(x, y); c.lineTo(x - 4 * U, y + 14 * U);
+    }
+    c.stroke();
+  } else if (w === 'snow') {
+    const r = mulberry(6);
+    c.fillStyle = 'rgba(255,255,255,0.9)';
+    for (let i = 0; i < 60; i++) {
+      const x0 = r() * W, sp = (25 + r() * 35) * U, ph = r() * 10, s = (1.5 + r() * 2.5) * U;
+      const y = ((time * sp + ph * H) % (H + 20 * U)) - 10 * U, x = x0 + Math.sin(time + ph * 3) * 14 * U;
+      c.beginPath(); c.arc(x, y, s, 0, TAU); c.fill();
+    }
+  }
+}
+
+/* ===== 15-play.js ===== */
+/* 15-play.js – the two new games of 0.3: hide and seek, and making music while he dances.
+ * Both are modes like 'ball' (game.mode 'hide' / 'music'), started from the play menu. */
+
+/* ---------- hide and seek ---------- */
+
+/** The three hiding places (screen positions, size). Kind: 0 bush, 1 berry bush, 2 rock. */
+function hideSpots() {
+  return [0.2, 0.5, 0.8].map((fx, i) => ({ x: W * fx, y: groundY + 78 * U, kind: i }));
+}
+
+/** Starts a round: he runs to a random hiding place (not the last one) and gets small behind it. */
+function hideRound() {
+  const h = game.hide;
+  let spot;
+  do spot = Math.floor(Math.random() * 3); while (spot === h.spot);
+  h.spot = spot; h.phase = 'hiding'; h.t = 0; h.hint = 5;
+  pet.tx = hideSpots()[spot].x - W / 2;
+}
+
+function startHide() {
+  const box = game.stegoInfo ? game.stegoInfo.box : { w: 200 * U, h: 120 * U };
+  // Scale so that he fits completely behind a hiding place.
+  game.hide = { phase: 'hiding', spot: -1, t: 0, hint: 5, wiggle: [0, 0, 0], sMin: Math.min(0.9, 110 * U / box.w, 60 * U / box.h) };
+  pet.depth = 0;
+  hideRound();
+}
+
+function updateHide(dt) {
+  const h = game.hide;
+  if (!h) return;
+  h.t += dt;
+  h.wiggle = h.wiggle.map(v => Math.max(0, v - dt));
+  const target = h.phase === 'hiding' || h.phase === 'seek' ? 1 : h.phase === 'found' ? 1 : 0;
+  pet.depth = clamp(pet.depth + Math.sign(target - pet.depth) * dt * 1.1, 0, 1);
+  if (h.phase === 'hiding' && pet.depth >= 1 && !pet.moving) { h.phase = 'seek'; h.t = 0; }
+  else if (h.phase === 'seek' && h.t > h.hint) {
+    // Hint: his hiding place shakes and he giggles.
+    h.hint = h.t + 4; h.wiggle[h.spot] = 0.6; sound('giggle');
+  } else if (h.phase === 'found' && h.t > 1.4) { h.phase = 'back'; h.t = 0; pet.tx = 0; }
+  else if (h.phase === 'back' && pet.depth <= 0 && !pet.moving && h.t > 0.6) hideRound();
+}
+
+/** A hiding place was tapped. */
+function hideTap(i) {
+  const h = game.hide;
+  if (!h || h.phase !== 'seek') return;
+  if (i === h.spot) {
+    h.phase = 'found'; h.t = 0;
+    addNeed('fun', HIDE_FUN); save();
+    pet.jumpV = 220 * U; pet.giggleT = 1.2;
+    sound('giggle'); sound('sparkle');
+    const sp = hideSpots()[i];
+    for (let k = 0; k < 12; k++) addPart('star', sp.x + rnd(-50, 50) * U, sp.y - rnd(20, 90) * U, { size: 8 });
+  } else {
+    h.wiggle[i] = 0.5;
+    sound('nope');
+  }
+}
+
+/** Index of the hiding place at screen point (x, y), or -1. */
+function hideSpotAt(x, y) {
+  return hideSpots().findIndex(s => Math.abs(x - s.x) < 75 * U && y > s.y - 110 * U && y < s.y + 25 * U);
+}
+
+/** Draws the three hiding places (wiggling when tapped wrong or as a hint). */
+function drawHideSpots(c) {
+  const env = { d: k => k, L: 1 };
+  hideSpots().forEach((s, i) => {
+    const wig = game.hide.wiggle[i] > 0 ? Math.sin(game.t * 40) * 4 * U : 0;
+    if (s.kind === 2) pRock(c, env, s.x + wig, s.y, 2.8, '#9e9e9e');
+    else pBush(c, env, s.x + wig, s.y, 1.9, s.kind ? '#3f8f3a' : '#4f9a3c', s.kind ? '#e53935' : null);
+  });
+}
+
+/* ---------- music ---------- */
+
+/** A key of the music pad: 0..5 xylophone bars, 6 big drum, 7 small drum. He dances to it. */
+function playKey(i) {
+  if (game.mode !== 'music') return;
+  if (i < 6) sound('xylo', i); else sound('drum', i - 6);
+  addNeed('fun', MUSIC_FUN);
+  pet.danceT = 1.1;
+  pet.dir = -pet.dir;
+  if (pet.jump === 0) pet.jumpV = (i >= 6 ? 190 : 140) * U;
+  const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U };
+  addPart('note', h.x + rnd(-40, 40) * U, h.y - 40 * U, { vy: -60 * U, size: 9, color: ['#e53935', '#fb8c00', '#fdd835', '#43a047', '#1e88e5', '#8e24aa', '#6d4c41', '#6d4c41'][i], max: 1.6 });
+}
+
+/* ===== 16-visit.js ===== */
+/* 16-visit.js – friends come to visit (0.3): at most one a day, at a random time between VISIT_FROM
+ * and an hour before bedtime. If the app is closed then, the friend comes the next time the child
+ * looks in (the same day, while he is awake). game.visit holds the visitor on screen. */
+
+/** Plans today's visit once per day (random minute, kept in the save). */
+function planVisit(t) {
+  const d = dayIndex(t);
+  if (S.visitDay === d) return;
+  const from = VISIT_FROM, to = Math.max(from + 30, S.opts.sleep - 60);
+  const day0 = new Date(t); day0.setHours(0, 0, 0, 0);
+  S.visitDay = d; S.visitDone = false;
+  S.visitAt = day0.getTime() + Math.round(rnd(from, to)) * 60000;
+  save();
+}
+
+/** Visitor of a day (all five take turns, starting somewhere by the day number). */
+const visitorOfDay = d => VISITORS[((d % VISITORS.length) + VISITORS.length) % VISITORS.length];
+
+function updateVisit(dt, sleeping) {
+  const t = now();
+  if (!hatched() || !debugFlags.visit) return;
+  planVisit(t);
+  const v = game.visit;
+  if (!v) {
+    const ok = !S.visitDone && t >= S.visitAt && !sleeping && !isSleepy(t) && !S.walk &&
+      game.screen === 'game' && game.trans >= 1 && game.mode === 'idle';
+    if (ok) startVisit(visitorOfDay(dayIndex(t)));
+    return;
+  }
+  v.t += dt;
+  const box = game.stegoInfo ? game.stegoInfo.box : { x: W * 0.2, w: W * 0.6 };
+  const side = v.side, targetX = side > 0 ? Math.min(W - 45 * U, box.x + box.w + 40 * U) : Math.max(45 * U, box.x - 40 * U);
+  if (v.phase === 'in') {
+    v.x += Math.sign(targetX - v.x) * Math.min(Math.abs(targetX - v.x), 110 * U * dt);
+    v.walk += dt * 10;
+    if (Math.abs(targetX - v.x) < 2) { v.phase = 'stay'; v.t = 0; sound('hello'); pet.giggleT = 1; }
+  } else if (v.phase === 'stay') {
+    // Every 3 seconds both hop and hearts fly.
+    if (Math.floor(v.t / 3) !== Math.floor((v.t - dt) / 3)) {
+      v.hop = 0.5; if (pet.jump === 0 && game.mode === 'idle') pet.jumpV = 150 * U;
+      addPart('heart', (v.x + W / 2) / 2, standY - 140 * U, { size: 8 });
+    }
+    if (game.mode === 'idle' && !sleeping) pet.dir = side;   // he looks at his friend
+    if (v.t >= VISIT_SECONDS || sleeping) {
+      v.phase = 'out'; v.t = 0;
+      addNeed('love', VISIT_LOVE); addNeed('fun', VISIT_FUN); save();
+      sound('hello');
+    }
+  } else if (v.phase === 'out') {
+    v.x += side * 110 * U * dt; v.walk += dt * 10; v.dir = side;
+    if (v.x < -120 * U || v.x > W + 120 * U) game.visit = null;
+  }
+  if (v.hop > 0) v.hop = Math.max(0, v.hop - dt);
+}
+
+function startVisit(kind) {
+  const side = Math.random() < 0.5 ? -1 : 1;
+  game.visit = { kind, side, x: side > 0 ? W + 90 * U : -90 * U, dir: -side, phase: 'in', t: 0, walk: 0, hop: 0 };
+  S.visitDone = true;
+  save();
+}
+
+/** Draws the visitor (and lets the click on it count as a little hello). */
+function drawVisitor(c, v, time) {
+  const hop = v.hop > 0 ? Math.sin(v.hop / 0.5 * Math.PI) * 26 * U : 0;
+  const y = standY - hop, step = Math.sin(v.walk) * 4 * U;
+  c.save(); c.translate(v.x, y); c.scale(v.phase === 'out' ? v.side : -v.side, 1);
+  c.lineWidth = 2.4 * U; c.lineJoin = 'round'; c.lineCap = 'round';
+  const s = U;
+  const eye = (x, yy, r) => { c.fillStyle = '#fff'; c.beginPath(); c.arc(x, yy, r, 0, TAU); c.fill(); c.stroke(); c.fillStyle = '#222'; c.beginPath(); c.arc(x + r * 0.25, yy, r * 0.55, 0, TAU); c.fill(); };
+  const shadow = () => { c.fillStyle = 'rgba(30,60,20,0.18)'; c.beginPath(); c.ellipse(0, hop + 2 * s, 40 * s, 6 * s, 0, 0, TAU); c.fill(); };
+  if (v.kind === 'trex') {
+    shadow();
+    c.strokeStyle = '#8a3b12'; c.fillStyle = '#ff8a4c';
+    c.beginPath(); c.moveTo(-20 * s, -30 * s); c.quadraticCurveTo(-55 * s, -30 * s, -62 * s, -20 * s); c.quadraticCurveTo(-45 * s, -18 * s, -18 * s, -16 * s); c.fill(); c.stroke();
+    for (const lx of [-8, 8]) { c.beginPath(); c.rect(lx * s - 6 * s + (lx > 0 ? step : -step), -22 * s, 12 * s, 22 * s); c.fill(); c.stroke(); }
+    c.beginPath(); c.ellipse(0, -36 * s, 24 * s, 22 * s, 0, 0, TAU); c.fill(); c.stroke();
+    c.beginPath(); c.ellipse(22 * s, -66 * s, 22 * s, 18 * s, 0, 0, TAU); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(16 * s, -38 * s); c.lineTo(26 * s, -34 * s); c.moveTo(14 * s, -32 * s); c.lineTo(23 * s, -26 * s); c.stroke();
+    eye(26 * s, -72 * s, 5.5 * s);
+    c.beginPath(); c.moveTo(28 * s, -56 * s); c.quadraticCurveTo(36 * s, -52 * s, 42 * s, -58 * s); c.stroke();
+    c.fillStyle = '#ffd0b0'; c.beginPath(); c.ellipse(4 * s, -30 * s, 12 * s, 14 * s, 0, 0, TAU); c.fill();
+  } else if (v.kind === 'ptero') {
+    c.translate(0, -150 * s + Math.sin(time * 3) * 10 * s);
+    const flap = Math.sin(time * 9) * 0.6;
+    c.strokeStyle = '#4a2f6b'; c.fillStyle = '#b388ff';
+    for (const sd of [-1, 1]) { c.save(); c.scale(1, 1); c.rotate(sd * 0 + (sd < 0 ? -flap : flap) * 0.6); c.beginPath(); c.moveTo(0, 0); c.lineTo(sd * 60 * s, -18 * s); c.lineTo(sd * 40 * s, 8 * s); c.closePath(); c.fill(); c.stroke(); c.restore(); }
+    c.beginPath(); c.ellipse(0, 0, 16 * s, 9 * s, 0, 0, TAU); c.fill(); c.stroke();
+    c.beginPath(); c.ellipse(16 * s, -8 * s, 10 * s, 8 * s, 0, 0, TAU); c.fill(); c.stroke();
+    c.fillStyle = '#ffca28'; c.beginPath(); c.moveTo(24 * s, -9 * s); c.lineTo(44 * s, -4 * s); c.lineTo(24 * s, -3 * s); c.fill(); c.stroke();
+    c.fillStyle = '#b388ff'; c.beginPath(); c.moveTo(10 * s, -12 * s); c.lineTo(-6 * s, -24 * s); c.lineTo(14 * s, -15 * s); c.fill(); c.stroke();
+    eye(18 * s, -10 * s, 3.5 * s);
+  } else if (v.kind === 'trike') {
+    shadow();
+    c.strokeStyle = '#3d2a63'; c.fillStyle = '#9575cd';
+    c.beginPath(); c.moveTo(-34 * s, -24 * s); c.lineTo(-56 * s, -18 * s); c.lineTo(-34 * s, -12 * s); c.fill(); c.stroke();
+    for (const lx of [-22, -6, 10, 24]) { c.beginPath(); c.rect(lx * s - 6 * s + ((lx / 2) % 2 ? step : -step), -18 * s, 12 * s, 18 * s); c.fill(); c.stroke(); }
+    c.beginPath(); c.ellipse(-2 * s, -30 * s, 38 * s, 20 * s, 0, 0, TAU); c.fill(); c.stroke();
+    c.fillStyle = '#ffab91'; c.beginPath(); c.arc(34 * s, -40 * s, 24 * s, Math.PI * 0.9, Math.PI * 2.1); c.fill(); c.stroke();
+    c.fillStyle = '#9575cd'; c.beginPath(); c.ellipse(42 * s, -30 * s, 18 * s, 14 * s, 0, 0, TAU); c.fill(); c.stroke();
+    c.fillStyle = '#fff8e1';
+    for (const [hx, hy, l] of [[38, -44, 20], [50, -42, 20], [58, -28, 10]]) { c.beginPath(); c.moveTo(hx * s - 3 * s, hy * s); c.lineTo(hx * s + l * 0.5 * s, hy * s - l * s); c.lineTo(hx * s + 3 * s, hy * s); c.fill(); c.stroke(); }
+    eye(42 * s, -34 * s, 4.5 * s);
+  } else if (v.kind === 'turtle') {
+    shadow();
+    c.strokeStyle = '#2e5d2e'; c.fillStyle = '#9ccc65';
+    for (const lx of [-18, 16]) { c.beginPath(); c.ellipse(lx * s + (lx > 0 ? step : -step), -4 * s, 8 * s, 6 * s, 0, 0, TAU); c.fill(); c.stroke(); }
+    c.beginPath(); c.ellipse(34 * s, -16 * s, 12 * s, 10 * s, 0, 0, TAU); c.fill(); c.stroke();
+    eye(38 * s, -19 * s, 3.5 * s);
+    c.fillStyle = '#6d9b3a'; c.beginPath(); c.ellipse(0, -14 * s, 32 * s, 22 * s, 0, Math.PI, TAU); c.closePath(); c.fill(); c.stroke();
+    c.strokeStyle = '#4e7a2a'; c.beginPath(); c.moveTo(-14 * s, -14 * s); c.lineTo(-8 * s, -30 * s); c.lineTo(8 * s, -30 * s); c.lineTo(14 * s, -14 * s); c.stroke();
+  } else if (v.kind === 'butterflies') {
+    for (let i = 0; i < 3; i++) {
+      const bx = Math.sin(time * 1.3 + i * 2) * 30 * s + (i - 1) * 25 * s, by = -110 * s - i * 20 * s + Math.cos(time * 1.7 + i) * 18 * s;
+      const fl = Math.abs(Math.sin(time * 12 + i));
+      c.fillStyle = ['#ff8a65', '#4fc3f7', '#ffd54f'][i];
+      c.beginPath(); c.ellipse(bx - 6 * s * fl, by, 8 * s * fl + 1, 10 * s, -0.4, 0, TAU); c.ellipse(bx + 6 * s * fl, by, 8 * s * fl + 1, 10 * s, 0.4, 0, TAU); c.fill();
+      c.fillStyle = '#333'; c.fillRect(bx - 1.2 * s, by - 8 * s, 2.4 * s, 16 * s);
+    }
+  }
+  c.restore();
+}
+
+/* ===== 17-wardrobe.js ===== */
+/* 17-wardrobe.js – dressing up (0.3): presents on the days in WEAR_ITEMS, opening one puts the new
+ * thing on; the wardrobe (hat button) shows all 12, presents not yet due as a wrapped box.
+ * Some places add something automatically (sunglasses at the beach, a scarf in the snow), see PLACES.wear. */
+
+/** Number of things whose day has come (by day of life). */
+function wearUnlocked() { const d = lifeDay(now()); return WEAR_ITEMS.filter(w => w.day <= d).length; }
+/** Is a present waiting to be opened? */
+const giftWaiting = () => hatched() && S.giftSeen < wearUnlocked();
+
+/** Where the present lies on the ground (to the right of him). */
+function giftPos() {
+  const box = game.stegoInfo ? game.stegoInfo.box : { x: W * 0.3, w: W * 0.4 };
+  return { x: clamp(box.x + box.w + 34 * U, 40 * U, W - 40 * U), y: standY + 6 * U };
+}
+
+/** The present is tapped: open it, put the thing on. */
+function openGift() {
+  if (!giftWaiting()) return;
+  const item = WEAR_ITEMS[S.giftSeen];
+  S.giftSeen++;
+  S.wear[item.slot] = item.id;
+  save();
+  sound('fanfare');
+  const p = giftPos();
+  for (let i = 0; i < 30; i++) addPart('confetti', p.x, p.y - 20 * U, { vx: rnd(-160, 160) * U, vy: rnd(-300, -120) * U, g: 500, color: ['#ff5c8a', '#ffcc33', '#5cc15a', '#3fa9f5', '#b388ff'][i % 5], size: 8, max: 1.6 });
+  pet.jumpV = 200 * U; pet.giggleT = 1.2;
+}
+
+/** A wrapped box with a bow; bounces a little so the child notices it. */
+function drawGift(c, x, y, s, t) {
+  const b = Math.abs(Math.sin(t * 3)) * 6 * U;
+  c.save(); c.translate(x, y - b);
+  c.fillStyle = '#ff5c8a'; c.strokeStyle = '#a32757'; c.lineWidth = 2 * U;
+  c.beginPath(); c.rect(-20 * s, -32 * s, 40 * s, 32 * s); c.fill(); c.stroke();
+  c.fillStyle = '#ff7aa2'; c.beginPath(); c.rect(-23 * s, -40 * s, 46 * s, 10 * s); c.fill(); c.stroke();
+  c.fillStyle = '#ffd54f'; c.fillRect(-4 * s, -40 * s, 8 * s, 40 * s);
+  c.beginPath(); c.ellipse(-9 * s, -46 * s, 9 * s, 6 * s, -0.4, 0, TAU); c.ellipse(9 * s, -46 * s, 9 * s, 6 * s, 0.4, 0, TAU); c.fill();
+  c.restore();
+}
+
+/** What he wears right now: his own things plus what a place adds to an empty slot. */
+function wearNow() {
+  const w = { ...S.wear }, pl = placeById(S.walk ? 'meadow' : S.place);
+  if (pl.wear) for (const slot in pl.wear) if (!w[slot]) w[slot] = pl.wear[slot];
+  return w;
+}
+
+/* ---------- wardrobe ---------- */
+
+function openWardrobe() {
+  if (!hatched()) return;
+  sound('tap');
+  const list = $('wearlist');
+  list.innerHTML = WEAR_ITEMS.map((w, i) => '<button class="wtile' + (i < S.giftSeen ? '' : ' locked') + (S.wear[w.slot] === w.id ? ' on' : '') +
+    '" id="wt-' + w.id + '" type="button" aria-label="Verkleiden"><canvas width="150" height="120"></canvas></button>').join('');
+  WEAR_ITEMS.forEach((w, i) => {
+    const el = $('wt-' + w.id), c = el.querySelector('canvas').getContext('2d');
+    if (i < S.giftSeen) drawWearPreview(c, w, 150, 120); else { c.save(); c.scale(1.2, 1.2); drawGift(c, 62, 92, 1.1, 0); c.restore(); }
+    el.addEventListener('click', () => {
+      if (i >= S.giftSeen) { sound('refuse'); el.classList.remove('nope'); void el.offsetWidth; el.classList.add('nope'); return; }
+      S.wear[w.slot] = S.wear[w.slot] === w.id ? null : w.id;   // tap again = take it off
+      sound(S.wear[w.slot] ? 'happy' : 'tap');
+      save();
+      openWardrobe();
+    });
+  });
+  $('wardrobe').hidden = false;
+}
+function closeWardrobe() { $('wardrobe').hidden = true; }
+
+/** The head of a stego wearing one thing, centred in a w x h canvas. */
+function drawWearPreview(c, item, w, h) {
+  c.fillStyle = '#e8f4ff'; c.fillRect(0, 0, w, h);
+  const o = { g: 0.6, stage: 2, t: 0.4, eyes: 'open', mouth: 'smile', wear: { [item.slot]: item.id } };
+  // Draw once off-screen to find the head, then so that the head sits in the middle.
+  const probe = drawStego(document.createElement('canvas').getContext('2d'), 0, 0, 560, o);
+  drawStego(c, w * 0.5 - probe.head.x, h * 0.62 - probe.head.y, 560, o);
+}
+
+/* ===== 18-photos.js ===== */
+/* 18-photos.js – camera and photo album (0.3). A photo is the game picture (without buttons) as a
+ * small JPEG, stored apart from the game in localStorage[PHOTO_KEY]. Automatic photos are taken when
+ * he hatches and at every new growth stage; they are kept. When there are PHOTO_MAX photos, the oldest
+ * own photo makes room. If the phone's storage is full, old own photos are dropped until it fits. */
+
+let photos = [];
+function loadPhotos() {
+  try { const a = JSON.parse(localStorage.getItem(PHOTO_KEY)); photos = Array.isArray(a) ? a.filter(p => p && typeof p.data === 'string') : []; }
+  catch (e) { photos = []; }
+}
+function savePhotos() {
+  for (;;) {
+    try { localStorage.setItem(PHOTO_KEY, JSON.stringify(photos)); return true; }
+    catch (e) {
+      const i = photos.findIndex(p => !p.auto);
+      if (i < 0) return false;
+      photos.splice(i, 1);
+    }
+  }
+}
+
+/** Asks for a photo; it is taken right after the next picture is drawn (see drawWorld). */
+function takePhoto(auto = false) {
+  game.photoPending = auto ? 'auto' : 'own';
+  if (!auto) { game.flash = 1; sound('shutter'); }
+}
+
+/** Called at the end of drawWorld, before the flash is drawn: copies the canvas into a photo. */
+function capturePhoto() {
+  const kind = game.photoPending;
+  game.photoPending = null;
+  const pw = PHOTO_W, ph = Math.round(PHOTO_W * H / W);
+  const c = document.createElement('canvas'); c.width = pw; c.height = ph;
+  c.getContext('2d').drawImage(cv, 0, 0, cv.width, cv.height, 0, 0, pw, ph);
+  let data;
+  try { data = c.toDataURL('image/jpeg', 0.72); } catch (e) { return; }
+  photos.push({ t: now(), day: lifeDay(now()), place: S.walk ? 'travel' : S.place, auto: kind === 'auto', data });
+  while (photos.length > PHOTO_MAX) {
+    const i = photos.findIndex(p => !p.auto);
+    photos.splice(i < 0 ? 0 : i, 1);
+  }
+  savePhotos();
+}
+
+/* ---------- album ---------- */
+
+function openAlbum() {
+  sound('tap');
+  const list = $('photolist');
+  if (!photos.length) list.innerHTML = '<p class="info empty">' + iconSVG('camera') + 'Noch keine Fotos.</p>';
+  else list.innerHTML = photos.map((p, i) => '<button class="ptile photo" id="ph-' + i + '" type="button" aria-label="Foto"><img alt="" src="' + p.data + '">' +
+    '<span>Tag ' + Math.max(1, p.day) + '</span></button>').reverse().join('');
+  photos.forEach((p, i) => { const el = $('ph-' + i); if (el) el.addEventListener('click', () => showPhoto(i)); });
+  $('photocount').textContent = photos.length + ' von ' + PHOTO_MAX + ' Fotos';
+  $('album').hidden = false;
+}
+function closeAlbum() { $('album').hidden = true; $('photoview').hidden = true; }
+
+function showPhoto(i) {
+  const p = photos[i];
+  $('pv-img').src = p.data;
+  const d = new Date(p.t);
+  $('pv-text').textContent = 'Tag ' + Math.max(1, p.day) + ' · ' + d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear() +
+    (p.place && p.place !== 'travel' ? ' · ' + placeById(p.place).name : '');
+  $('photoview').hidden = false;
+}
+
 /* ===== 99-debug.js ===== */
 /* 99-debug.js – window.__st: hooks for the tests (tests/*.js). The game itself never uses them.
  * Time travel: __st.setTime('2026-11-20T09:00') or __st.travel(hours) move now() (clock.offset). */
@@ -3115,6 +3849,8 @@ window.__st = {
   step(sec) { const n = Math.round(sec * 30); for (let i = 0; i < n; i++) { update(1 / 30); drawWorld(); } refreshUI(); },
   /** Stops/starts the real-time frame loop (tests that need exact control). */
   pause(p) { paused = p; },
+  WEAR_ITEMS, VISITORS, weatherAt, currentWeather, startHide, hideTap, hideSpots, hideSpotAt, playKey, startVisit, planVisit, openGift, giftWaiting, giftPos, wearNow,
+  wearUnlocked, openWardrobe, closeWardrobe, takePhoto, openAlbum, closeAlbum, get photos() { return photos; }, loadPhotos, openPlayMenu,
   startWalk, arrive, goPlace, openPlaces, closePlaces, foundToday, walkLimitReached, firefliesNow, placePicture, walkFx,
   enterGame, showMenu, startMode, endMode, goToBed, offerFood, removePoop, tapStego, strokeStego, throwBall,
   eggPhase, eggProgress, eggRub, stageAt: () => stageAt(now()), growth: () => growthAt(now()), lifeDay: () => lifeDay(now()),
@@ -3137,7 +3873,7 @@ window.__st = {
   visible() {
     const v = id => !$(id).hidden;
     return { needs: v('needs'), actions: v('actions'), tray: v('tray'), close: v('close'), bed: v('act-bed'),
-      settings: v('settings'), confirm: v('confirm'), rest: v('rest'), exit: v('m-exit'), menuGone: $('menu').classList.contains('gone') };
+      settings: v('settings'), playtray: v('playtray'), musicpad: v('musicpad'), wardrobe: v('wardrobe'), album: v('album'), photoview: v('photoview'), side: v('side'), confirm: v('confirm'), rest: v('rest'), exit: v('m-exit'), menuGone: $('menu').classList.contains('gone') };
   },
 };
 

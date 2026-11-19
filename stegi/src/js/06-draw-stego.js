@@ -20,7 +20,7 @@ const PLATE_COUNT = [4, 5, 6, 7, 7];
  *   o     { colors (optional palette, default STEGO_COLORS), g, stage, t, dir (1 = looks right), pose ('stand'|'walk'|'lie'), walk (phase),
  *           eyes ('open'|'happy'|'closed'|'sad'), blink (0..1), mouth ('smile'|'open'|'chew'|
  *           'sad'|'yawn'|'grin'|'closed'), headDown (0..1), wiggle (0..1), dirt (0..1),
- *           jump (px up), wag (0..1) }
+ *           jump (px up), wag (0..1), wear ({ head, eyes, neck } item ids, 0.3) }
  * Returns screen positions: mouth {x, y}, head {x, y, r}, box {x, y, w, h} (for touches).
  */
 function drawStego(c, x, y, size, o) {
@@ -228,6 +228,8 @@ function drawStego(c, x, y, size, o) {
   } else {
     c.beginPath(); c.moveTo(mx - 8 * hs, my - 1 * hs); c.quadraticCurveTo(mx, my + 7 * hs, mx + 8 * hs, my - 2 * hs); c.stroke();
   }
+  // Things he wears (0.3): drawn with the head, so they tilt when he drinks.
+  if (o.wear) drawWear(c, o.wear, { hx, hy, hs, ex, ey, er, t });
   c.restore();   // head rotation
 
   c.restore();
@@ -243,4 +245,110 @@ function drawStego(c, x, y, size, o) {
   const width = (hx + 45 * hs - tipX + 10) * k;
   const top = y - (o.jump || 0) + (cy - ry - plateBase * 1.1) * k;
   return { mouth: m, head: { x: h.x, y: h.y, r: 28 * hs * k }, box: { x: left, y: top, w: width, h: y - top }, k };
+}
+
+/**
+ * Accessories in the stego's unit space (inside drawStego, after the head).
+ *   w  { head, eyes, neck } ids from WEAR_ITEMS (or null)
+ *   g  { hx, hy (skull centre), hs (head scale), ex, ey, er (eye), t }
+ */
+function drawWear(c, w, g) {
+  const { hx, hy, hs, ex, ey, er } = g;
+  const S_ = v => v * hs;
+  c.save();
+  c.lineJoin = 'round'; c.lineCap = 'round'; c.lineWidth = 2.2; c.strokeStyle = '#2c343b';
+  // ---- neck ----
+  if (w.neck === 'scarf') {
+    // A striped band around the neck behind the head, one end hanging down.
+    const x = hx - S_(30), y = hy + S_(4);
+    c.fillStyle = '#e53935';
+    c.beginPath(); c.moveTo(x - S_(6), y + S_(10)); c.lineTo(x - S_(20), y + S_(36)); c.lineTo(x - S_(6), y + S_(40)); c.lineTo(x + S_(6), y + S_(12)); c.closePath(); c.fill(); c.stroke();
+    c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.beginPath(); c.moveTo(x - S_(17), y + S_(32)); c.lineTo(x - S_(8), y + S_(35)); c.stroke(); c.strokeStyle = '#2c343b'; c.lineWidth = 2.2;
+    c.save(); c.translate(x, y); c.rotate(0.18);
+    c.beginPath(); c.ellipse(0, 0, S_(12), S_(20), 0, 0, TAU); c.fill(); c.stroke();
+    c.save(); c.clip(); c.fillStyle = '#ffffff'; c.fillRect(-S_(13), -S_(9), S_(26), S_(5)); c.fillRect(-S_(13), S_(4), S_(26), S_(5)); c.restore();
+    c.restore();
+  } else if (w.neck === 'bowtie') {
+    const x = hx - S_(14), y = hy + S_(19);
+    c.fillStyle = '#e53935';
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x - S_(10), y - S_(7)); c.lineTo(x - S_(10), y + S_(7)); c.closePath();
+    c.moveTo(x, y); c.lineTo(x + S_(10), y - S_(7)); c.lineTo(x + S_(10), y + S_(7)); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#b71c1c'; c.beginPath(); c.arc(x, y, S_(3.2), 0, TAU); c.fill(); c.stroke();
+  }
+  // ---- eyes ----
+  if (w.eyes === 'glasses' || w.eyes === 'sunglasses') {
+    // Two lenses: the near one round the eye, the far one peeking out behind the snout; a frame bar to the ear.
+    const sun = w.eyes === 'sunglasses', frame = sun ? '#ff4f87' : '#3e2723';
+    const lens = (x, y, rx, ry) => {
+      c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, TAU);
+      if (sun) { c.fillStyle = '#1b1b24'; c.fill(); } else { c.fillStyle = 'rgba(200,230,255,0.25)'; c.fill(); }
+      c.strokeStyle = frame; c.lineWidth = 2.8; c.stroke();
+    };
+    const fx = hx + S_(16), fy = ey + S_(1);
+    lens(fx, fy, er * 0.75, er * 0.95);
+    c.strokeStyle = frame; c.lineWidth = 2.8;
+    c.beginPath(); c.moveTo(ex - er * 1.3, ey - S_(1)); c.lineTo(hx - S_(23), ey + S_(2)); c.moveTo(ex + er * 1.3, ey - S_(1)); c.lineTo(fx - er * 0.7, fy - S_(1)); c.stroke();
+    lens(ex, ey, er * 1.35, er * 1.2);
+    if (sun) { c.fillStyle = 'rgba(255,255,255,0.6)'; c.beginPath(); c.ellipse(ex + er * 0.45, ey - er * 0.45, er * 0.45, er * 0.2, -0.5, 0, TAU); c.fill(); }
+    c.strokeStyle = '#2c343b'; c.lineWidth = 2.2;
+  }
+  // ---- head ----
+  const top = hy - S_(19), tx = hx - S_(4);
+  c.strokeStyle = '#2c343b'; c.lineWidth = 2.2;
+  if (w.head === 'bow') {
+    const x = hx - S_(10), y = top + S_(1);
+    c.fillStyle = '#ff6fa5';
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x - S_(13), y - S_(9)); c.lineTo(x - S_(12), y + S_(8)); c.closePath();
+    c.moveTo(x, y); c.lineTo(x + S_(13), y - S_(10)); c.lineTo(x + S_(13), y + S_(7)); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#e0457f'; c.beginPath(); c.arc(x, y, S_(4), 0, TAU); c.fill(); c.stroke();
+  } else if (w.head === 'party') {
+    c.save(); c.translate(tx, top + S_(3)); c.rotate(-0.25);
+    c.fillStyle = '#42a5f5';
+    c.beginPath(); c.moveTo(-S_(12), 0); c.lineTo(0, -S_(34)); c.lineTo(S_(12), 0); c.closePath(); c.fill(); c.stroke();
+    c.save(); c.clip(); c.fillStyle = '#ffd54f';
+    for (let i = 0; i < 3; i++) c.fillRect(-S_(14), -S_(9 + i * 10), S_(28), S_(4));
+    c.restore();
+    c.fillStyle = '#ff5c8a'; c.beginPath(); c.arc(0, -S_(35), S_(4.5), 0, TAU); c.fill(); c.stroke();
+    c.restore();
+  } else if (w.head === 'sunhat') {
+    c.fillStyle = '#f2d27a';
+    c.beginPath(); c.ellipse(tx, top + S_(3), S_(32), S_(7), -0.08, 0, TAU); c.fill(); c.stroke();
+    c.beginPath(); c.ellipse(tx, top - S_(3), S_(15), S_(12), 0, Math.PI, TAU); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#e53935'; c.fillRect(tx - S_(15), top - S_(2), S_(30), S_(4));
+  } else if (w.head === 'beanie') {
+    c.fillStyle = '#e53935';
+    c.beginPath(); c.moveTo(tx - S_(20), top + S_(7)); c.quadraticCurveTo(tx - S_(18), top - S_(16), tx + S_(4), top - S_(14));
+    c.quadraticCurveTo(tx - S_(16), top - S_(30), tx - S_(30), top - S_(22)); c.quadraticCurveTo(tx - S_(16), top - S_(12), tx + S_(18), top + S_(6)); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(tx - S_(1), top + S_(6), S_(20), S_(5), 0.05, 0, TAU); c.fill(); c.stroke();
+    c.beginPath(); c.arc(tx - S_(31), top - S_(22), S_(5), 0, TAU); c.fill(); c.stroke();
+  } else if (w.head === 'crown') {
+    c.fillStyle = '#ffca28';
+    c.beginPath(); c.moveTo(tx - S_(14), top + S_(4));
+    for (const [px, py] of [[-14, -12], [-7, -3], [0, -16], [7, -3], [14, -12], [14, 4]]) c.lineTo(tx + S_(px), top + S_(py));
+    c.closePath(); c.fill(); c.stroke();
+    for (const [px, col] of [[-7, '#e53935'], [0, '#42a5f5'], [7, '#66bb6a']]) { c.fillStyle = col; c.beginPath(); c.arc(tx + S_(px), top + S_(0), S_(2.4), 0, TAU); c.fill(); }
+  } else if (w.head === 'flowers') {
+    for (let i = 0; i < 7; i++) {
+      const a = Math.PI * (1.08 + i * 0.14), x = hx + Math.cos(a) * S_(25), y = hy + Math.sin(a) * S_(21);
+      c.fillStyle = ['#ff8fb1', '#ffffff', '#ffd54f', '#b39ddb'][i % 4];
+      for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(x + Math.cos(k * TAU / 5) * S_(3.2), y + Math.sin(k * TAU / 5) * S_(3.2), S_(2.6), 0, TAU); c.fill(); }
+      c.fillStyle = '#ff9800'; c.beginPath(); c.arc(x, y, S_(1.8), 0, TAU); c.fill();
+    }
+  } else if (w.head === 'pirate') {
+    c.fillStyle = '#263238';
+    c.beginPath(); c.moveTo(tx - S_(26), top + S_(4)); c.quadraticCurveTo(tx - S_(18), top - S_(10), tx - S_(10), top - S_(14));
+    c.quadraticCurveTo(tx, top - S_(24), tx + S_(10), top - S_(14)); c.quadraticCurveTo(tx + S_(18), top - S_(10), tx + S_(26), top + S_(4));
+    c.quadraticCurveTo(tx, top - S_(4), tx - S_(26), top + S_(4)); c.fill(); c.stroke();
+    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(tx, top - S_(9), S_(4), 0, TAU); c.fill();
+    c.fillStyle = '#263238'; c.fillRect(tx - S_(2.4), top - S_(9), S_(1.6), S_(1.6)); c.fillRect(tx + S_(0.8), top - S_(9), S_(1.6), S_(1.6));
+  } else if (w.head === 'wizard') {
+    c.save(); c.translate(tx, top + S_(3)); c.rotate(-0.18);
+    c.fillStyle = '#3949ab';
+    c.beginPath(); c.ellipse(0, 0, S_(26), S_(6), 0, 0, TAU); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(-S_(14), -S_(2)); c.quadraticCurveTo(-S_(4), -S_(30), S_(10), -S_(44)); c.quadraticCurveTo(S_(6), -S_(22), S_(14), -S_(2)); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#ffeb3b';
+    for (const [px, py] of [[-4, -12], [5, -24], [3, -6]]) { c.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? S_(1.4) : S_(3.4), a = i * Math.PI / 5 - Math.PI / 2; c.lineTo(S_(px) + Math.cos(a) * r, S_(py) + Math.sin(a) * r); } c.fill(); }
+    c.restore();
+  }
+  c.restore();
 }

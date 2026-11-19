@@ -51,7 +51,8 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at } = require(
   // ---------- hatched: buttons ----------
   await hatchQuick(page);
   await at(page, 10, 0);
-  await ev(() => { __st.S.last = __st.now(); for (const k in __st.S.needs) __st.S.needs[k] = 60; __st.step(0.6); });
+  // No visitor today: it comes at a random time and would make him hop during the tap checks (tested in suite-extras).
+  await ev(() => { __st.S.last = __st.now(); __st.S.visitDay = __st.dayIndex(__st.now()); __st.S.visitDone = true; for (const k in __st.S.needs) __st.S.needs[k] = 60; __st.step(0.6); });
   let vis = await ev(() => __st.visible());
   const btnCount = await ev(() => [...document.querySelectorAll('#actions .round')].filter(b => !b.hidden).length);
   R.ok(vis.needs && vis.actions && btnCount === 6, 'Geschlüpft: 5 Bedürfnisse, 6 Knöpfe (tagsüber Wandern statt Licht aus)', btnCount);
@@ -131,8 +132,8 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at } = require(
   R.ok((await ev(() => __st.game.brush && __st.game.brush.progress > 0.3)), 'Zähne putzen mit dem Finger zählt');
   await page.click('#close'); await step(0.2);
 
-  // ---------- ball: flick ----------
-  await page.click('#act-ball'); await step(0.3);
+  // ---------- ball: flick (since 0.3 via the play menu) ----------
+  await page.click('#act-play'); await page.click('#play-ball'); await step(0.3);
   pos = await ev(() => __st.pos());
   await page.mouse.move(pos.ball.x, pos.ball.y); await page.mouse.down();
   for (let k = 1; k <= 5; k++) { await page.mouse.move(pos.ball.x - k * 25, pos.ball.y - k * 20); await page.waitForTimeout(16); }
@@ -204,6 +205,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at } = require(
   await page.click('#s-reset'); await page.click('#c-yes'); await step(0.3);
   st = await ev(() => ({ ...__st.state(), name: __st.S.name, vis: __st.visible(), title: document.getElementById('m-title').textContent }));
   R.ok(!st.hatched && st.screen === 'menu' && !st.vis.settings && st.name === 'Stegi' && st.title === 'Stegi', 'Ja, löschen: neues Ei im Hauptmenü', JSON.stringify({ hatched: st.hatched, screen: st.screen }));
+  R.ok(await ev(() => __st.photos.length === 0 && JSON.parse(localStorage.getItem('stegi-photos-v1')).length === 0), 'Alles zurücksetzen löscht auch die Fotos');
 
   // ---------- APK: Exit button ----------
   const apk = await openPage(browser, { android: true });

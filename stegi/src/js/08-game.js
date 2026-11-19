@@ -4,7 +4,8 @@
 
 /** Screen and activity state.
  *  screen: 'menu' | 'game'.  trans: 0 = menu camera .. 1 = game camera (animated).
- *  mode:   'idle' | 'eat' | 'drink' | 'bath' | 'brush' | 'ball' | 'hatch' | 'party'. */
+ *  mode:   'idle' | 'eat' | 'drink' | 'bath' | 'brush' | 'ball' | 'hatch' | 'party'
+ *          | 'play' (menu: ball, hide, music) | 'hide' | 'music' (0.3). */
 const game = {
   screen: 'menu', trans: 0, mode: 'idle', modeT: 0, t: 0,
   flying: null,      // food on its way to the mouth: { id, x, y, sx, sy, k }
@@ -17,6 +18,10 @@ const game = {
   amb: {},           // next time (game.t) of each ambient sound
   sky: null,
   stegoInfo: null,   // last result of drawStego (mouth, head, box)
+  hide: null,        // hide and seek (15-play.js)
+  visit: null,       // visitor on screen (16-visit.js)
+  photoPending: null, flash: 0, autoPhotoAt: 0,   // camera (18-photos.js)
+  weatherTest: null, // tests only: forces the weather
 };
 
 /** The stego as an actor on screen. x is the offset from the screen centre in pixels. */
@@ -24,6 +29,8 @@ const pet = {
   x: 0, tx: 0, dir: 1, walk: 0, moving: false, jump: 0, jumpV: 0,
   blink: 0, nextBlink: 3, happyT: 0, giggleT: 0, eatT: 0, refuseT: 0, yawnT: 0,
   wiggle: 0, petDist: 0, purrT: 0,
+  danceT: 0,   // > 0 while he dances to the music
+  depth: 0,    // 0 = in front .. 1 = far back behind a hiding place
 };
 
 /** Egg animation state. */
@@ -92,6 +99,7 @@ function finishHatch() {
     { vx: rnd(-160, 160) * U, vy: rnd(-260, -120) * U, g: 600, color: i % 2 ? '#fff4d6' : '#9ad9b0', size: 8, max: 1.6 });
   confetti();
   pet.x = 0; pet.tx = 0; pet.jumpV = 260 * U; pet.giggleT = 1.5;
+  game.autoPhotoAt = game.t + 1.6;   // first photo for the album
 }
 
 function confetti() {
@@ -108,12 +116,14 @@ function endMode() {
   game.mode = 'idle'; game.modeT = 0;
   game.held = null; game.flying = null; game.bath = null; game.brush = null;
   if (game.ball) game.ball = null;
+  game.hide = null; pet.depth = 0; pet.danceT = 0;
   pet.tx = 0;
   refreshUI();
 }
 
 /** Starts an activity from a bottom button. */
 function startMode(m) {
+  if (game.mode === 'play' && m !== 'play') game.mode = 'idle';   // chosen from the play menu
   if (!hatched() || asleepNow() || game.mode !== 'idle') return;
   sound('tap');
   if (m === 'drink') {
@@ -124,6 +134,7 @@ function startMode(m) {
   }
   if (m === 'bath') game.bath = { phase: 'scrub', t: 0 };
   if (m === 'brush') game.brush = { x: W * 0.75, y: standY - 60 * U, progress: 0, done: false, t: 0, scrubT: 0 };
+  if (m === 'hide') { game.mode = 'hide'; startHide(); refreshUI(); return; }
   if (m === 'ball') game.ball = { x: Math.min(W - 40 * U, W / 2 + 140 * U), h: 0, vx: 0, vh: 0, rot: 0, carried: false, thrown: false };
   game.mode = m; game.modeT = 0;
   if (m !== 'ball') pet.tx = 0;
@@ -234,7 +245,9 @@ function update(dt) {
   if (game.screen === 'game' && game.trans >= 1 && document.visibilityState !== 'hidden') {
     if (addPlayTime(dt)) showRest();
   }
-  updateMusic(!game.sky.night);
+  updateMusic(!game.sky.night && game.mode !== 'music');
+  if (game.autoPhotoAt && game.t >= game.autoPhotoAt) { game.autoPhotoAt = 0; takePhoto(true); }
+  game.flash = Math.max(0, game.flash - dt * 2.5);
 }
 
 function updateEgg(dt) {
@@ -269,6 +282,7 @@ function updatePet(dt, sleeping) {
   pet.refuseT = Math.max(0, pet.refuseT - dt);
   pet.yawnT = Math.max(0, pet.yawnT - dt);
   pet.wiggle = Math.max(0, pet.wiggle - dt * 1.5);
+  pet.danceT = Math.max(0, pet.danceT - dt);
   // Jumping.
   if (pet.jumpV || pet.jump > 0) {
     pet.jump += pet.jumpV * dt; pet.jumpV -= 900 * U * dt;
@@ -279,13 +293,13 @@ function updatePet(dt, sleeping) {
   if (pet.nextBlink < 0) { pet.blink = 0.15; pet.nextBlink = rnd(2.5, 5); }
   pet.blink = Math.max(0, pet.blink - dt);
   // Walking towards tx.
-  const speed = (game.mode === 'ball' ? 260 : 120) * U, dx = pet.tx - pet.x;
+  const speed = (game.mode === 'ball' || game.mode === 'hide' ? 260 : 120) * U, dx = pet.tx - pet.x;
   pet.moving = Math.abs(dx) > 3 * U && !sleeping;
   if (pet.moving) {
     pet.x += Math.sign(dx) * Math.min(Math.abs(dx), speed * dt);
     pet.dir = Math.sign(dx);
     pet.walk += dt * 12;
-  } else if (game.mode !== 'ball' && !sleeping) pet.dir = 1;
+  } else if (!['ball', 'hide', 'music'].includes(game.mode) && !(game.visit && game.visit.phase === 'stay') && !sleeping) pet.dir = 1;
   if (walkingNow()) pet.walk += dt * 6;   // slow steps on the way (the landscape scrolls, 13-travel)
   updateTravel(dt, sleeping);
 
@@ -303,6 +317,8 @@ function updatePet(dt, sleeping) {
   if (game.mode === 'bath') updateBath(dt);
   if (game.mode === 'brush') updateBrush(dt);
   if (game.mode === 'ball') updateBall(dt);
+  if (game.mode === 'hide') updateHide(dt);
+  updateVisit(dt, sleeping);
   if (game.mode === 'party' && game.modeT > 3) { game.mode = 'idle'; refreshUI(); }
   if (game.mode === 'party' && pet.jump === 0 && game.modeT < 2.4) { pet.jumpV = 200 * U; }
 
@@ -320,7 +336,7 @@ function updatePet(dt, sleeping) {
   else if (low.value < NEED_SAD && game.t > (a.whine || 12)) { a.whine = game.t + rnd(18, 28); sound('whine'); }
   if (isSleepy(now()) && game.t > (a.yawn || 4)) { a.yawn = game.t + rnd(14, 22); pet.yawnT = 1.6; sound('yawn'); }
   // Stage-up party once a second check.
-  if (stageAt(now()) > S.stageSeen) { S.stageSeen = stageAt(now()); save(); startParty(); }
+  if (stageAt(now()) > S.stageSeen) { S.stageSeen = stageAt(now()); save(); startParty(); game.autoPhotoAt = game.t + 1.6; }
 }
 
 function updateBath(dt) {
@@ -422,7 +438,7 @@ function stegoLook() {
   const sleeping = asleepNow(), low = lowestNeed();
   const o = { g: growthAt(now()), stage: stageAt(now()), t: game.t, dir: pet.dir, pose: 'stand', walk: pet.walk,
     eyes: 'open', mouth: 'smile', blink: pet.blink > 0 ? 1 : 0, jump: pet.jump, wiggle: pet.wiggle,
-    dirt: clamp((50 - S.needs.clean) / 50, 0, 1), headDown: 0, wag: 0 };
+    dirt: clamp((50 - S.needs.clean) / 50, 0, 1), headDown: 0, wag: 0, wear: wearNow() };
   if (sleeping) { o.pose = 'lie'; o.eyes = 'closed'; o.mouth = 'closed'; o.blink = 0; return o; }
   if (pet.moving || walkingNow()) o.pose = 'walk';
   if (game.mode === 'drink') { o.headDown = smooth(Math.min(game.modeT, 2.6 - game.modeT) / 0.4); o.mouth = 'open'; o.eyes = 'happy'; }
@@ -431,15 +447,13 @@ function stegoLook() {
   else if (game.mode === 'brush') { o.mouth = game.brush.done ? 'smile' : 'grin'; o.eyes = game.brush.done ? 'happy' : 'open'; }
   else if (game.mode === 'eat') { o.mouth = 'open'; }
   else if (pet.yawnT > 0) { o.mouth = 'yawn'; o.eyes = 'closed'; }
+  else if (pet.danceT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; o.wiggle = 1; }
   else if (pet.giggleT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; }
   else if (pet.happyT > 0) { o.eyes = 'happy'; o.wag = 1; }
   else if (low.value < NEED_SAD) { o.eyes = 'sad'; o.mouth = 'sad'; }
   if (game.ball && game.ball.carried) o.mouth = 'open';
   return o;
 }
-
-/** Today's weather (0.3 fills this in; until then always sunny). */
-function currentWeather() { return 'sun'; }
 
 /** Camera: zoomed in on the stego in the menu, normal in the game. */
 function cameraZoom() {
@@ -465,7 +479,15 @@ function drawWorld() {
     const tubW = game.stegoInfo ? game.stegoInfo.box.w * 0.8 : stegoSize * 0.6;
     if (game.mode === 'bath') drawTub(ctx, W / 2 + 6 * U, standY + 6 * U, tubW, 'back');
     if (game.mode === 'drink') drawBowl(ctx, game.bowlX, standY + 4 * U, 72 * U, 1 - clamp(game.modeT / 2.6, 0, 1));
-    game.stegoInfo = drawStego(ctx, sx, standY, stegoSize, look);
+    // Hide and seek: far back he is drawn smaller and higher up (behind a hiding place).
+    const hd = game.hide, depth = hd ? pet.depth : 0;
+    const sy = lerp(standY, groundY + 76 * U, smooth(depth)), ss = stegoSize * lerp(1, hd ? hd.sMin : 1, smooth(depth));
+    if (hd && hd.phase === 'found') drawHideSpots(ctx);
+    if (giftWaiting() && game.mode === 'idle' && !asleepNow()) { const gp = giftPos(); drawGift(ctx, gp.x, gp.y, U, game.t); }
+    if (game.visit && game.visit.kind !== 'ptero' && game.visit.kind !== 'butterflies') drawVisitor(ctx, game.visit, game.t);
+    game.stegoInfo = drawStego(ctx, sx, sy, ss, look);
+    if (hd && hd.phase !== 'found') drawHideSpots(ctx);
+    if (game.visit && (game.visit.kind === 'ptero' || game.visit.kind === 'butterflies')) drawVisitor(ctx, game.visit, game.t);
     if (game.mode === 'bath') {
       drawTub(ctx, W / 2 + 6 * U, standY + 6 * U, tubW, 'front');
       if (game.bath.phase === 'scrub' && S.needs.clean < 100) drawRubHint(game.stegoInfo.box);
@@ -473,6 +495,7 @@ function drawWorld() {
     if (game.ball) drawBall(ctx, game.ball.x, ballY(), BALL_R * U, game.ball.rot);
     if (game.flying) drawFood(ctx, game.flying.id, game.flying.x, game.flying.y, 46 * U);
   }
+  drawWeather(ctx, weather, game.t);
   drawNightShade(ctx, sky);
   if (firefliesNow(t, placeId === 'travel' ? 'meadow' : placeId, weather)) drawFireflies(ctx, game.t);
   drawParts(ctx);
@@ -483,6 +506,10 @@ function drawWorld() {
     if (low.value < NEED_LOW) { const h = game.stegoInfo.head; drawThought(ctx, h.x + 10 * U, h.y - 60 * U, low.need, game.t); }
   }
   ctx.restore();
+
+  // A photo shows the picture as it is now (no finger things, no flash).
+  if (game.photoPending) capturePhoto();
+  if (game.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,' + game.flash.toFixed(2) + ')'; ctx.fillRect(0, 0, W, H); }
 
   // Things that follow the finger are drawn without the camera.
   if (game.held) drawFood(ctx, game.held.id, game.held.x, game.held.y, 56 * U);

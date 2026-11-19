@@ -31,6 +31,7 @@ function frame(ts) {
 
 function start() {
   loadGame();
+  loadPhotos();
   resize();
   buildUI();
   setupInput();

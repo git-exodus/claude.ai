@@ -4,11 +4,20 @@
   <button id="gear" type="button" aria-label="Einstellungen für Eltern (3 Sekunden gedrückt halten)"><span class="ring"></span></button>
   <div id="side" hidden>
     <button id="b-map" class="mini" type="button" aria-label="Orte"></button>
+    <button id="b-wear" class="mini" type="button" aria-label="Verkleiden"></button>
+    <button id="b-album" class="mini" type="button" aria-label="Fotoalbum"></button>
+    <button id="b-camera" class="mini" type="button" aria-label="Foto machen"></button>
   </div>
   <div id="walkbar" hidden><span class="foot"></span><i><b></b></i><span class="flag"></span></div>
   <div id="banner" hidden><canvas width="240" height="135"></canvas><b></b></div>
   <div id="actions" hidden></div>
   <div id="tray" hidden></div>
+  <div id="playtray" hidden>
+    <button class="round" id="play-ball" type="button" aria-label="Ball spielen"></button>
+    <button class="round" id="play-hide" type="button" aria-label="Verstecken"></button>
+    <button class="round" id="play-music" type="button" aria-label="Musik machen"></button>
+  </div>
+  <div id="musicpad" hidden></div>
   <button id="close" class="round" type="button" aria-label="Fertig" hidden></button>
   <div id="menu">
     <h1 id="m-title">Stegi</h1>
@@ -26,13 +35,13 @@
       <label class="row">Spielzeit pro Tag <select id="s-limit"></select></label>
       <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
       <button class="big" id="s-close" type="button">Schließen</button>
-      <p id="credit">@made by Brownii (Claude.ai) · v0.2</p>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.3</p>
     </div>
   </div>
   <div id="confirm" class="ov" hidden>
     <div class="card" role="dialog" aria-labelledby="c-title">
       <h2 id="c-title">Wirklich alles löschen?</h2>
-      <p class="info">Stegi wird wieder ein Ei. Alle Tage und Einstellungen sind dann weg. Das kann man nicht rückgängig machen.</p>
+      <p class="info">Stegi wird wieder ein Ei. Alle Tage, Fotos, Kleider und Einstellungen sind dann weg. Das kann man nicht rückgängig machen.</p>
       <button class="big danger" id="c-yes" type="button">Ja, alles löschen</button>
       <button class="big" id="c-no" type="button">Abbrechen</button>
     </div>
@@ -43,6 +52,29 @@
       <p id="placecount" class="info"></p>
       <div id="placelist"></div>
       <button class="big" id="pl-close" type="button">Schließen</button>
+    </div>
+  </div>
+  <div id="wardrobe" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="w-title">
+      <h2 id="w-title">Verkleiden</h2>
+      <p class="info">Antippen zum Anziehen, nochmal antippen zum Ausziehen.</p>
+      <div id="wearlist"></div>
+      <button class="big" id="w-close" type="button">Fertig</button>
+    </div>
+  </div>
+  <div id="album" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="a-title">
+      <h2 id="a-title">Fotoalbum</h2>
+      <p id="photocount" class="info"></p>
+      <div id="photolist"></div>
+      <button class="big" id="a-close" type="button">Schließen</button>
+    </div>
+  </div>
+  <div id="photoview" class="ov" hidden>
+    <div class="card" role="dialog" aria-label="Foto">
+      <img id="pv-img" alt="Foto von Stegi">
+      <p id="pv-text" class="info"></p>
+      <button class="big" id="pv-close" type="button">Zurück</button>
     </div>
   </div>
   <div id="rest" class="ov" hidden>

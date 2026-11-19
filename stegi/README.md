@@ -2,11 +2,12 @@
 
 Ein Tamagotchi für ein Kind von 5 Jahren: Ein kleiner Stegosaurus schlüpft aus einem Ei, wächst in
 30 Tagen groß und will gefüttert, getränkt, gestreichelt, gebadet und bespielt werden. Er schläft
-nach der echten Uhrzeit (Standard 20:00–7:00) und wandert zu 30 Orten, die nach und nach entdeckt werden. Man braucht nicht lesen zu können: alles läuft über
+nach der echten Uhrzeit (Standard 20:00–7:00) und wandert zu 30 Orten, die nach und nach entdeckt werden. Er spielt Ball, Verstecken und Musik,
+bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man kann Fotos von ihm machen. Man braucht nicht lesen zu können: alles läuft über
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.2.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.3.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -30,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **110 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 39, suite-places 19).
+Erwartet: **148 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 37).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -65,6 +66,7 @@ stegi/
     ├── suite-core.js      Regeln: Uhr, Ei, Wachstum, Bedürfnisse, Kacka, Pflege, Schlaf, Speichern, Spielzeit
     ├── suite-ui.js        Bedienung mit echter Maus, Einstellungen, Zurück-Taste, Beenden, Musik, Bildschirmfotos
     ├── suite-places.js    0.2: Babygröße, Wandern (auch bei geschlossener App), 2 Orte pro Tag, Orte-Liste, Glühwürmchen
+    ├── suite-extras.js    0.3: Wetter, Geschenke/Verkleiden, Fotos/Album, Besuch, Verstecken, Musik, Spielmenü
     └── make-icon.js       kein Test: zeichnet das App-Symbol mit dem Spielcode neu
 ```
 
@@ -86,9 +88,10 @@ Spiel ins Menü.
 unter 30 wackelt, und der Stego zeigt eine Gedankenblase mit dem, was er am dringendsten braucht.
 Rechts das Zahnrad für die Eltern.
 
-**Unten:** Essen, Trinken, Baden, Ball, Zähneputzen, Wandern (Fußspuren); ab 19:30 ersetzt der Mond „Licht aus“ das Wandern.
+**Unten:** Essen, Trinken, Baden, Spielen (Ball-Symbol, öffnet Ball / Verstecken / Musik), Zähneputzen, Wandern
+(Fußspuren); ab 19:30 ersetzt der Mond „Licht aus“ das Wandern.
 
-**Rechts unter dem Zahnrad:** Landkarte = Liste der Orte.
+**Rechts unter dem Zahnrad:** Landkarte (Orte), Partyhut (Verkleiden), Bilderrahmen (Fotoalbum), Kamera (Foto machen).
 
 | Tätigkeit | Wie |
 |---|---|
@@ -98,7 +101,12 @@ Rechts das Zahnrad für die Eltern.
 | Trinken | Napf erscheint, er senkt den Kopf und schlabbert |
 | Baden | Badewanne, mit dem Finger schrubben (Schaumblasen), dann Abbrausen und Glitzer |
 | Zähne putzen | Zahnbürste folgt dem Finger, am Maul hin und her reiben |
-| Ball | Ball wegschnipsen, er rennt hin, bringt ihn zurück und freut sich |
+| Ball | (Spielen → Ball) Ball wegschnipsen, er rennt hin, bringt ihn zurück und freut sich |
+| Verstecken | (Spielen → Busch) er versteckt sich hinter einem von zwei Büschen oder dem Felsen; antippen, wo er ist; falsch = wackelt; nach ein paar Sekunden wackelt sein Versteck und er kichert als Hinweis |
+| Musik | (Spielen → Note) 6 farbige Xylophon-Stäbe und 2 Trommeln; bei jedem Ton tanzt er |
+| Geschenk | liegt neben ihm und hüpft; antippen = auspacken und anziehen |
+| Verkleiden | Partyhut-Knopf: alle 12 Teile, antippen = an, nochmal = aus; noch nicht fällige als Geschenkpaket |
+| Foto | Kamera-Knopf: Klick und Blitz; Album zeigt alle Fotos, antippen = groß mit Tag, Datum und Ort |
 | Kacka | Häufchen mit Fliegen antippen: Pling, weg |
 | Licht aus | ab 19:30: er legt sich schlafen |
 | Wandern | er läuft los, die Landschaft zieht vorbei, oben ein Balken von den Fußspuren zur Landkarte; nach 1 Stunde wacher Zeit (auch bei geschlossener App) ist er an einem neuen Ort und wartet dort |
@@ -131,9 +139,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.2';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.2` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 2`, `versionName '0.2'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.3';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.3` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 3`, `versionName '0.3'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -148,13 +156,18 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 | `03-clock.js` | Uhr `now()` (mit `clock.offset` für Zeitreisen in Tests), Tagesnummer, Nacht, müde, schlafend, wache Sekunden, Himmelslicht `skyAt` |
 | `04-state.js` | Spielstand `S`, `blankSave`, `sanitizeSave`, Laden/Speichern/Zurücksetzen, `tick(t)` (Zeit vergeht), Stufe, Wachstum, Kacka-Plan, Spielzeit |
 | `05-audio.js` | WebAudio: `tone`, `noise`, alle Geräusche in `SOUNDS`, `sound(name)`, Spieluhr-Musik `updateMusic` |
-| `06-draw-stego.js` | `drawStego()`: der Stego in jeder Größe, Pose und Laune; gibt Maul-, Kopf- und Körperposition zurück |
+| `06-draw-stego.js` | `drawStego()`: der Stego in jeder Größe, Pose und Laune; gibt Maul-, Kopf- und Körperposition zurück; `drawWear()`: die 12 Kleidungsstücke |
 | `07-places.js` | Die 30 Orte und „unterwegs“ (`PLACE_DRAW`), Bausteine (Hügel, Bäume, Palmen, Wasser, Felsen, Berge …), Vorschaubilder `placePicture` |
 | `07-draw-scene.js` | Himmel je Ort und Wetter, Sonne/Mond, Sterne, Wolken, Regenbogen, Nest, Ei mit Rissen, Kacka, Futter, Napf, Wanne, Bürste, Ball, Gedankenblase, Partikel |
 | `08-game.js` | Zustand `game` und `pet`, Ei-Logik, alle Tätigkeiten, `update(dt)`, `drawWorld()` |
 | `09-ui.js` | HTML-Teile: Leisten, Knöpfe, Futterleiste, Menü, Einstellungen (Zahnrad 3 s), Rückfrage, Pause, `window.__back` |
 | `10-input.js` | Finger: Tippen, Streicheln, Ziehen, Werfen |
 | `13-travel.js` | Wandern, Ankunft, Tagesgrenze, Orte-Liste, Banner „neuer Ort“, Glühwürmchen |
+| `14-weather.js` | Wetter des Tages `weatherAt`, Regen und Schnee zeichnen |
+| `15-play.js` | Verstecken (`game.hide`, `pet.depth`) und Musik (`playKey`, Tanzen) |
+| `16-visit.js` | Besuch planen und ablaufen lassen, die 5 Besucher zeichnen |
+| `17-wardrobe.js` | Geschenke, Kleiderschrank, automatische Kleidung je Ort (`wearNow`) |
+| `18-photos.js` | Kamera, Fotos speichern (eigener Speicherplatz), Album |
 | `11-main.js` | `resize`, Bildschleife, Speichern alle 5 s und beim Verlassen, `start()` |
 | `99-debug.js` | `window.__st` für die Tests (wird vom Spiel nicht benutzt), ruft `start()` auf |
 
@@ -163,7 +176,8 @@ Pausen (App zu) werden in Minutenschritten nachgerechnet, nur die **wachen** Min
 So stimmen die Werte nach dem Öffnen am nächsten Morgen. Läuft die Uhr rückwärts, passiert nichts.
 
 **Bildschirme und Tätigkeiten:** `game.screen` ist `menu` oder `game`; `game.trans` (0..1) ist der
-Kamera-Zoom dazwischen. `game.mode` ist `idle | eat | drink | bath | brush | ball | hatch | party`.
+Kamera-Zoom dazwischen. `game.mode` ist `idle | eat | drink | bath | brush | ball | hatch | party | play | hide | music`
+(`play` = das kleine Spielmenü).
 Nach jedem Wechsel `refreshUI()` (wird zusätzlich alle 0,5 s aufgerufen). Fällt die Nacht, endet
 jede Tätigkeit (`endMode`).
 
@@ -175,7 +189,7 @@ mal `lerp(SIZE_MIN, 1, Wachstum)`.
 
 ---
 
-## 6. Spielwerte (Stand 0.2, Quelle: `src/js/02-config.js`)
+## 6. Spielwerte (Stand 0.3, Quelle: `src/js/02-config.js`)
 
 ### 6.1 Ei und Schlüpfen
 
@@ -252,6 +266,47 @@ Musik an/aus, Schlafenszeit 18:00–22:00, Aufstehen 5:30–9:00 (je halbe Stund
 Von einer Stunde vor der Schlafenszeit (Standard 19:00) bis zum Aufstehen. An Wald- und Wasserorten
 (`ff` in `PLACES`) jede Nacht, sonst jede zweite (gerade Tagesnummer). Nicht in der Höhle, nicht bei Regen oder Schnee.
 
+### 6.8 Wetter (seit 0.3)
+
+Ein Wetter pro Kalendertag, aus der Tagesnummer berechnet (bleibt also auch nach Neustart gleich):
+45 % Sonne, 25 % Wolken, 30 % Regen; Dezember bis Februar Schnee statt Regen; an Regentagen ab 15:00
+ein Regenbogen statt Regen. Trockene Orte (Savanne, Vulkan, Wolke, Wüste, Schlucht) bleiben sonnig, an
+kalten Orten (Schneeberg, Eisland) schneit es statt zu regnen, in der Höhle gibt es kein Wetter. Bei
+Wolken und Regen wird der Himmel grauer, die Sonne verschwindet.
+
+### 6.9 Geschenke und Verkleiden (seit 0.3)
+
+| Tag | Teil | Platz | | Tag | Teil | Platz |
+|---|---|---|---|---|---|---|
+| 1 | Schleife | Kopf | | 16 | Zipfelmütze | Kopf |
+| 3 | Sonnenbrille | Augen | | 18 | Krone | Kopf |
+| 6 | Partyhut | Kopf | | 21 | Fliege | Hals |
+| 8 | Schal | Hals | | 23 | Blumenkranz | Kopf |
+| 11 | Sonnenhut | Kopf | | 26 | Piratenhut | Kopf |
+| 13 | Brille | Augen | | 28 | Zauberhut | Kopf |
+
+Pro Platz ein Teil. Am Strand und in der Wüste trägt er automatisch eine Sonnenbrille, im Schnee und
+im Eisland einen Schal, aber nur wenn der Platz frei ist (eigene Sachen haben Vorrang).
+
+### 6.10 Fotos (seit 0.3)
+
+Höchstens 40 Fotos (240 px breite JPEGs, eigener Speicher `stegi-photos-v1`). Automatische Fotos beim
+Schlüpfen und bei jeder neuen Stufe bleiben immer; ist das Album voll, fällt das älteste eigene Foto weg.
+„Alles zurücksetzen“ löscht auch die Fotos.
+
+### 6.11 Besuch (seit 0.3)
+
+Höchstens einmal am Tag, zu einer zufälligen Minute zwischen 9:00 und einer Stunde vor der Schlafenszeit.
+Ist die App dann zu, kommt der Freund beim nächsten Hineinschauen (am selben Tag, solange er wach ist
+und nicht wandert). Die Besucher wechseln sich nach Tagesnummer ab: T-Rex-Baby, Flugsaurier,
+Triceratops, Schildkröte, Schmetterlinge. Ein Besuch dauert 1 Minute (alle 3 s hüpfen beide, Herzen),
+danach Liebe +10 und Spaß +10.
+
+### 6.12 Verstecken und Musik (seit 0.3)
+
+Verstecken: gefunden = Spaß +15; Hinweis nach 5 s, dann alle 4 s. Musik: jeder Ton Spaß +1,5; die
+Hintergrundmusik pausiert dabei.
+
 ---
 
 ## 7. Spielstand
@@ -270,6 +325,9 @@ stoppen die Echtzeit-Schleife (`__st.pause(true)`) und bewegen das Spiel mit `__
 Zeitreise: `__st.setTime('2026-11-20T10:00')`, `__st.travel(stunden)`, in lib.js `at(page, h, m)`.
 `hatchQuick(page)` bringt ein neues Spiel in vier Spieltagen zum geschlüpften Baby.
 `window.__stQuiet = true` (in lib.js gesetzt) schaltet die Musik aus.
+`loadClean` schaltet außerdem den Besuch aus (`__st.debugFlags.visit = false`), weil er zu einer
+zufälligen Uhrzeit kommt und sonst Werte und Hüpfer in anderen Prüfungen verändert; nur suite-extras
+ruft `hatchQuick(page, { visits: true })` auf und prüft den Besuch gezielt.
 
 Fallstricke:
 - Werte sinken auch während der Testschritte minimal; Prüfungen mit kleiner Toleranz schreiben, nicht `===`.
@@ -294,18 +352,17 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.3 | Spielen-Menü mit Verstecken und Musik (er tanzt), 12 Kleidungsstücke als Geschenke, Fotos und Album, Besuch von 5 Freunden, Wetter (Sonne, Wolken, Regen, Schnee, Regenbogen) |
 | 0.2 | Farbe schiefergrau, Baby 30 % kleiner, Platten +50 %, Schwanzstacheln +25 %, App-Symbol Ei, Wandern zu 30 Orten mit Orte-Liste, Glühwürmchen |
 | 0.1 | Runde 1: Hauptmenü mit Stego/Ei, Ei mit 3 Rissen und Schlüpfen, 5 Wachstumsstufen in 30 Tagen, 5 Bedürfnisse, Essen, Trinken, Streicheln, Baden, Zähneputzen, Ball, Kacka, Schlafen 20–7 Uhr mit Tag/Nacht-Himmel, Geräusche und Spieluhr, Eltern-Einstellungen mit Spielzeit-Grenze und „Alles zurücksetzen“ |
 
 ---
 
-## 11. Offene Punkte (für 0.3, mit dem Auftraggeber vereinbart)
+## 11. Offene Punkte
 
-- **Verstecken:** er versteckt sich hinter Büschen/Steinen, man tippt, bis man ihn findet.
-- **Musik machen:** Trommel und Xylophon mit großen Tasten, der Stego tanzt im Takt.
-- **Verkleiden:** etwa 12 Teile (Hüte, Brillen, Schals, Schleifen, Krone), etwa alle 2–3 Tage ein neues als Geschenk.
-- **Fotomodus und Album:** Kameraknopf mit Blitz, automatische Fotos beim Schlüpfen und bei jeder Stufe, höchstens 40.
-- **Besuch:** höchstens einmal am Tag (T-Rex-Baby, Flugsaurier, Triceratops, Schildkröte, Schmetterlinge), ca. 1 Minute.
-- **Wetter:** täglich zufällig Sonne, Wolken, Regen, im Winter Schnee, nach Regen manchmal ein Regenbogen.
+Alles bisher Vereinbarte ist gebaut (0.1–0.3). Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
-Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe. Später möglich: Benachrichtigungen am Handy.
+Mögliche nächste Schritte (noch nicht besprochen):
+- Benachrichtigungen am Handy („Stegi hat Hunger“, „Stegi ist angekommen“) – braucht Android-Code.
+- Fotos löschen oder aufs Handy speichern (heute nur ansehen).
+- Signierter Release-Build für den Play Store.

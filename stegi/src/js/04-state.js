@@ -26,6 +26,10 @@ function blankSave(t) {
     found: [{ id: 'meadow', day: -1 }],
     walk: null,              // { sec } awake seconds walked so far, or null
     newPlace: null,          // id of a place reached but not yet celebrated
+    // 0.3: what he wears per slot (null = nothing), how many presents were opened, today's visit.
+    wear: { head: null, eyes: null, neck: null },
+    giftSeen: 0,
+    visitDay: -1, visitAt: 0, visitDone: false,
   };
 }
 
@@ -76,6 +80,15 @@ function sanitizeSave(o, t) {
   b.place = b.found.some(f => f.id === o.place) ? o.place : 'meadow';
   b.walk = o.walk && typeof o.walk.sec === 'number' ? { sec: num(o.walk.sec, 0, WALK_SECONDS, 0) } : null;
   b.newPlace = b.found.some(f => f.id === o.newPlace) ? o.newPlace : null;
+  b.giftSeen = Math.round(num(o.giftSeen, 0, WEAR_ITEMS.length, 0));
+  const opened = WEAR_ITEMS.slice(0, b.giftSeen).map(w => w.id);
+  for (const slot of ['head', 'eyes', 'neck']) {
+    const id = o.wear && o.wear[slot];
+    b.wear[slot] = opened.includes(id) && wearItem(id).slot === slot ? id : null;
+  }
+  b.visitDay = num(o.visitDay, -1, 1e6, -1);
+  b.visitAt = num(o.visitAt, 0, 1e14, 0);
+  b.visitDone = o.visitDone === true;
   return b;
 }
 

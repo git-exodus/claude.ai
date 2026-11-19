@@ -189,7 +189,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   const offset = await ev(() => __st.clock.offset);
   await page.addInitScript(o => { window.__stOffset = o; }, offset);   // same game clock while loading
   await page.goto(GAME_URL);
-  f = await ev(o => { __st.clock.offset = o; __st.pause(true); __st.step(0.1); return { name: __st.S.name, fun: __st.S.needs.fun, hatched: __st.state().hatched, title: document.getElementById('m-title').textContent }; }, offset);
+  f = await ev(o => { __st.clock.offset = o; __st.debugFlags.visit = false; __st.pause(true); __st.step(0.1); return { name: __st.S.name, fun: __st.S.needs.fun, hatched: __st.state().hatched, title: document.getElementById('m-title').textContent }; }, offset);
   R.ok(f.name === 'Rexi' && near(f.fun, 42, 0.5) && f.hatched && f.title === 'Rexi', 'Speichern und Laden (Name, Werte, geschlüpft)', JSON.stringify(f));
   f = await ev(() => {
     const t = __st.now();
