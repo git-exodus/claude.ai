@@ -9,6 +9,7 @@ const ACTIONS = [
   { id: 'bath', icon: 'bath', label: 'Baden', run: () => startMode('bath') },
   { id: 'ball', icon: 'fun', label: 'Ball spielen', run: () => startMode('ball') },
   { id: 'brush', icon: 'brush', label: 'Zähne putzen', run: () => startMode('brush') },
+  { id: 'walk', icon: 'walk', label: 'Wandern', run: () => startWalk() },
   { id: 'bed', icon: 'bed', label: 'Licht aus', run: () => goToBed() },
 ];
 
@@ -28,6 +29,11 @@ function buildUI() {
   $('close').addEventListener('click', () => { sound('tap'); endMode(); });
   $('gear').insertAdjacentHTML('afterbegin', iconSVG('gear'));
   $('r-icon').innerHTML = iconSVG('bed');
+  $('b-map').innerHTML = iconSVG('map');
+  $('b-map').addEventListener('click', openPlaces);
+  $('pl-close').addEventListener('click', closePlaces);
+  $('walkbar').querySelector('.foot').innerHTML = iconSVG('walk');
+  $('walkbar').querySelector('.flag').innerHTML = iconSVG('map');
   $('credit').textContent = '@made by Brownii (Claude.ai) · v' + VERSION;
   setupGear();
   setupSettings();
@@ -47,6 +53,11 @@ function refreshUI() {
   const idle = game.mode === 'idle';
   $('actions').hidden = !inGame || egg || sleeping || !idle;
   $('act-bed').hidden = !isSleepy(now()) || sleeping;
+  // In the sleepy half hour "lights out" takes the place of "walk"; while walking there is the progress bar instead.
+  $('act-walk').hidden = !$('act-bed').hidden || !!S.walk;
+  $('side').hidden = !inGame || egg;
+  $('walkbar').hidden = !inGame || egg || !S.walk;
+  if (S.walk) $('walkbar').querySelector('b').style.width = (100 * S.walk.sec / WALK_SECONDS).toFixed(1) + '%';
   $('act-bed').classList.add('glow');
   $('tray').hidden = !(inGame && game.mode === 'eat');
   $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball'].includes(game.mode));
@@ -175,6 +186,7 @@ window.__back = () => {
   if (!$('confirm').hidden) { $('confirm').hidden = true; return true; }
   if (!$('settings').hidden) { closeSettings(); return true; }
   if (!$('rest').hidden) { $('rest').hidden = true; return true; }
+  if (!$('places').hidden) { closePlaces(); return true; }
   if (game.screen === 'game') {
     if (!['idle', 'hatch', 'party'].includes(game.mode)) { endMode(); return true; }
     showMenu(); return true;

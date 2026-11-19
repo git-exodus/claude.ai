@@ -1,38 +1,48 @@
-/* 07-draw-scene.js – the landscape (sky by real time, sun, moon, stars, clouds, hills, meadow)
- * and all small things: nest, egg with cracks, poop with flies, food, water bowl, bathtub,
- * toothbrush, ball and the particles (hearts, sparkles, bubbles, confetti, Zzz ...). */
+/* 07-draw-scene.js – sky by real time (sun, moon, stars, clouds) for every place, and all small
+ * things: nest, egg with cracks, poop with flies, food, water bowl, bathtub, toothbrush, ball,
+ * thought bubble and the particles (hearts, sparkles, bubbles, confetti, Zzz ...).
+ * The places themselves (hills, ground, trees, water ...) are drawn in 07-places.js. */
 
 const SKY = {
-  night: ['#141a3d', '#2c3570'], dawn: ['#f3a07a', '#ffd9a0'],
-  day: ['#4fa8e8', '#bfe6ff'], hillFar: '#7cc46a', hillNear: '#64b354', ground: ['#78c95a', '#4f9c3c'],
+  night: ['#141a3d', '#2c3570'], dawn: ['#f3a07a', '#ffd9a0'], day: ['#4fa8e8', '#bfe6ff'], grey: ['#8d99a6', '#c9d1d9'],
 };
 
-/** Fixed random decorations (stars, grass, flowers, clouds), made on resize. */
-let deco = { stars: [], grass: [], flowers: [], clouds: [] };
+/** Fixed random decorations (stars, clouds), made on resize. */
+let deco = { stars: [], clouds: [] };
 function makeDeco() {
   const r = mulberry(7);
   deco.stars = Array.from({ length: 70 }, () => ({ x: r() * W, y: r() * groundY * 0.8, s: 0.6 + r() * 1.6, p: r() * TAU }));
-  deco.grass = Array.from({ length: 70 }, () => ({ x: r() * W, y: groundY + 8 + r() * (H - groundY), h: 4 + r() * 7 }));
-  deco.flowers = Array.from({ length: 14 }, () => ({ x: r() * W, y: groundY + 20 + r() * (H - groundY - 40), c: ['#fff', '#ffd54f', '#ff8fb1', '#b39ddb'][Math.floor(r() * 4)] }));
-  deco.clouds = Array.from({ length: 4 }, (_, i) => ({ x: r() * W, y: 60 * U + i * 38 * U + r() * 30 * U, s: 0.7 + r() * 0.6, v: 4 + r() * 6 }));
+  deco.clouds = Array.from({ length: 6 }, (_, i) => ({ x: r() * W, y: 60 * U + (i % 4) * 38 * U + r() * 30 * U, s: 0.7 + r() * 0.6, v: 4 + r() * 6 }));
+  placeCache.clear();
 }
-/** Small seeded random generator so the meadow looks the same every time. */
+/** Small seeded random generator so a place looks the same every time. */
 function mulberry(a) {
   return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 }
 
-/** Background: sky, stars, sun or moon, clouds, hills and meadow for sky state `sky` (see skyAt). */
-function drawBackground(c, sky, time) {
-  const L = sky.light, Wm = sky.warm;
-  // Sky gradient: night -> day, with an orange glow at dawn and dusk.
-  let top = mix(SKY.night[0], SKY.day[0], L), bottom = mix(SKY.night[1], SKY.day[1], L);
+/**
+ * Whole background for a place: sky (by time of day and weather), stars, sun or moon, clouds,
+ * then the place itself (PLACE_DRAW in 07-places.js).
+ *   sky      skyAt(t) result      time  seconds for animations
+ *   placeId  id from PLACES ('travel' = on the way)   weather  'sun'|'clouds'|'rain'|'snow'|'rainbow' (0.3)
+ *   scroll   pixels walked (only for 'travel', the landscape scrolls with it)
+ */
+function drawBackground(c, sky, time, placeId = 'meadow', weather = 'sun', scroll = 0) {
+  const P = PLACE_DRAW[placeId] || PLACE_DRAW.meadow, L = sky.light, Wm = sky.warm;
+  const env = { L, t: time, sky, d: k => mix('#1d2a4a', k, clamp(L * 1.1, 0.25, 1)), weather, scroll };
+  if (P.indoor) { P.draw(c, env); return; }
+  const grey = weather === 'clouds' ? 0.35 : weather === 'rain' || weather === 'snow' ? 0.6 : 0;
+  // Sky gradient: night -> day (each place may tint the day sky), orange glow at dawn and dusk, grey when it rains.
+  const day = P.sky || SKY.day;
+  let top = mix(SKY.night[0], day[0], L), bottom = mix(SKY.night[1], day[1], L);
+  if (grey) { top = mixRGB(top, SKY.grey[0], grey * L); bottom = mixRGB(bottom, SKY.grey[1], grey * L); }
   if (Wm > 0) { top = mixRGB(top, SKY.dawn[0], Wm * 0.35); bottom = mixRGB(bottom, SKY.dawn[1], Wm * 0.6); }
   const gr = c.createLinearGradient(0, 0, 0, groundY);
   gr.addColorStop(0, top); gr.addColorStop(1, bottom);
   c.fillStyle = gr; c.fillRect(0, 0, W, groundY + 2);
 
-  // Stars fade in at night and twinkle.
-  const starA = clamp(1 - L * 1.6, 0, 1);
+  // Stars fade in at night and twinkle (some places show them always).
+  const starA = P.stars ? Math.max(0.5, clamp(1 - L * 1.6, 0, 1)) : clamp(1 - L * 1.6, 0, 1) * (1 - grey);
   if (starA > 0) {
     c.fillStyle = '#fff8d8';
     for (const s of deco.stars) {
@@ -42,8 +52,9 @@ function drawBackground(c, sky, time) {
     c.globalAlpha = 1;
   }
 
-  // Sun (day) or moon (night) on an arc across the sky.
+  // Sun (day) or moon (night) on an arc across the sky; hidden behind rain clouds.
   const p = clamp(sky.sun, 0, 1), arcX = lerp(W * 0.08, W * 0.92, p), arcY = groundY - Math.sin(p * Math.PI) * groundY * 0.72 + 40 * U;
+  c.globalAlpha = 1 - grey * 0.9;
   if (!sky.night) {
     const r = 26 * U;
     const glow = c.createRadialGradient(arcX, arcY, r * 0.5, arcX, arcY, r * 2.6);
@@ -58,42 +69,34 @@ function drawBackground(c, sky, time) {
     c.fillStyle = mix(SKY.night[0], SKY.night[1], 0.4);
     c.beginPath(); c.arc(arcX + r * 0.45, arcY - r * 0.25, r * 0.85, 0, TAU); c.fill();
   }
+  c.globalAlpha = 1;
+  if (weather === 'rainbow' && L > 0.5) drawRainbow(c, W * 0.5, groundY + 10 * U, W * 0.62, 0.55 * (L - 0.5) * 2);
 
-  // Clouds drift slowly.
-  c.fillStyle = 'rgba(255,255,255,' + (0.35 + L * 0.5).toFixed(2) + ')';
-  for (const cl of deco.clouds) {
-    const cxp = ((cl.x + time * cl.v * U) % (W + 160 * U)) - 80 * U, s = cl.s * U;
-    c.beginPath();
-    c.arc(cxp, cl.y, 20 * s, 0, TAU); c.arc(cxp + 22 * s, cl.y - 9 * s, 24 * s, 0, TAU);
-    c.arc(cxp + 46 * s, cl.y, 18 * s, 0, TAU); c.rect(cxp, cl.y, 46 * s, 18 * s);
-    c.fill();
+  // Clouds drift slowly; more and darker when the weather is bad.
+  if (P.clouds !== false) {
+    const n = grey ? 6 : 4, col = grey ? mix('#9aa4ae', '#ffffff', 0.3) : '#ffffff';
+    c.fillStyle = col;
+    c.globalAlpha = 0.35 + L * 0.5 + grey * 0.15;
+    for (const cl of deco.clouds.slice(0, n)) drawCloudShape(c, ((cl.x + time * cl.v * U) % (W + 160 * U)) - 80 * U, cl.y, cl.s * U * (grey ? 1.4 : 1));
+    c.globalAlpha = 1;
   }
+  P.draw(c, env);
+}
 
-  // Two layers of hills.
-  const dim = k => mix('#1d2a4a', k, clamp(L * 1.1, 0.25, 1));
-  c.fillStyle = dim(SKY.hillFar);
-  c.beginPath(); c.moveTo(0, groundY);
-  for (let i = 0; i <= 8; i++) c.quadraticCurveTo(W * (i - 0.5) / 8, groundY - (55 + (i % 3) * 22) * U, W * i / 8, groundY - 25 * U);
-  c.lineTo(W, groundY + 2); c.lineTo(0, groundY + 2); c.fill();
-  c.fillStyle = dim(SKY.hillNear);
-  c.beginPath(); c.moveTo(0, groundY - 10 * U);
-  c.bezierCurveTo(W * 0.25, groundY - 50 * U, W * 0.45, groundY - 5 * U, W * 0.65, groundY - 30 * U);
-  c.bezierCurveTo(W * 0.8, groundY - 48 * U, W * 0.92, groundY - 15 * U, W, groundY - 22 * U);
-  c.lineTo(W, groundY + 2); c.lineTo(0, groundY + 2); c.fill();
-
-  // Meadow with grass tufts and flowers.
-  const gg = c.createLinearGradient(0, groundY, 0, H);
-  gg.addColorStop(0, dim(SKY.ground[0])); gg.addColorStop(1, dim(SKY.ground[1]));
-  c.fillStyle = gg; c.fillRect(0, groundY, W, H - groundY);
-  c.strokeStyle = dim('#3f8a2e'); c.lineWidth = 2 * U; c.lineCap = 'round';
+/** One fluffy cloud (three circles and a flat bottom), size s. Fill style must be set. */
+function drawCloudShape(c, x, y, s) {
   c.beginPath();
-  for (const gs of deco.grass) { c.moveTo(gs.x, gs.y); c.lineTo(gs.x - 2 * U, gs.y - gs.h * U); c.moveTo(gs.x, gs.y); c.lineTo(gs.x + 2 * U, gs.y - gs.h * U); }
-  c.stroke();
-  for (const f of deco.flowers) {
-    c.fillStyle = dim(f.c);
-    for (let i = 0; i < 5; i++) { c.beginPath(); c.arc(f.x + Math.cos(i * TAU / 5) * 3.2 * U, f.y + Math.sin(i * TAU / 5) * 3.2 * U, 2.4 * U, 0, TAU); c.fill(); }
-    c.fillStyle = dim('#ffb300'); c.beginPath(); c.arc(f.x, f.y, 2 * U, 0, TAU); c.fill();
-  }
+  c.arc(x, y, 20 * s, 0, TAU); c.arc(x + 22 * s, y - 9 * s, 24 * s, 0, TAU);
+  c.arc(x + 46 * s, y, 18 * s, 0, TAU); c.rect(x, y, 46 * s, 18 * s);
+  c.fill();
+}
+
+/** A rainbow arc centred at (x, y) with outer radius r and opacity a. */
+function drawRainbow(c, x, y, r, a) {
+  const cols = ['#ff5252', '#ffa726', '#ffee58', '#66bb6a', '#42a5f5', '#7e57c2'];
+  c.save(); c.globalAlpha = clamp(a, 0, 1); c.lineWidth = r * 0.055;
+  cols.forEach((col, i) => { c.strokeStyle = col; c.beginPath(); c.arc(x, y, r - i * r * 0.055, Math.PI, TAU); c.stroke(); });
+  c.restore();
 }
 
 /** Blend of a css "rgb(r,g,b)" colour with a "#rrggbb" colour. */

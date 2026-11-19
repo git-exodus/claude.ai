@@ -54,7 +54,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at } = require(
   await ev(() => { __st.S.last = __st.now(); for (const k in __st.S.needs) __st.S.needs[k] = 60; __st.step(0.6); });
   let vis = await ev(() => __st.visible());
   const btnCount = await ev(() => [...document.querySelectorAll('#actions .round')].filter(b => !b.hidden).length);
-  R.ok(vis.needs && vis.actions && btnCount === 5, 'Geschlüpft: 5 Bedürfnisse, 5 Knöpfe (tagsüber ohne Licht aus)', btnCount);
+  R.ok(vis.needs && vis.actions && btnCount === 6, 'Geschlüpft: 5 Bedürfnisse, 6 Knöpfe (tagsüber Wandern statt Licht aus)', btnCount);
   await shot('ui-baby');
 
   // ---------- food: tap on the tray ----------
@@ -194,7 +194,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at } = require(
   await page.selectOption('#s-limit', '30');
   let opts = await ev(() => ({ ...__st.S.opts }));
   R.ok(!opts.sound && !opts.music && opts.sleep === 1170 && opts.wake === 390 && opts.limit === 30, 'Ton, Musik, Schlafenszeit, Aufstehen, Spielzeit einstellbar', JSON.stringify(opts));
-  R.ok((await page.textContent('#credit')).trim() === '@made by Brownii (Claude.ai) · v0.1', 'Fußzeile mit Version');
+  R.ok((await page.textContent('#credit')).trim() === '@made by Brownii (Claude.ai) · v' + (await ev(() => __st.VERSION)), 'Fußzeile mit Version');
   // Reset: confirm dialog, cancel, then really.
   await page.click('#s-reset');
   R.ok(await ev(() => __st.visible().confirm), 'Alles zurücksetzen fragt nach');

@@ -1,7 +1,7 @@
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.1';
+const VERSION = '0.2';
 const SAVE_KEY = 'stegi-v1';
 
 /** The five needs, in the order of the top bar. Each is 0 (empty) .. 100 (full). */
@@ -70,6 +70,52 @@ const WAKE_CHOICES = [5.5 * 60, 6 * 60, 6.5 * 60, 7 * 60, 7.5 * 60, 8 * 60, 8.5 
 /** Daily play time limit in minutes, 0 = off. */
 const LIMIT_CHOICES = [0, 15, 30, 45, 60, 90];
 
+/** Walking: awake seconds from setting off until he reaches a new place (the app may be closed).
+ *  At most WALK_PER_DAY new places per calendar day; when all are found he walks to a random known one. */
+const WALK_SECONDS = 3600;
+const WALK_PER_DAY = 2;
+
+/**
+ * The 30 places. id, name (shown to parents in the places list), flags:
+ *   ff      fireflies every night (forest and water places); elsewhere every other night
+ *   dry     no rain or snow (weather turns sunny)      cold   rain falls as snow
+ *   indoor  no sky, sun, weather or clouds (the cave)   wear   automatic accessory (0.3)
+ * The drawing of each place is in 07-places.js (PLACE_DRAW).
+ */
+const PLACES = [
+  { id: 'meadow', name: 'Wiese' },
+  { id: 'jungle', name: 'Dschungel', ff: true },
+  { id: 'savanna', name: 'Savanne', dry: true },
+  { id: 'volcano', name: 'Vulkan', dry: true },
+  { id: 'island', name: 'Kleine Insel' },
+  { id: 'river', name: 'Am Fluss', ff: true },
+  { id: 'cloud', name: 'Auf einer Wolke', dry: true },
+  { id: 'beach', name: 'Strand', wear: { eyes: 'sunglasses' } },
+  { id: 'waterfall', name: 'Wasserfall', ff: true },
+  { id: 'desert', name: 'Wüste', dry: true, wear: { eyes: 'sunglasses' } },
+  { id: 'snow', name: 'Schneeberg', cold: true, wear: { neck: 'scarf' } },
+  { id: 'cave', name: 'Kristallhöhle', indoor: true },
+  { id: 'mushroom', name: 'Pilzwald', ff: true },
+  { id: 'sunflower', name: 'Sonnenblumenfeld' },
+  { id: 'bamboo', name: 'Bambuswald', ff: true },
+  { id: 'pond', name: 'Seerosenteich', ff: true },
+  { id: 'swamp', name: 'Sumpf', ff: true },
+  { id: 'autumn', name: 'Herbstwald', ff: true },
+  { id: 'cherry', name: 'Kirschblütenhain' },
+  { id: 'canyon', name: 'Felsenschlucht', dry: true },
+  { id: 'lagoon', name: 'Lagune' },
+  { id: 'rainbow', name: 'Regenbogenland' },
+  { id: 'dinovalley', name: 'Dino-Tal' },
+  { id: 'mountainlake', name: 'Bergsee', ff: true },
+  { id: 'springs', name: 'Heiße Quellen' },
+  { id: 'ice', name: 'Eisland', cold: true, wear: { neck: 'scarf' } },
+  { id: 'starhill', name: 'Sternenhügel', ff: true },
+  { id: 'bigtree', name: 'Riesenbaum', ff: true },
+  { id: 'berryhill', name: 'Beerenhügel' },
+  { id: 'treasure', name: 'Schatzinsel' },
+];
+const placeById = id => PLACES.find(p => p.id === id) || PLACES[0];
+
 /** Seconds the gear button must be held to open the parents' settings. */
 const GEAR_HOLD = 3;
 
@@ -115,6 +161,16 @@ const ICONS = {
   bed: [
     { d: 'M20 15A9 9 0 0 1 9 4a9 9 0 1 0 11 11z', fill: '#ffd54f' },
     { d: 'M17 3l.8 1.7 1.7.8-1.7.8L17 8l-.8-1.7-1.7-.8 1.7-.8z', fill: '#fff59d' },
+  ],
+  walk: [
+    { d: 'M6 3.5c1.8 0 2.8 2 2.6 4.5S7 12 5.6 12 3.2 10.3 3.4 7.6 4.3 3.5 6 3.5zM4 13.5h4l-.4 2.5H4.4z', fill: '#8d6e63' },
+    { d: 'M16.5 8.5c1.8 0 2.8 2 2.6 4.5s-1.6 4-3 4-2.4-1.7-2.2-4.4.9-4.1 2.6-4.1zM14.5 18.5h4l-.4 2.5h-3.2z', fill: '#a1887f' },
+  ],
+  map: [
+    { d: 'M2 5l6-2 8 2 6-2v16l-6 2-8-2-6 2z', fill: '#ffe9a8', stroke: '#c49a3a', w: 1.4 },
+    { d: 'M8 3v16M16 5v16', stroke: '#e0c070', w: 1.2 },
+    { d: 'M5 14c2-3 5 1 7-2s4-1 6-4', stroke: '#e5533d', w: 1.8 },
+    { d: 'M17 5.5l1.6 1.6M18.6 5.5L17 7.1', stroke: '#e5533d', w: 1.6 },
   ],
   close: [
     { d: 'M6 6l12 12M18 6L6 18', stroke: '#e5533d', w: 3.4 },

@@ -1,4 +1,4 @@
-/* make-icon.js – renders the app icon (the grown stego on a round meadow) from the game's own
+/* make-icon.js – renders the app icon (the spotted egg in its nest on a round meadow, since 0.2) from the game's own
  * drawing code into android/app/src/main/res/mipmap-(x)xhdpi/ic_launcher.png. Not a test; run it after
  * changing how the stego looks:  node stegi/tests/make-icon.js */
 const fs = require('fs'), path = require('path');
@@ -15,7 +15,9 @@ const { chromium, openPage, loadClean } = require('./lib');
       g.addColorStop(0, '#8fd0ff'); g.addColorStop(0.62, '#cfeeff'); g.addColorStop(0.62, '#7ccb5c'); g.addColorStop(1, '#5aa83f');
       x.fillStyle = g; x.beginPath(); x.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2); x.fill();
       x.save(); x.beginPath(); x.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2); x.clip();
-      __st.draw.stego(x, 92 * s, 150 * s, 205 * s, { g: 0.8, stage: 3, t: 0.3, eyes: 'open', mouth: 'smile' });
+      __st.draw.nest(x, 96 * s, 168 * s, 150 * s, 'back');
+      __st.draw.egg(x, 96 * s, 158 * s, 120 * s, 1, 0, 0, 0);
+      __st.draw.nest(x, 96 * s, 168 * s, 150 * s, 'front');
       x.restore();
       return c.toDataURL('image/png').split(',')[1];
     }, size);

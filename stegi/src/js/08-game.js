@@ -286,6 +286,8 @@ function updatePet(dt, sleeping) {
     pet.dir = Math.sign(dx);
     pet.walk += dt * 12;
   } else if (game.mode !== 'ball' && !sleeping) pet.dir = 1;
+  if (walkingNow()) pet.walk += dt * 6;   // slow steps on the way (the landscape scrolls, 13-travel)
+  updateTravel(dt, sleeping);
 
   // Activities.
   if (game.mode === 'eat' && game.flying) {
@@ -422,7 +424,7 @@ function stegoLook() {
     eyes: 'open', mouth: 'smile', blink: pet.blink > 0 ? 1 : 0, jump: pet.jump, wiggle: pet.wiggle,
     dirt: clamp((50 - S.needs.clean) / 50, 0, 1), headDown: 0, wag: 0 };
   if (sleeping) { o.pose = 'lie'; o.eyes = 'closed'; o.mouth = 'closed'; o.blink = 0; return o; }
-  if (pet.moving) o.pose = 'walk';
+  if (pet.moving || walkingNow()) o.pose = 'walk';
   if (game.mode === 'drink') { o.headDown = smooth(Math.min(game.modeT, 2.6 - game.modeT) / 0.4); o.mouth = 'open'; o.eyes = 'happy'; }
   else if (pet.eatT > 0) { o.mouth = 'chew'; o.eyes = 'happy'; }
   else if (pet.refuseT > 0) { o.mouth = 'closed'; o.eyes = 'closed'; o.dir = Math.sin(pet.refuseT * 25) > 0 ? 1 : -1; }
@@ -435,6 +437,9 @@ function stegoLook() {
   if (game.ball && game.ball.carried) o.mouth = 'open';
   return o;
 }
+
+/** Today's weather (0.3 fills this in; until then always sunny). */
+function currentWeather() { return 'sun'; }
 
 /** Camera: zoomed in on the stego in the menu, normal in the game. */
 function cameraZoom() {
@@ -449,7 +454,8 @@ function drawWorld() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.save();
   ctx.translate(cc.x, cc.y); ctx.scale(z, z); ctx.translate(-cc.x, -cc.y);
-  drawBackground(ctx, sky, game.t);
+  const placeId = !hatched() ? 'meadow' : S.walk ? 'travel' : S.place, weather = currentWeather();
+  drawBackground(ctx, sky, game.t, placeId, weather, walkFx.scroll);
 
   if (!hatched() || (game.mode === 'hatch' && !hatched())) {
     drawEggScene(sky);
@@ -468,6 +474,7 @@ function drawWorld() {
     if (game.flying) drawFood(ctx, game.flying.id, game.flying.x, game.flying.y, 46 * U);
   }
   drawNightShade(ctx, sky);
+  if (firefliesNow(t, placeId === 'travel' ? 'meadow' : placeId, weather)) drawFireflies(ctx, game.t);
   drawParts(ctx);
 
   // Thought bubble with what he needs most (awake, idle, in the game).

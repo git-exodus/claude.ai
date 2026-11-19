@@ -21,6 +21,11 @@ function blankSave(t) {
     stageSeen: 0,            // highest growth stage already celebrated
     playDay: -1, playSec: 0, // play time today (for the parents' daily limit)
     opts: { sound: true, music: true, sleep: SLEEP_DEFAULT, wake: WAKE_DEFAULT, limit: 0 },
+    // Places (0.2): where he is, what was found on which day (-1 = start), the walk under way, a find not yet celebrated.
+    place: 'meadow',
+    found: [{ id: 'meadow', day: -1 }],
+    walk: null,              // { sec } awake seconds walked so far, or null
+    newPlace: null,          // id of a place reached but not yet celebrated
   };
 }
 
@@ -61,6 +66,16 @@ function sanitizeSave(o, t) {
     wake: WAKE_CHOICES.includes(op.wake) ? op.wake : WAKE_DEFAULT,
     limit: LIMIT_CHOICES.includes(op.limit) ? op.limit : 0,
   };
+  const ids = PLACES.map(p => p.id);
+  if (Array.isArray(o.found)) {
+    const seen = new Set();
+    b.found = o.found.filter(f => f && ids.includes(f.id) && !seen.has(f.id) && seen.add(f.id))
+      .map(f => ({ id: f.id, day: num(f.day, -1, 1e6, -1) }));
+    if (!seen.has('meadow')) b.found.unshift({ id: 'meadow', day: -1 });
+  }
+  b.place = b.found.some(f => f.id === o.place) ? o.place : 'meadow';
+  b.walk = o.walk && typeof o.walk.sec === 'number' ? { sec: num(o.walk.sec, 0, WALK_SECONDS, 0) } : null;
+  b.newPlace = b.found.some(f => f.id === o.newPlace) ? o.newPlace : null;
   return b;
 }
 
@@ -126,8 +141,12 @@ function tick(t) {
   if (S.poopAt && t >= S.poopAt) {
     S.poopAt = 0;
     S.meals = 0;
-    if (S.poops.length < POOP.max) S.poops.push({ x: newPoopX() });
-    onPoop();
+    // While walking he leaves it behind on the way (it never shows up).
+    if (!S.walk && S.poops.length < POOP.max) { S.poops.push({ x: newPoopX() }); onPoop(); }
+  }
+  if (S.walk) {
+    S.walk.sec += sec;
+    if (S.walk.sec >= WALK_SECONDS) arrive(t);
   }
   if (S.bedAt && !isSleepy(t) && !isNight(t)) S.bedAt = 0;  // the morning after: forget "lights out"
   S.last = t;

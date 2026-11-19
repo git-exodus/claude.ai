@@ -3,7 +3,7 @@
 
 window.__st = {
   get S() { return S; },
-  game, pet, clock, parts, soundLog, debugFlags,
+  game, pet, clock, parts, soundLog, debugFlags, PLACES, VERSION,
   /** Music state: on = tune is scheduled, ctx = AudioContext state ('running' after a touch). */
   get music() { return { on: music.on, ctx: AC ? AC.state : 'none' }; },
   /** Sets the game clock to a local date/time string, e.g. '2026-11-20T09:00'. */
@@ -15,11 +15,12 @@ window.__st = {
   step(sec) { const n = Math.round(sec * 30); for (let i = 0; i < n; i++) { update(1 / 30); drawWorld(); } refreshUI(); },
   /** Stops/starts the real-time frame loop (tests that need exact control). */
   pause(p) { paused = p; },
+  startWalk, arrive, goPlace, openPlaces, closePlaces, foundToday, walkLimitReached, firefliesNow, placePicture, walkFx,
   enterGame, showMenu, startMode, endMode, goToBed, offerFood, removePoop, tapStego, strokeStego, throwBall,
   eggPhase, eggProgress, eggRub, stageAt: () => stageAt(now()), growth: () => growthAt(now()), lifeDay: () => lifeDay(now()),
   lowest: lowestNeed, limitReached, save, load: loadGame, sanitizeSave, resetAll, blankSave,
   /** Drawing functions (used to render the app icon, see README 4.2). */
-  draw: { stego: drawStego, egg: drawEgg },
+  draw: { stego: drawStego, egg: drawEgg, nest: drawNest },
   /** The stego palette object (tests and previews may change it in place). */
   colors: STEGO_COLORS,
   /** Screen positions for touches. */

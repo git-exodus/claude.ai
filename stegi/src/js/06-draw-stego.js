@@ -3,9 +3,10 @@
  * 260 units long (tail tip to snout) and 0,0 is the ground under the middle of his body.
  * y goes up as negative numbers. drawStego() scales units to pixels. */
 
+/** Slate grey with a hint of blue (variant "A" chosen in 0.2; was green in 0.1). Plates stay orange. */
 const STEGO_COLORS = {
-  body: '#8bd35f', dark: '#5fa83c', belly: '#dcf3a6', line: '#2f5d24',
-  plate: ['#ff9a4d', '#ffbe5c'], plateLine: '#b8571d', spot: '#71bd4a',
+  body: '#6f7d88', dark: '#56636d', belly: '#d9d4c7', line: '#2c343b',
+  plate: ['#ff9a4d', '#ffbe5c'], plateLine: '#b8571d', spot: '#61707b',
   eye: '#2a2a35', cheek: '#ff8fa8', mouth: '#7a2335', tongue: '#ff7b93',
   dirt: '#8a6a3f', nail: '#f6f2dc',
 };

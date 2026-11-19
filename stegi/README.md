@@ -2,11 +2,11 @@
 
 Ein Tamagotchi für ein Kind von 5 Jahren: Ein kleiner Stegosaurus schlüpft aus einem Ei, wächst in
 30 Tagen groß und will gefüttert, getränkt, gestreichelt, gebadet und bespielt werden. Er schläft
-nach der echten Uhrzeit (Standard 20:00–7:00). Man braucht nicht lesen zu können: alles läuft über
+nach der echten Uhrzeit (Standard 20:00–7:00) und wandert zu 30 Orten, die nach und nach entdeckt werden. Man braucht nicht lesen zu können: alles läuft über
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.1 (Runde 1 von 2).** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.2.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -30,7 +30,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **91 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 39).
+Erwartet: **110 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 39, suite-places 19).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -55,15 +55,16 @@ stegi/
 ├── src/
 │   ├── page.html          Markup: Leisten, Futterleiste, Hauptmenü, Einstellungen, Rückfrage, Pause
 │   ├── style.css          alle Styles
-│   └── js/                Spielcode, siehe Abschnitt 5
+│   └── js/                Spielcode, siehe Abschnitt 5 (die 30 Orte in 07-places.js)
 ├── fonts/                 Lilita One und Nunito (OFL), für die APK eingebettet
 ├── android/               WebView-App, Paket com.stegi.game, Hochformat
-│   └── app/src/main/res/mipmap-xhdpi|xxxhdpi/ic_launcher.png   App-Symbol (mit tests/make-icon.js erzeugt)
+│   └── app/src/main/res/mipmap-xhdpi|xxxhdpi/ic_launcher.png   App-Symbol: Ei im Nest (mit tests/make-icon.js erzeugt)
 └── tests/
     ├── lib.js             gemeinsame Hilfen (Laden, Zeitreise, schnelles Schlüpfen)
     ├── run.sh             baut und führt alle Testreihen aus
     ├── suite-core.js      Regeln: Uhr, Ei, Wachstum, Bedürfnisse, Kacka, Pflege, Schlaf, Speichern, Spielzeit
     ├── suite-ui.js        Bedienung mit echter Maus, Einstellungen, Zurück-Taste, Beenden, Musik, Bildschirmfotos
+    ├── suite-places.js    0.2: Babygröße, Wandern (auch bei geschlossener App), 2 Orte pro Tag, Orte-Liste, Glühwürmchen
     └── make-icon.js       kein Test: zeichnet das App-Symbol mit dem Spielcode neu
 ```
 
@@ -85,7 +86,9 @@ Spiel ins Menü.
 unter 30 wackelt, und der Stego zeigt eine Gedankenblase mit dem, was er am dringendsten braucht.
 Rechts das Zahnrad für die Eltern.
 
-**Unten:** Essen, Trinken, Baden, Ball, Zähneputzen, und abends der Mond „Licht aus“.
+**Unten:** Essen, Trinken, Baden, Ball, Zähneputzen, Wandern (Fußspuren); ab 19:30 ersetzt der Mond „Licht aus“ das Wandern.
+
+**Rechts unter dem Zahnrad:** Landkarte = Liste der Orte.
 
 | Tätigkeit | Wie |
 |---|---|
@@ -98,6 +101,8 @@ Rechts das Zahnrad für die Eltern.
 | Ball | Ball wegschnipsen, er rennt hin, bringt ihn zurück und freut sich |
 | Kacka | Häufchen mit Fliegen antippen: Pling, weg |
 | Licht aus | ab 19:30: er legt sich schlafen |
+| Wandern | er läuft los, die Landschaft zieht vorbei, oben ein Balken von den Fußspuren zur Landkarte; nach 1 Stunde wacher Zeit (auch bei geschlossener App) ist er an einem neuen Ort und wartet dort |
+| Orte | Landkarte: 30 Kärtchen, unentdeckte mit „?“; ein entdecktes antippen = er ist sofort dort |
 
 **Gesichter:** fröhlich, Augen zu (gestreichelt), traurig mit Augenbraue (ein Bedürfnis unter 20),
 kauen, gähnen, Zähne zeigen, schlafen (liegend, Zzz). Schmutzig: braune Flecken (Sauberkeit unter 50).
@@ -126,9 +131,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.1';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.1` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 1`, `versionName '0.1'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.2';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.2` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 2`, `versionName '0.2'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -144,10 +149,12 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 | `04-state.js` | Spielstand `S`, `blankSave`, `sanitizeSave`, Laden/Speichern/Zurücksetzen, `tick(t)` (Zeit vergeht), Stufe, Wachstum, Kacka-Plan, Spielzeit |
 | `05-audio.js` | WebAudio: `tone`, `noise`, alle Geräusche in `SOUNDS`, `sound(name)`, Spieluhr-Musik `updateMusic` |
 | `06-draw-stego.js` | `drawStego()`: der Stego in jeder Größe, Pose und Laune; gibt Maul-, Kopf- und Körperposition zurück |
-| `07-draw-scene.js` | Himmel, Sonne/Mond, Sterne, Wolken, Hügel, Wiese, Nest, Ei mit Rissen, Kacka, Futter, Napf, Wanne, Bürste, Ball, Gedankenblase, Partikel |
+| `07-places.js` | Die 30 Orte und „unterwegs“ (`PLACE_DRAW`), Bausteine (Hügel, Bäume, Palmen, Wasser, Felsen, Berge …), Vorschaubilder `placePicture` |
+| `07-draw-scene.js` | Himmel je Ort und Wetter, Sonne/Mond, Sterne, Wolken, Regenbogen, Nest, Ei mit Rissen, Kacka, Futter, Napf, Wanne, Bürste, Ball, Gedankenblase, Partikel |
 | `08-game.js` | Zustand `game` und `pet`, Ei-Logik, alle Tätigkeiten, `update(dt)`, `drawWorld()` |
 | `09-ui.js` | HTML-Teile: Leisten, Knöpfe, Futterleiste, Menü, Einstellungen (Zahnrad 3 s), Rückfrage, Pause, `window.__back` |
 | `10-input.js` | Finger: Tippen, Streicheln, Ziehen, Werfen |
+| `13-travel.js` | Wandern, Ankunft, Tagesgrenze, Orte-Liste, Banner „neuer Ort“, Glühwürmchen |
 | `11-main.js` | `resize`, Bildschleife, Speichern alle 5 s und beim Verlassen, `start()` |
 | `99-debug.js` | `window.__st` für die Tests (wird vom Spiel nicht benutzt), ruft `start()` auf |
 
@@ -164,9 +171,11 @@ jede Tätigkeit (`endMode`).
 „Einheiten“ gezeichnet (ausgewachsen ca. 260 lang) und auf `stegoSize` (92 % der Breite) skaliert,
 mal `lerp(SIZE_MIN, 1, Wachstum)`.
 
+**Farbe:** schiefergrau mit leichtem Blaustich (`STEGO_COLORS`, Variante „A“ aus drei Vorschlägen, seit 0.2; vorher grün), orange Platten.
+
 ---
 
-## 6. Spielwerte (Stand 0.1, Quelle: `src/js/02-config.js`)
+## 6. Spielwerte (Stand 0.2, Quelle: `src/js/02-config.js`)
 
 ### 6.1 Ei und Schlüpfen
 
@@ -185,8 +194,9 @@ mal `lerp(SIZE_MIN, 1, Wachstum)`.
 | Fast groß | 23 | 7 | 4 |
 | Ganz groß | 30 | 7 | 4 |
 
-Jeder Kalendertag zählt, auch ohne Besuch. Die Größe wächst täglich gleichmäßig von 55 % (Tag 1)
-bis 100 % (Tag 30); Babys haben einen größeren Kopf und kürzere Beine. Jede neue Stufe wird beim
+Jeder Kalendertag zählt, auch ohne Besuch. Die Größe wächst täglich gleichmäßig von 38,5 % (Tag 1, seit 0.2;
+vorher 55 %) bis 100 % (Tag 30). Die Rückenplatten wachsen von 13 auf 39 Einheiten (+50 % seit 0.2), die
+Schwanzstacheln von 4 auf 25 (+25 %); Babys haben einen größeren Kopf und kürzere Beine. Jede neue Stufe wird beim
 nächsten Hinsehen mit Fanfare und Konfetti gefeiert (`S.stageSeen`).
 
 ### 6.3 Bedürfnisse (0–100, nach dem Schlüpfen alle 70)
@@ -222,6 +232,25 @@ Anzeige „Tag x von 30 · Stufe“ bzw. „Noch im Ei · n Risse“. Name (max.
 Musik an/aus, Schlafenszeit 18:00–22:00, Aufstehen 5:30–9:00 (je halbe Stunde), Spielzeit pro Tag
 (unbegrenzt / 15 / 30 / 45 / 60 / 90 Minuten; danach Pausen-Hinweis und zurück ins Menü bis morgen),
 **Alles zurücksetzen** mit Rückfrage (neues Ei, alle Werte und Einstellungen auf Standard).
+
+### 6.6 Wandern und Orte (seit 0.2)
+
+- Knopf „Wandern“: Nach **1 Stunde wacher Zeit** (`WALK_SECONDS`) ist er an einem zufälligen, noch nicht
+  entdeckten Ort. Die Zeit läuft auch bei geschlossener App weiter (`tick`), nachts ruht sie.
+- **Höchstens 2 neue Orte pro Kalendertag** (`WALK_PER_DAY`), danach schüttelt er beim Knopf den Kopf.
+  Sind alle 30 entdeckt, wandert er ohne Grenze zu einem zufälligen bekannten Ort.
+- Kacka bleibt beim Losgehen am alten Ort; unterwegs fällt keine neue an.
+- Ankunft an einem **neuen** Ort: beim nächsten Hinsehen Fanfare, Konfetti und ein Bild mit dem Namen (4 s).
+- Orte-Liste (Landkarte): entdeckte Orte antippen = sofort dort (eine laufende Wanderung endet).
+- Die 30 Orte: Wiese (Start), Dschungel, Savanne, Vulkan, Kleine Insel, Am Fluss, Auf einer Wolke, Strand,
+  Wasserfall, Wüste, Schneeberg, Kristallhöhle, Pilzwald, Sonnenblumenfeld, Bambuswald, Seerosenteich, Sumpf,
+  Herbstwald, Kirschblütenhain, Felsenschlucht, Lagune, Regenbogenland, Dino-Tal, Bergsee, Heiße Quellen,
+  Eisland (Polarlicht), Sternenhügel, Riesenbaum, Beerenhügel, Schatzinsel. Das Ei liegt immer auf der Wiese.
+
+### 6.7 Glühwürmchen (seit 0.2)
+
+Von einer Stunde vor der Schlafenszeit (Standard 19:00) bis zum Aufstehen. An Wald- und Wasserorten
+(`ff` in `PLACES`) jede Nacht, sonst jede zweite (gerade Tagesnummer). Nicht in der Höhle, nicht bei Regen oder Schnee.
 
 ---
 
@@ -265,11 +294,12 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.2 | Farbe schiefergrau, Baby 30 % kleiner, Platten +50 %, Schwanzstacheln +25 %, App-Symbol Ei, Wandern zu 30 Orten mit Orte-Liste, Glühwürmchen |
 | 0.1 | Runde 1: Hauptmenü mit Stego/Ei, Ei mit 3 Rissen und Schlüpfen, 5 Wachstumsstufen in 30 Tagen, 5 Bedürfnisse, Essen, Trinken, Streicheln, Baden, Zähneputzen, Ball, Kacka, Schlafen 20–7 Uhr mit Tag/Nacht-Himmel, Geräusche und Spieluhr, Eltern-Einstellungen mit Spielzeit-Grenze und „Alles zurücksetzen“ |
 
 ---
 
-## 11. Offene Punkte (Runde 2, mit dem Auftraggeber vereinbart)
+## 11. Offene Punkte (für 0.3, mit dem Auftraggeber vereinbart)
 
 - **Verstecken:** er versteckt sich hinter Büschen/Steinen, man tippt, bis man ihn findet.
 - **Musik machen:** Trommel und Xylophon mit großen Tasten, der Stego tanzt im Takt.
