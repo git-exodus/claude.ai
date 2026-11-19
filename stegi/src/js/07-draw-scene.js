@@ -80,6 +80,7 @@ function drawBackground(c, sky, time, placeId = 'meadow', weather = 'sun', scrol
     for (const cl of deco.clouds.slice(0, n)) drawCloudShape(c, ((cl.x + time * cl.v * U) % (W + 160 * U)) - 80 * U, cl.y, cl.s * U * (grey ? 1.4 : 1));
     c.globalAlpha = 1;
   }
+  drawSkyLife(c, sky, time, placeId, weather, arcX, arcY);   // sun rays and birds (07-scenery, 0.6)
   P.draw(c, env);
 }
 

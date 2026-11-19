@@ -6,7 +6,7 @@ function resize() {
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
   U = clamp(Math.min(W / 360, H / 680), 0.75, 1.8);
   // The meadow starts a bit above the middle; the stego stands above the buttons.
-  groundY = H * 0.52;
+  groundY = H * 0.42;   // 0.6: horizon higher (was 0.52), less empty sky, more ground
   standY = H - Math.max(150 * U, H * 0.2);
   stegoSize = Math.min(W * 0.92, 440 * U);
   makeDeco();

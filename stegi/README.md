@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.5.1.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.6.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **209 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 36, suite-dev 26, suite-photos 19, suite-apk 17).
+Erwartet: **218 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 36, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 9).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -69,6 +69,7 @@ stegi/
     ├── suite-extras.js    0.3: Wetter, Geschenke/Verkleiden, Fotos/Album, Besuch, Verstecken, Musik, Spielmenü
     ├── suite-photos.js    0.5: Fototagebuch (2 pro Tag), Meilensteine, Löschen, Testalbum, Gerät ohne Speicher
     ├── suite-apk.js       0.5.1: wie in der APK (mit Beenden-Knopf): kein Knopf verdeckt, nur Beenden im Menü schließt
+    ├── suite-design.js    0.6: Horizont, Kleinigkeiten (schnuppern, staunen, freuen, hüpfen), Stauchen/Strecken, Vordergrund aller Orte
     ├── suite-dev.js       0.4: Testmodus (eigener Spielstand, Stufen, Zeitraffer, Sprünge, Helfer, echter Stand bleibt unberührt)
     └── make-icon.js       kein Test: zeichnet das App-Symbol mit dem Spielcode neu
 ```
@@ -143,9 +144,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.5.1';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.5.1` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 6`, `versionName '0.5.1'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.6';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.6` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 7`, `versionName '0.6'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -162,6 +163,7 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 | `05-audio.js` | WebAudio: `tone`, `noise`, alle Geräusche in `SOUNDS`, `sound(name)`, Spieluhr-Musik `updateMusic` |
 | `06-draw-stego.js` | `drawStego()`: der Stego in jeder Größe, Pose und Laune; gibt Maul-, Kopf- und Körperposition zurück; `drawWear()`: die 12 Kleidungsstücke |
 | `07-places.js` | Die 30 Orte und „unterwegs“ (`PLACE_DRAW`), Bausteine (Hügel, Bäume, Palmen, Wasser, Felsen, Berge …), Vorschaubilder `placePicture` |
+| `07-scenery.js` | 0.6: Sonnenstrahlen und Vögel (`drawSkyLife`), Vordergrund je Ort (`FOREGROUND`, `drawForeground`), Schmetterlinge und springende Fische (`drawGroundLife`) |
 | `07-draw-scene.js` | Himmel je Ort und Wetter, Sonne/Mond, Sterne, Wolken, Regenbogen, Nest, Ei mit Rissen, Kacka, Futter, Napf, Wanne, Bürste, Ball, Gedankenblase, Partikel |
 | `08-game.js` | Zustand `game` und `pet`, Ei-Logik, alle Tätigkeiten, `update(dt)`, `drawWorld()` |
 | `09-ui.js` | HTML-Teile: Leisten, Knöpfe, Futterleiste, Menü, Einstellungen (Zahnrad 3 s), Rückfrage, Pause, `window.__back` |
@@ -190,6 +192,11 @@ jede Tätigkeit (`endMode`).
 „Einheiten“ gezeichnet (ausgewachsen ca. 260 lang) und auf `stegoSize` (92 % der Breite) skaliert,
 mal `lerp(SIZE_MIN, 1, Wachstum)`.
 
+**Aussehen seit 0.6:** Licht von oben (Rücken heller, Bauch dunkler, Glanz auf Rücken und Kopf), Platten mit Verlauf,
+größere Augen mit zwei Glanzpunkten, Augenbrauen (`brow`), rote Bäckchen (`blush`), weicher runder Schatten,
+Stauchen/Strecken beim Hüpfen (`squash`), rundlicheres Baby. Der Horizont liegt bei 42 % der Höhe (vorher 52 %),
+vor seinen Füßen wiegt sich ein Vordergrund passend zum Ort.
+
 **Farbe:** schiefergrau mit leichtem Blaustich (`STEGO_COLORS`, Variante „A“ aus drei Vorschlägen, seit 0.2; vorher grün), orange Platten.
 
 ---
@@ -214,7 +221,7 @@ mal `lerp(SIZE_MIN, 1, Wachstum)`.
 | Ganz groß | 30 | 7 | 4 |
 
 Jeder Kalendertag zählt, auch ohne Besuch. Die Größe wächst täglich gleichmäßig von 38,5 % (Tag 1, seit 0.2;
-vorher 55 %) bis 100 % (Tag 30). Die Rückenplatten wachsen von 13 auf 39 Einheiten (+50 % seit 0.2), die
+vorher 55 %; seit 0.6 `SIZE_MIN` 0,42 wegen des rundlicheren Körpers) bis 100 % (Tag 30). Die Rückenplatten wachsen von 13 auf 39 Einheiten (+50 % seit 0.2), die
 Schwanzstacheln von 4 auf 25 (+25 %); Babys haben einen größeren Kopf und kürzere Beine. Jede neue Stufe wird beim
 nächsten Hinsehen mit Fanfare und Konfetti gefeiert (`S.stageSeen`).
 
@@ -341,6 +348,15 @@ Im Fenster „Test-Werkzeuge“ (Knopf in den Einstellungen, öffnet sich beim E
 
 Hinweis: Ist der Testmodus an, wirkt auch „Alles zurücksetzen“ in den Einstellungen nur auf den Test-Stegi.
 
+### 6.14 Kleinigkeiten, die er von selbst macht (seit 0.6)
+
+Passiert 7–14 Sekunden nichts (er läuft nicht, wandert nicht, hat keinen Besuch, ist nicht traurig oder müde),
+macht er zufällig eins: **schnuppern** (Kopf zur Blume, 2,6 s), **staunen** (Blick nach oben, Augenbraue hoch,
+2,2 s), **freuen** (Lachaugen, Bäckchen, Platten wackeln, 1,6 s) oder **hüpfen**. Antippen oder Streicheln
+unterbricht es. Beim Streicheln und Kichern zeigt er jetzt auch Bäckchen und Augenbrauen.
+
+Größe: Damit das rundlichere Baby so lang bleibt wie vereinbart (38,5 % der Endgröße), ist `SIZE_MIN` jetzt 0,42.
+
 ---
 
 ## 7. Spielstand
@@ -389,6 +405,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.6 | Neues Aussehen: Stego mit Licht und Schatten, größere Augen, Augenbrauen, Bäckchen, rundlicheres Baby, Stauchen/Strecken; Kleinigkeiten von selbst (schnuppern, staunen, freuen, hüpfen); höherer Horizont; Sonnenstrahlen, Vögel; Vordergrund für alle 30 Orte; Schmetterlinge und springende Fische |
 | 0.5.1 | Fehler behoben: In der APK lag der unsichtbare Beenden-Knopf über Trinken, Baden, Spielen und Zähneputzen und schloss die App; neuer Test im APK-Modus |
 | 0.5 | Fototagebuch mit 2 eigenen Fotos pro Tag und Meilensteine (auch neuer Ort), Bild fliegt zum Album, Löschen durch Halten, Fehler behoben: Fotos gingen verloren, wenn das Gerät nicht speichert; Hinweis in den Einstellungen |
 | 0.4 | Testmodus für Eltern: eigener Test-Spielstand, Stufen wählen, Zeitraffer bis 600×, Zeitsprünge, Helfer, Wetter wählen |
@@ -400,7 +417,7 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Alles bisher Vereinbarte ist gebaut (0.1–0.5). Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
+Alles bisher Vereinbarte ist gebaut (0.1–0.6). Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):
 - Benachrichtigungen am Handy („Stegi hat Hunger“, „Stegi ist angekommen“) – braucht Android-Code.

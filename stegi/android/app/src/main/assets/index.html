@@ -201,7 +201,7 @@ svg { display: block; width: 100%; height: 100%; }
       <button class="big alt" id="s-devopen" type="button" hidden>Test-Werkzeuge öffnen</button>
       <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
       <button class="big" id="s-close" type="button">Schließen</button>
-      <p id="credit">@made by Brownii (Claude.ai) · v0.5.1</p>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.6</p>
     </div>
   </div>
   <div id="confirm" class="ov" hidden>
@@ -310,7 +310,7 @@ function mix(c1, c2, k) {
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.5.1';
+const VERSION = '0.6';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -366,7 +366,7 @@ const STAGES = [
   { day: 30, name: 'Ganz groß' },
 ];
 const GROWN_DAY = 30;
-const SIZE_MIN = 0.385;   // baby = 38.5 % of the grown size (0.55 until 0.1, then 30 % smaller)
+const SIZE_MIN = 0.42;   // baby length = 38.5 % of the grown one (agreed in 0.2); 0.42 because the baby body is rounder/shorter since 0.6
 
 /** Poop: after every MEALS pieces of food, a poop appears DELAY_MIN minutes later (at most MAX lie around).
  *  Every poop lying around makes "clean" drop one time faster. */
@@ -1067,17 +1067,19 @@ const PLATE_COUNT = [4, 5, 6, 7, 7];
  *   o     { colors (optional palette, default STEGO_COLORS), g, stage, t, dir (1 = looks right), pose ('stand'|'walk'|'lie'), walk (phase),
  *           eyes ('open'|'happy'|'closed'|'sad'), blink (0..1), mouth ('smile'|'open'|'chew'|
  *           'sad'|'yawn'|'grin'|'closed'), headDown (0..1), wiggle (0..1), dirt (0..1),
- *           jump (px up), wag (0..1), wear ({ head, eyes, neck } item ids, 0.3) }
+ *           jump (px up), wag (0..1), wear ({ head, eyes, neck } item ids, 0.3),
+ *           0.6: squash (-1 stretched .. 1 squashed), look ({ x, y } pupil offset in eye radii),
+ *           brow ('happy'|'up'), blush (true = red cheeks) }
  * Returns screen positions: mouth {x, y}, head {x, y, r}, box {x, y, w, h} (for touches).
  */
 function drawStego(c, x, y, size, o) {
   const C = o.colors || STEGO_COLORS, t = o.t || 0, g = o.g || 0, stage = o.stage || 0;
   const k = size * lerp(SIZE_MIN, 1, g) / 260;      // pixels per unit
   const dir = o.dir || 1, lie = o.pose === 'lie';
-  const hs = lerp(1.5, 1.0, g);                       // head scale: babies have big heads
+  const hs = lerp(1.6, 1.0, g);                       // head scale: babies have big heads (0.6: a bit bigger)
   const breathe = 1 + Math.sin(t * (lie ? 1.6 : 2.4)) * (lie ? 0.035 : 0.02);
   const legLen = lie ? 0 : lerp(18, 30, g);
-  const rx = 62, ry = lerp(36, 42, g) * breathe;
+  const rx = lerp(54, 62, g), ry = lerp(40, 42, g) * breathe;   // 0.6: the baby is rounder (chubby)
   const cx = 0, cy = lie ? -ry * 0.78 : -legLen - ry * 0.78;
   const walk = o.pose === 'walk' ? o.walk || 0 : 0;
   const bob = o.pose === 'walk' ? Math.abs(Math.sin(walk)) * -3 : 0;
@@ -1089,12 +1091,15 @@ function drawStego(c, x, y, size, o) {
   c.lineWidth = 3;
   c.strokeStyle = C.line;
   c.translate(0, bob);
+  // Squash and stretch around the feet (jumping and landing, 0.6).
+  if (o.squash) { const q = o.squash; c.scale(1 + 0.1 * q, 1 - 0.12 * q); }
 
   // Soft shadow on the ground (not lifted by the jump).
   c.save();
   c.translate(0, -bob + (o.jump || 0) / k);
-  c.fillStyle = 'rgba(30,60,20,0.18)';
-  c.beginPath(); c.ellipse(8, 2, 95 * (o.jump ? 0.85 : 1), 9, 0, 0, TAU); c.fill();
+  const sh = c.createRadialGradient(8, 2, 5, 8, 2, 100);   // soft round shadow (0.6)
+  sh.addColorStop(0, 'rgba(20,40,20,0.32)'); sh.addColorStop(1, 'rgba(20,40,20,0)');
+  c.fillStyle = sh; c.save(); c.scale(1, 0.12); c.beginPath(); c.arc(8, 16, 100 * (o.jump ? 0.85 : 1), 0, TAU); c.fill(); c.restore();
   c.restore();
 
   // ---- tail with spikes ----
@@ -1155,7 +1160,10 @@ function drawStego(c, x, y, size, o) {
     const h = plateBase * (0.7 + 0.45 * Math.sin(Math.PI * (0.25 + f * 0.6)));
     c.save();
     c.translate(px, py); c.rotate(ang + Math.PI / 2);
-    c.fillStyle = C.plate[i % 2];
+    // Plates darker at the body, lighter at the tip (0.6).
+    const pg = c.createLinearGradient(0, 6, 0, -h);
+    pg.addColorStop(0, mix(C.plate[i % 2], '#c2410c', 0.35)); pg.addColorStop(1, mix(C.plate[i % 2], '#ffffff', 0.35));
+    c.fillStyle = pg;
     c.strokeStyle = C.plateLine;
     c.beginPath();
     c.moveTo(-h * 0.42, 6);
@@ -1171,12 +1179,17 @@ function drawStego(c, x, y, size, o) {
   leg(26, Math.PI, false);
 
   // ---- body with belly, spots and dirt ----
-  c.fillStyle = C.body;
+  // Light from above: lighter back, darker belly side (0.6).
+  const bg = c.createLinearGradient(0, cy - ry, 0, cy + ry);
+  bg.addColorStop(0, mix(C.body, '#ffffff', 0.28)); bg.addColorStop(0.55, mix(C.body, '#ffffff', 0.02)); bg.addColorStop(1, mix(C.body, '#1b2530', 0.35));
+  c.fillStyle = bg;
   c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, TAU); c.fill(); c.stroke();
   c.save();
   c.beginPath(); c.ellipse(cx, cy, rx - 1.5, ry - 1.5, 0, 0, TAU); c.clip();
   c.fillStyle = C.belly;
   c.beginPath(); c.ellipse(cx + 10, cy + ry * 0.85, rx * 0.85, ry * 0.5, 0, 0, TAU); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.22)';   // shine on the back
+  c.beginPath(); c.ellipse(cx - 10, cy - ry * 0.62, rx * 0.5, ry * 0.16, -0.12, 0, TAU); c.fill();
   c.fillStyle = C.spot;
   for (const [sx, sy, sr] of [[-28, -0.45, 7], [-6, -0.62, 6], [16, -0.4, 5], [-40, -0.05, 5], [30, -0.65, 4]]) {
     c.beginPath(); c.arc(cx + sx, cy + sy * ry, sr, 0, TAU); c.fill();
@@ -1215,17 +1228,22 @@ function drawStego(c, x, y, size, o) {
   // Head = round skull + snout, outlined together.
   const skull = () => { c.beginPath(); c.ellipse(hx, hy, 25 * hs, 21 * hs, 0, 0, TAU); };
   const snout = () => { c.beginPath(); c.ellipse(hx + 16 * hs, hy + 6 * hs, 17 * hs, 13 * hs, 0.1, 0, TAU); };
-  skull(); c.stroke(); snout(); c.stroke();
-  c.fillStyle = C.body; skull(); c.fill(); snout(); c.fill();
+  // Outline the skull only at the front: no line where it meets the neck (0.6).
+  c.beginPath(); c.ellipse(hx, hy, 25 * hs, 21 * hs, 0, -1.81, 1.82); c.stroke(); snout(); c.stroke();
+  const hg = c.createLinearGradient(0, hy - 22 * hs, 0, hy + 20 * hs);
+  hg.addColorStop(0, mix(C.body, '#ffffff', 0.3)); hg.addColorStop(1, mix(C.body, '#1b2530', 0.25));
+  c.fillStyle = hg; skull(); c.fill(); snout(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.beginPath(); c.ellipse(hx - 4 * hs, hy - 14 * hs, 10 * hs, 4 * hs, -0.2, 0, TAU); c.fill();
   // Nostril and cheek.
   c.fillStyle = C.line;
   c.beginPath(); c.arc(hx + 28 * hs, hy + 1 * hs, 1.8 * hs, 0, TAU); c.fill();
-  c.fillStyle = C.cheek; c.globalAlpha = 0.55;
+  c.fillStyle = C.cheek; c.globalAlpha = o.blush ? 0.95 : 0.55;
   c.beginPath(); c.ellipse(hx + 10 * hs, hy + 9 * hs, 6 * hs, 4 * hs, 0, 0, TAU); c.fill();
   c.globalAlpha = 1;
 
   // Eye.
-  const ex = hx + 1 * hs, ey = hy - 6 * hs, er = lerp(8.5, 7, g) * hs;
+  const ex = hx + 1 * hs, ey = hy - 6 * hs, er = lerp(10, 7.6, g) * hs;   // 0.6: bigger eyes
+  const lk = o.look || { x: 0.22, y: 0.08 };
   const eyes = o.eyes || 'open';
   c.lineWidth = 2.6;
   if (eyes === 'happy') {
@@ -1239,15 +1257,19 @@ function drawStego(c, x, y, size, o) {
     c.fillStyle = '#fff';
     c.beginPath(); c.arc(0, 0, er, 0, TAU); c.fill(); c.stroke();
     c.fillStyle = C.eye;
-    c.beginPath(); c.arc(er * 0.22, er * 0.08, er * 0.62, 0, TAU); c.fill();
-    c.fillStyle = '#fff';
-    c.beginPath(); c.arc(er * 0.42, -er * 0.25, er * 0.22, 0, TAU); c.fill();
+    c.beginPath(); c.arc(er * lk.x, er * lk.y, er * 0.64, 0, TAU); c.fill();
+    c.fillStyle = '#fff';   // two shines
+    c.beginPath(); c.arc(er * (lk.x + 0.2), er * (lk.y - 0.33), er * 0.24, 0, TAU); c.fill();
+    c.beginPath(); c.arc(er * (lk.x - 0.2), er * (lk.y + 0.25), er * 0.1, 0, TAU); c.fill();
     c.restore();
     if (eyes === 'sad') {   // worried eyebrow
       c.beginPath(); c.moveTo(ex - er * 0.9, ey - er * 1.25); c.lineTo(ex + er * 0.7, ey - er * 1.6); c.stroke();
     }
   }
 
+  // Eyebrows (0.6): arched when happy, raised when he wonders.
+  if (o.brow === 'happy') { c.beginPath(); c.arc(ex, ey - er * 0.6, er * 1.1, Math.PI * 1.25, Math.PI * 1.75); c.stroke(); }
+  else if (o.brow === 'up') { c.beginPath(); c.moveTo(ex - er * 0.8, ey - er * 1.7); c.quadraticCurveTo(ex, ey - er * 2.1, ex + er * 0.8, ey - er * 1.75); c.stroke(); }
   // Mouth.
   const mx = hx + 19 * hs, my = hy + 12 * hs;
   const mouth = o.mouth || 'smile';
@@ -1483,6 +1505,7 @@ function drawBackground(c, sky, time, placeId = 'meadow', weather = 'sun', scrol
     for (const cl of deco.clouds.slice(0, n)) drawCloudShape(c, ((cl.x + time * cl.v * U) % (W + 160 * U)) - 80 * U, cl.y, cl.s * U * (grey ? 1.4 : 1));
     c.globalAlpha = 1;
   }
+  drawSkyLife(c, sky, time, placeId, weather, arcX, arcY);   // sun rays and birds (07-scenery, 0.6)
   P.draw(c, env);
 }
 
@@ -2380,6 +2403,182 @@ function placePicture(id, w, h) {
   return small;
 }
 
+/* ===== 07-scenery.js ===== */
+/* 07-scenery.js – depth and life for every place (0.6):
+ *   drawSkyLife     sun rays (sunny days) and little birds (daytime, no rain)
+ *   drawForeground  grass, flowers, shells, stones, snow ... in front of his feet, swaying in the wind
+ *   drawGroundLife  butterflies over flower places, fish jumping at water places
+ * What each place gets is in FOREGROUND (places not listed use 'grass' with flowers). */
+
+/**
+ * Foreground of each place:
+ *   kind     'grass' (blades), 'dune' (sparse beach grass), 'shells' (only around him, water below),
+ *            'pebbles', 'snow', 'fluff' (clouds), 'crystal'
+ *   colors   blade / stone colours      flowers  flower colours (or none)
+ *   extra    'leaves' (autumn leaves on the ground), 'ferns', 'embers' (glowing bits)
+ *   life     'butterflies' | 'fish' (with fishY = water height below the horizon in U)
+ */
+const FOREGROUND = {
+  meadow: { kind: 'grass', flowers: ['#ff8fb1', '#ffd54f', '#ffffff', '#b39ddb', '#ff8a65'], life: 'butterflies' },
+  jungle: { kind: 'grass', colors: ['#245e25', '#2f7a2f'], extra: 'ferns' },
+  savanna: { kind: 'grass', colors: ['#b8913d', '#c9a24a', '#a07a30'] },
+  volcano: { kind: 'pebbles', colors: ['#3e2c27', '#5a4038'], extra: 'embers' },
+  island: { kind: 'shells' },
+  river: { kind: 'grass', flowers: ['#ffffff', '#ffd54f'], life: 'fish', fishY: 72 },
+  cloud: { kind: 'fluff' },
+  beach: { kind: 'dune' },
+  waterfall: { kind: 'grass', colors: ['#2f7a24', '#3f8a2e'], extra: 'ferns' },
+  desert: { kind: 'pebbles', colors: ['#c49056', '#d9a858', '#b07a43'] },
+  snow: { kind: 'snow' },
+  cave: { kind: 'crystal' },
+  mushroom: { kind: 'grass', colors: ['#2e5e24', '#3f7d33'], flowers: ['#e53935', '#fb8c00'], life: 'butterflies' },
+  sunflower: { kind: 'grass', flowers: ['#ffc107', '#ffb300'], life: 'butterflies' },
+  bamboo: { kind: 'grass', colors: ['#5a9a3c', '#7fb069'] },
+  pond: { kind: 'grass', flowers: ['#ff8fb1', '#ffffff'], life: 'fish', fishY: 50 },
+  swamp: { kind: 'grass', colors: ['#556b2f', '#6b7d3a', '#4b6234'] },
+  autumn: { kind: 'grass', colors: ['#8a7a35', '#9e8a3c'], extra: 'leaves' },
+  cherry: { kind: 'grass', flowers: ['#f8bbd0', '#ffffff'], life: 'butterflies' },
+  canyon: { kind: 'pebbles', colors: ['#a85f33', '#b8693e', '#8a4022'] },
+  lagoon: { kind: 'dune' },   // the lagoon draws its own jumping fish
+  rainbow: { kind: 'grass', colors: ['#7fd3b0', '#9ee0c4'], flowers: ['#ff8fb1', '#b39ddb', '#80deea', '#fff59d'], life: 'butterflies' },
+  dinovalley: { kind: 'grass', extra: 'ferns' },
+  mountainlake: { kind: 'grass', colors: ['#2f6f28', '#3f8a2e'], flowers: ['#b39ddb', '#ffffff'], life: 'fish', fishY: 30 },
+  springs: { kind: 'pebbles', colors: ['#9c8a78', '#b9a48e'] },
+  ice: { kind: 'snow' },
+  starhill: { kind: 'grass', colors: ['#3a4580', '#4a5596'], flowers: ['#fff59d', '#b3e5fc'] },
+  bigtree: { kind: 'grass', flowers: ['#ffffff', '#ffd54f'], extra: 'ferns' },
+  berryhill: { kind: 'grass', flowers: ['#e53935', '#7b3fb0'], life: 'butterflies' },
+  treasure: { kind: 'shells' },
+  travel: { kind: 'grass', flowers: ['#ffd54f', '#ffffff'] },
+};
+const fgOf = id => FOREGROUND[id] || FOREGROUND.meadow;
+
+/** Sun rays slowly turning (sunny days) and a few birds crossing the sky (daytime, no rain or snow). */
+function drawSkyLife(c, sky, time, placeId, weather, sunX, sunY) {
+  if (sky.night || sky.light < 0.4) return;
+  if (weather === 'sun' || weather === 'rainbow') {
+    c.save();
+    c.globalAlpha = 0.1 + sky.warm * 0.15;
+    c.fillStyle = '#fff6c8';
+    c.translate(sunX, sunY); c.rotate(time * 0.03);
+    for (let i = 0; i < 10; i++) { c.rotate(TAU / 10); c.beginPath(); c.moveTo(0, 0); c.lineTo(-18 * U, 260 * U); c.lineTo(18 * U, 260 * U); c.fill(); }
+    c.restore();
+  }
+  if (weather === 'rain' || weather === 'snow') return;
+  c.strokeStyle = 'rgba(40,50,70,0.7)'; c.lineWidth = 2 * U; c.lineCap = 'round';
+  for (let i = 0; i < 3; i++) {
+    const bx = ((time * (18 + i * 5) * U + i * 140 * U) % (W + 80 * U)) - 40 * U, by = 70 * U + i * 26 * U + Math.sin(time + i) * 6 * U;
+    const f = Math.sin(time * 6 + i) * 4 * U;   // wing beat
+    c.beginPath(); c.moveTo(bx - 9 * U, by - f); c.quadraticCurveTo(bx - 4 * U, by - 6 * U, bx, by); c.quadraticCurveTo(bx + 4 * U, by - 6 * U, bx + 9 * U, by - f); c.stroke();
+  }
+}
+
+/** Things in front of his feet (drawn after him), moving gently in the wind. L = light 0..1 (night darker). */
+function drawForeground(c, placeId, time, L) {
+  const fg = fgOf(placeId), d = k => mix('#1d2a4a', k, clamp(L * 1.1, 0.25, 1)), r = mulberry(77);
+  const wind = x => Math.sin(time * 1.8 + x * 0.05) * 4 * U;
+  // Row of positions: a band just in front of his feet and some lower down near the screen edge.
+  const spot = i => ({ x: r() * W, y: (i % 2 ? standY + (8 + r() * 26) * U : standY + 40 * U + r() * (H - standY - 50 * U)) });
+  if (fg.kind === 'grass' || fg.kind === 'dune') {
+    const cols = fg.colors || (fg.kind === 'dune' ? ['#9ab55a', '#b5c46a'] : ['#3f8a2e', '#5aa83c', '#3f8a2e']);
+    const n = fg.kind === 'dune' ? 10 : 26;
+    c.lineWidth = 3 * U; c.lineCap = 'round';
+    for (let i = 0; i < n; i++) {
+      const { x, y } = spot(i), h = (12 + r() * 18) * U, sw = wind(x);
+      c.strokeStyle = d(cols[i % cols.length]);
+      c.beginPath();
+      for (const k of [-1, 0, 1]) { c.moveTo(x + k * 4 * U, y); c.quadraticCurveTo(x + k * 6 * U, y - h * 0.6, x + k * 7 * U + sw, y - h * (k ? 0.8 : 1)); }
+      c.stroke();
+    }
+    if (fg.kind === 'dune') drawShells(c, d, r, 5);
+  } else if (fg.kind === 'shells') {
+    drawShells(c, d, r, 4, true);
+  } else if (fg.kind === 'pebbles') {
+    for (let i = 0; i < 14; i++) {
+      const { x, y } = spot(i), s = (4 + r() * 7) * U;
+      c.fillStyle = d(fg.colors[i % fg.colors.length]);
+      c.beginPath(); c.ellipse(x, y, s * 1.3, s * 0.8, 0, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.18)'; c.beginPath(); c.ellipse(x - s * 0.4, y - s * 0.3, s * 0.5, s * 0.25, 0, 0, TAU); c.fill();
+    }
+  } else if (fg.kind === 'snow') {
+    for (let i = 0; i < 8; i++) {
+      const { x, y } = spot(i), s = (14 + r() * 16) * U;
+      c.fillStyle = d('#dce9f5'); c.beginPath(); c.ellipse(x, y + 2 * U, s * 1.4, s * 0.5, 0, Math.PI, TAU); c.fill();
+      c.fillStyle = d('#ffffff'); c.beginPath(); c.ellipse(x - 2 * U, y, s * 1.2, s * 0.42, 0, Math.PI, TAU); c.fill();
+    }
+  } else if (fg.kind === 'fluff') {
+    c.fillStyle = d('#ffffff');
+    for (let i = 0; i < 7; i++) { const { x, y } = spot(i); c.globalAlpha = 0.9; c.beginPath(); c.arc(x, y, (14 + r() * 12) * U, 0, TAU); c.arc(x + 16 * U, y + 4 * U, 12 * U, 0, TAU); c.fill(); }
+    c.globalAlpha = 1;
+  } else if (fg.kind === 'crystal') {
+    for (let i = 0; i < 6; i++) {
+      const { x, y } = spot(i), s = (8 + r() * 10) * U, col = ['#4dd0e1', '#f06292', '#b388ff'][i % 3];
+      c.fillStyle = col; c.globalAlpha = 0.85 + Math.sin(time * 2 + i) * 0.15;
+      c.beginPath(); c.moveTo(x - s * 0.5, y); c.lineTo(x, y - s * 1.6); c.lineTo(x + s * 0.5, y); c.fill();
+    }
+    c.globalAlpha = 1;
+  }
+  // Flowers swaying on a stem.
+  if (fg.flowers) {
+    for (let i = 0; i < 5; i++) {
+      const x = W * (0.08 + i * 0.21) + r() * 20 * U, y = H - (30 + r() * 60) * U, sw = Math.sin(time * 2 + i) * 3 * U;
+      c.strokeStyle = d('#3f8a2e'); c.lineWidth = 2.5 * U;
+      c.beginPath(); c.moveTo(x, y + 20 * U); c.quadraticCurveTo(x + sw, y + 8 * U, x + sw, y); c.stroke();
+      c.fillStyle = d(fg.flowers[i % fg.flowers.length]);
+      for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(x + sw + Math.cos(k * TAU / 5) * 5 * U, y + Math.sin(k * TAU / 5) * 5 * U, 4 * U, 0, TAU); c.fill(); }
+      c.fillStyle = d('#ffb300'); c.beginPath(); c.arc(x + sw, y, 3 * U, 0, TAU); c.fill();
+    }
+  }
+  if (fg.extra === 'ferns') {
+    for (const [fx, flip] of [[0.04, 1], [0.96, -1]]) {
+      c.save(); c.translate(W * fx, H - 20 * U); c.scale(flip, 1); c.rotate(-0.5 + Math.sin(time * 1.5 + fx * 9) * 0.04);
+      c.strokeStyle = d('#2e7d32'); c.lineWidth = 3 * U; c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(20 * U, -50 * U, 50 * U, -90 * U); c.stroke();
+      c.fillStyle = d('#43a047');
+      for (let k = 1; k < 8; k++) { const t = k / 8, px = 50 * U * t * t + 20 * U * t * (1 - t) * 2, py = -90 * U * t; c.beginPath(); c.ellipse(px - 8 * U, py, 10 * U * (1 - t * 0.5), 3.5 * U, 0.4, 0, TAU); c.ellipse(px + 8 * U, py - 3 * U, 10 * U * (1 - t * 0.5), 3.5 * U, -0.4, 0, TAU); c.fill(); }
+      c.restore();
+    }
+  } else if (fg.extra === 'leaves') {
+    for (let i = 0; i < 10; i++) { const { x, y } = spot(i); c.fillStyle = d(['#e65100', '#fbc02d', '#d84315'][i % 3]); c.beginPath(); c.ellipse(x, y, 7 * U, 3.5 * U, r() * 3, 0, TAU); c.fill(); }
+  } else if (fg.extra === 'embers') {
+    for (let i = 0; i < 6; i++) { const { x, y } = spot(i), a = 0.5 + 0.5 * Math.sin(time * 3 + i * 2); c.fillStyle = 'rgba(255,120,40,' + a.toFixed(2) + ')'; c.beginPath(); c.arc(x, y, 3 * U, 0, TAU); c.fill(); }
+  }
+}
+
+/** A few shells; near = only around him (when water is all around). */
+function drawShells(c, d, r, n, near) {
+  for (let i = 0; i < n; i++) {
+    const x = near ? W / 2 + (r() - 0.5) * W * 0.8 : r() * W, y = near ? standY + (14 + r() * 24) * U : H - (30 + r() * 80) * U;
+    c.fillStyle = d(['#ffccbc', '#f8bbd0', '#fff3e0'][i % 3]);
+    c.beginPath(); c.arc(x, y, 7 * U, Math.PI, TAU); c.fill();
+    c.strokeStyle = d('#e0a890'); c.lineWidth = 1.2 * U;
+    c.beginPath(); for (let k = -2; k <= 2; k++) { c.moveTo(x, y); c.lineTo(x + k * 3 * U, y - 6 * U); } c.stroke();
+  }
+}
+
+/** Butterflies over flower places, fish jumping at water places (daytime, no rain). */
+function drawGroundLife(c, placeId, time, sky, weather) {
+  const fg = fgOf(placeId);
+  if (!fg.life || sky.night || weather === 'rain' || weather === 'snow') return;
+  if (fg.life === 'butterflies') {
+    for (let i = 0; i < 2; i++) {
+      const bx = W * (0.15 + i * 0.7) + Math.sin(time * 0.7 + i * 3) * 50 * U, by = standY - 40 * U + Math.cos(time * 1.1 + i) * 30 * U;
+      const fl = Math.abs(Math.sin(time * 11 + i));
+      c.fillStyle = ['#ff8a65', '#ba68c8'][i];
+      c.beginPath(); c.ellipse(bx - 5 * U * fl, by, 6 * U * fl + 1, 8 * U, -0.4, 0, TAU); c.ellipse(bx + 5 * U * fl, by, 6 * U * fl + 1, 8 * U, 0.4, 0, TAU); c.fill();
+      c.fillStyle = '#333'; c.fillRect(bx - 1 * U, by - 6 * U, 2 * U, 12 * U);
+    }
+  } else if (fg.life === 'fish') {
+    const k = (time * 0.35) % 1;
+    if (k > 0.45) return;   // a jump now and then
+    const q = k / 0.45, fx = W * 0.2 + q * W * 0.25, fy = groundY + fg.fishY * U - Math.sin(q * Math.PI) * 40 * U;
+    c.fillStyle = '#ff8a65';
+    c.save(); c.translate(fx, fy); c.rotate(-0.8 + q * 1.6);
+    c.beginPath(); c.ellipse(0, 0, 10 * U, 5 * U, 0, 0, TAU); c.fill();
+    c.beginPath(); c.moveTo(-8 * U, 0); c.lineTo(-15 * U, -5 * U); c.lineTo(-15 * U, 5 * U); c.fill();
+    c.restore();
+  }
+}
+
 /* ===== 08-game.js ===== */
 /* 08-game.js – what happens on screen: the egg, the stego's moods and moves, and the activities
  * (eat, drink, bath, teeth, ball, bed, hatching, growing party). update(dt) runs every frame,
@@ -2413,6 +2612,8 @@ const pet = {
   blink: 0, nextBlink: 3, happyT: 0, giggleT: 0, eatT: 0, refuseT: 0, yawnT: 0,
   wiggle: 0, petDist: 0, purrT: 0,
   danceT: 0,   // > 0 while he dances to the music
+  idle: null, idleNext: 6,   // 0.6: little things he does by himself ({ kind, t, dur }) and when the next one comes
+  landT: 0,    // > 0 just after landing from a jump (squash)
   depth: 0,    // 0 = in front .. 1 = far back behind a hiding place
 };
 
@@ -2577,6 +2778,7 @@ const poopPos = i => ({ x: S.poops[i].x * W, y: standY + 22 * U });
 
 /** He is stroked: dist = finger movement in pixels over his body. */
 function strokeStego(dist) {
+  pet.idle = null;
   pet.petDist += dist;
   pet.happyT = 0.6;
   pet.wiggle = 1;
@@ -2591,11 +2793,30 @@ function strokeStego(dist) {
 
 /** He is tapped once. */
 function tapStego() {
+  pet.idle = null;
   if (asleepNow()) { sound('murmur'); pet.dir = -pet.dir; return; }
   if (pet.jump > 0) return;
   pet.jumpV = 170 * U; pet.giggleT = 0.7;
   addNeed('love', 1);
   sound('giggle');
+}
+
+/** Idle moments (0.6): when nothing happens for 7–14 s and he is fine, he sniffs at a flower,
+ *  looks up in wonder, is happy for no reason or hops. Not when he is sad, sleepy, walking or has a visitor. */
+const IDLE_KINDS = { sniff: 2.6, look: 2.2, happy: 1.6, hop: 1.0 };
+function updateIdle(dt, low) {
+  if (pet.idle) {
+    pet.idle.t += dt;
+    if (pet.idle.t >= pet.idle.dur) { pet.idle = null; pet.idleNext = game.t + rnd(7, 14); }
+    return;
+  }
+  const busy = pet.moving || walkingNow() || game.visit || pet.jump > 0 || pet.happyT > 0 || pet.eatT > 0 || pet.yawnT > 0 || pet.giggleT > 0;
+  if (busy || low.value < NEED_SAD || isSleepy(now())) { pet.idleNext = Math.max(pet.idleNext, game.t + 3); return; }
+  if (game.t < pet.idleNext) return;
+  const kinds = Object.keys(IDLE_KINDS), kind = kinds[Math.floor(Math.random() * kinds.length)];
+  pet.idle = { kind, t: 0, dur: IDLE_KINDS[kind] };
+  if (kind === 'hop') pet.jumpV = 200 * U;
+  if (kind === 'happy') sound('happy');
 }
 
 /** Stage-up party (and the first look after hatching). */
@@ -2667,10 +2888,11 @@ function updatePet(dt, sleeping) {
   pet.yawnT = Math.max(0, pet.yawnT - dt);
   pet.wiggle = Math.max(0, pet.wiggle - dt * 1.5);
   pet.danceT = Math.max(0, pet.danceT - dt);
+  pet.landT = Math.max(0, pet.landT - dt);
   // Jumping.
   if (pet.jumpV || pet.jump > 0) {
     pet.jump += pet.jumpV * dt; pet.jumpV -= 900 * U * dt;
-    if (pet.jump <= 0) { pet.jump = 0; pet.jumpV = 0; }
+    if (pet.jump <= 0) { pet.jump = 0; pet.jumpV = 0; pet.landT = 0.18; }
   }
   // Blinking.
   pet.nextBlink -= dt;
@@ -2719,6 +2941,7 @@ function updatePet(dt, sleeping) {
   if (S.needs.food < NEED_LOW && game.t > (a.rumble || 8)) { a.rumble = game.t + rnd(16, 26); sound('rumble'); }
   else if (low.value < NEED_SAD && game.t > (a.whine || 12)) { a.whine = game.t + rnd(18, 28); sound('whine'); }
   if (isSleepy(now()) && game.t > (a.yawn || 4)) { a.yawn = game.t + rnd(14, 22); pet.yawnT = 1.6; sound('yawn'); }
+  updateIdle(dt, low);
   // Stage-up party once a second check.
   if (stageAt(now()) > S.stageSeen) { S.stageSeen = stageAt(now()); save(); startParty(); game.autoPhotoAt = game.t + 1.6; game.autoPhoto = { kind: 'stage', label: STAGES[S.stageSeen].name }; }
 }
@@ -2831,12 +3054,25 @@ function stegoLook() {
   else if (game.mode === 'brush') { o.mouth = game.brush.done ? 'smile' : 'grin'; o.eyes = game.brush.done ? 'happy' : 'open'; }
   else if (game.mode === 'eat') { o.mouth = 'open'; }
   else if (pet.yawnT > 0) { o.mouth = 'yawn'; o.eyes = 'closed'; }
-  else if (pet.danceT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; o.wiggle = 1; }
-  else if (pet.giggleT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; }
-  else if (pet.happyT > 0) { o.eyes = 'happy'; o.wag = 1; }
+  else if (pet.danceT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; o.wiggle = 1; o.brow = 'happy'; }
+  else if (pet.giggleT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; o.brow = 'happy'; o.blush = true; }
+  else if (pet.happyT > 0) { o.eyes = 'happy'; o.wag = 1; o.blush = true; }
+  else if (pet.idle && game.mode === 'idle') applyIdleLook(o);
   else if (low.value < NEED_SAD) { o.eyes = 'sad'; o.mouth = 'sad'; }
   if (game.ball && game.ball.carried) o.mouth = 'open';
+  // Squash and stretch: stretched in the air, squashed for a moment after landing.
+  if (pet.jump > 0) o.squash = -clamp(Math.abs(pet.jumpV) / (300 * U), 0, 1) * 0.6;
+  else if (pet.landT > 0) o.squash = pet.landT / 0.18 * 0.9;
   return o;
+}
+
+/** Face and pose of the idle moments (see updateIdle). */
+function applyIdleLook(o) {
+  const { kind, t, dur } = pet.idle, inOut = smooth(Math.min(t, dur - t) / 0.4);
+  if (kind === 'sniff') { o.headDown = inOut * 0.75; o.eyes = 'closed'; o.mouth = 'closed'; }
+  else if (kind === 'look') { o.look = { x: 0.05, y: -0.35 * inOut }; if (inOut > 0.5) { o.brow = 'up'; o.mouth = 'open'; } }
+  else if (kind === 'happy') { o.eyes = 'happy'; o.brow = 'happy'; o.blush = true; o.mouth = 'open'; o.wiggle = 1; o.wag = 1; }
+  else if (kind === 'hop') { o.eyes = 'happy'; o.mouth = 'open'; }
 }
 
 /** Camera: zoomed in on the stego in the menu, normal in the game. */
@@ -2857,6 +3093,7 @@ function drawWorld() {
 
   if (!hatched() || (game.mode === 'hatch' && !hatched())) {
     drawEggScene(sky);
+    drawForeground(ctx, 'meadow', game.t, sky.light);
   } else {
     S.poops.forEach((p, i) => { const pp = poopPos(i); drawPoop(ctx, pp.x, pp.y, 1.1 * U, game.t + i); });
     const sx = W / 2 + pet.x, look = stegoLook();
@@ -2872,6 +3109,8 @@ function drawWorld() {
     game.stegoInfo = drawStego(ctx, sx, sy, ss, look);
     if (hd && hd.phase !== 'found') drawHideSpots(ctx);
     if (game.visit && (game.visit.kind === 'ptero' || game.visit.kind === 'butterflies')) drawVisitor(ctx, game.visit, game.t);
+    drawForeground(ctx, placeId, game.t, sky.light);   // grass, flowers ... in front of him (0.6)
+    drawGroundLife(ctx, placeId, game.t, sky, weather);
     if (game.mode === 'bath') {
       drawTub(ctx, W / 2 + 6 * U, standY + 6 * U, tubW, 'front');
       if (game.bath.phase === 'scrub' && S.needs.clean < 100) drawRubHint(game.stegoInfo.box);
@@ -3326,7 +3565,7 @@ function resize() {
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
   U = clamp(Math.min(W / 360, H / 680), 0.75, 1.8);
   // The meadow starts a bit above the middle; the stego stands above the buttons.
-  groundY = H * 0.52;
+  groundY = H * 0.42;   // 0.6: horizon higher (was 0.52), less empty sky, more ground
   standY = H - Math.max(150 * U, H * 0.2);
   stegoSize = Math.min(W * 0.92, 440 * U);
   makeDeco();
@@ -4201,6 +4440,7 @@ window.__st = {
   wearUnlocked, openWardrobe, closeWardrobe, takePhoto, openAlbum, closeAlbum, get photos() { return photos; }, loadPhotos, openPlayMenu,
   dev, setTestMode, devEgg, devDay, devStage, devJump, devTimeOfDay, devSpeed, devNeeds, devArrive, devAllPlaces, devAllGifts, devVisit, devWeather, devResetTest, openDev, closeDev,
   cameraTap, ownToday, cameraFull, deletePhoto, showPhoto, get storageOk() { return storageOk; }, checkStorage,
+  IDLE_KINDS, FOREGROUND, stegoLook, get groundY() { return groundY; },
   startWalk, arrive, goPlace, openPlaces, closePlaces, foundToday, walkLimitReached, firefliesNow, placePicture, walkFx,
   enterGame, showMenu, startMode, endMode, goToBed, offerFood, removePoop, tapStego, strokeStego, throwBall,
   eggPhase, eggProgress, eggRub, stageAt: () => stageAt(now()), growth: () => growthAt(now()), lifeDay: () => lifeDay(now()),

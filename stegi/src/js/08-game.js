@@ -30,6 +30,8 @@ const pet = {
   blink: 0, nextBlink: 3, happyT: 0, giggleT: 0, eatT: 0, refuseT: 0, yawnT: 0,
   wiggle: 0, petDist: 0, purrT: 0,
   danceT: 0,   // > 0 while he dances to the music
+  idle: null, idleNext: 6,   // 0.6: little things he does by himself ({ kind, t, dur }) and when the next one comes
+  landT: 0,    // > 0 just after landing from a jump (squash)
   depth: 0,    // 0 = in front .. 1 = far back behind a hiding place
 };
 
@@ -194,6 +196,7 @@ const poopPos = i => ({ x: S.poops[i].x * W, y: standY + 22 * U });
 
 /** He is stroked: dist = finger movement in pixels over his body. */
 function strokeStego(dist) {
+  pet.idle = null;
   pet.petDist += dist;
   pet.happyT = 0.6;
   pet.wiggle = 1;
@@ -208,11 +211,30 @@ function strokeStego(dist) {
 
 /** He is tapped once. */
 function tapStego() {
+  pet.idle = null;
   if (asleepNow()) { sound('murmur'); pet.dir = -pet.dir; return; }
   if (pet.jump > 0) return;
   pet.jumpV = 170 * U; pet.giggleT = 0.7;
   addNeed('love', 1);
   sound('giggle');
+}
+
+/** Idle moments (0.6): when nothing happens for 7–14 s and he is fine, he sniffs at a flower,
+ *  looks up in wonder, is happy for no reason or hops. Not when he is sad, sleepy, walking or has a visitor. */
+const IDLE_KINDS = { sniff: 2.6, look: 2.2, happy: 1.6, hop: 1.0 };
+function updateIdle(dt, low) {
+  if (pet.idle) {
+    pet.idle.t += dt;
+    if (pet.idle.t >= pet.idle.dur) { pet.idle = null; pet.idleNext = game.t + rnd(7, 14); }
+    return;
+  }
+  const busy = pet.moving || walkingNow() || game.visit || pet.jump > 0 || pet.happyT > 0 || pet.eatT > 0 || pet.yawnT > 0 || pet.giggleT > 0;
+  if (busy || low.value < NEED_SAD || isSleepy(now())) { pet.idleNext = Math.max(pet.idleNext, game.t + 3); return; }
+  if (game.t < pet.idleNext) return;
+  const kinds = Object.keys(IDLE_KINDS), kind = kinds[Math.floor(Math.random() * kinds.length)];
+  pet.idle = { kind, t: 0, dur: IDLE_KINDS[kind] };
+  if (kind === 'hop') pet.jumpV = 200 * U;
+  if (kind === 'happy') sound('happy');
 }
 
 /** Stage-up party (and the first look after hatching). */
@@ -284,10 +306,11 @@ function updatePet(dt, sleeping) {
   pet.yawnT = Math.max(0, pet.yawnT - dt);
   pet.wiggle = Math.max(0, pet.wiggle - dt * 1.5);
   pet.danceT = Math.max(0, pet.danceT - dt);
+  pet.landT = Math.max(0, pet.landT - dt);
   // Jumping.
   if (pet.jumpV || pet.jump > 0) {
     pet.jump += pet.jumpV * dt; pet.jumpV -= 900 * U * dt;
-    if (pet.jump <= 0) { pet.jump = 0; pet.jumpV = 0; }
+    if (pet.jump <= 0) { pet.jump = 0; pet.jumpV = 0; pet.landT = 0.18; }
   }
   // Blinking.
   pet.nextBlink -= dt;
@@ -336,6 +359,7 @@ function updatePet(dt, sleeping) {
   if (S.needs.food < NEED_LOW && game.t > (a.rumble || 8)) { a.rumble = game.t + rnd(16, 26); sound('rumble'); }
   else if (low.value < NEED_SAD && game.t > (a.whine || 12)) { a.whine = game.t + rnd(18, 28); sound('whine'); }
   if (isSleepy(now()) && game.t > (a.yawn || 4)) { a.yawn = game.t + rnd(14, 22); pet.yawnT = 1.6; sound('yawn'); }
+  updateIdle(dt, low);
   // Stage-up party once a second check.
   if (stageAt(now()) > S.stageSeen) { S.stageSeen = stageAt(now()); save(); startParty(); game.autoPhotoAt = game.t + 1.6; game.autoPhoto = { kind: 'stage', label: STAGES[S.stageSeen].name }; }
 }
@@ -448,12 +472,25 @@ function stegoLook() {
   else if (game.mode === 'brush') { o.mouth = game.brush.done ? 'smile' : 'grin'; o.eyes = game.brush.done ? 'happy' : 'open'; }
   else if (game.mode === 'eat') { o.mouth = 'open'; }
   else if (pet.yawnT > 0) { o.mouth = 'yawn'; o.eyes = 'closed'; }
-  else if (pet.danceT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; o.wiggle = 1; }
-  else if (pet.giggleT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; }
-  else if (pet.happyT > 0) { o.eyes = 'happy'; o.wag = 1; }
+  else if (pet.danceT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; o.wiggle = 1; o.brow = 'happy'; }
+  else if (pet.giggleT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; o.brow = 'happy'; o.blush = true; }
+  else if (pet.happyT > 0) { o.eyes = 'happy'; o.wag = 1; o.blush = true; }
+  else if (pet.idle && game.mode === 'idle') applyIdleLook(o);
   else if (low.value < NEED_SAD) { o.eyes = 'sad'; o.mouth = 'sad'; }
   if (game.ball && game.ball.carried) o.mouth = 'open';
+  // Squash and stretch: stretched in the air, squashed for a moment after landing.
+  if (pet.jump > 0) o.squash = -clamp(Math.abs(pet.jumpV) / (300 * U), 0, 1) * 0.6;
+  else if (pet.landT > 0) o.squash = pet.landT / 0.18 * 0.9;
   return o;
+}
+
+/** Face and pose of the idle moments (see updateIdle). */
+function applyIdleLook(o) {
+  const { kind, t, dur } = pet.idle, inOut = smooth(Math.min(t, dur - t) / 0.4);
+  if (kind === 'sniff') { o.headDown = inOut * 0.75; o.eyes = 'closed'; o.mouth = 'closed'; }
+  else if (kind === 'look') { o.look = { x: 0.05, y: -0.35 * inOut }; if (inOut > 0.5) { o.brow = 'up'; o.mouth = 'open'; } }
+  else if (kind === 'happy') { o.eyes = 'happy'; o.brow = 'happy'; o.blush = true; o.mouth = 'open'; o.wiggle = 1; o.wag = 1; }
+  else if (kind === 'hop') { o.eyes = 'happy'; o.mouth = 'open'; }
 }
 
 /** Camera: zoomed in on the stego in the menu, normal in the game. */
@@ -474,6 +511,7 @@ function drawWorld() {
 
   if (!hatched() || (game.mode === 'hatch' && !hatched())) {
     drawEggScene(sky);
+    drawForeground(ctx, 'meadow', game.t, sky.light);
   } else {
     S.poops.forEach((p, i) => { const pp = poopPos(i); drawPoop(ctx, pp.x, pp.y, 1.1 * U, game.t + i); });
     const sx = W / 2 + pet.x, look = stegoLook();
@@ -489,6 +527,8 @@ function drawWorld() {
     game.stegoInfo = drawStego(ctx, sx, sy, ss, look);
     if (hd && hd.phase !== 'found') drawHideSpots(ctx);
     if (game.visit && (game.visit.kind === 'ptero' || game.visit.kind === 'butterflies')) drawVisitor(ctx, game.visit, game.t);
+    drawForeground(ctx, placeId, game.t, sky.light);   // grass, flowers ... in front of him (0.6)
+    drawGroundLife(ctx, placeId, game.t, sky, weather);
     if (game.mode === 'bath') {
       drawTub(ctx, W / 2 + 6 * U, standY + 6 * U, tubW, 'front');
       if (game.bath.phase === 'scrub' && S.needs.clean < 100) drawRubHint(game.stegoInfo.box);

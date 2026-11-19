@@ -1,7 +1,7 @@
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.5.1';
+const VERSION = '0.6';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -57,7 +57,7 @@ const STAGES = [
   { day: 30, name: 'Ganz groß' },
 ];
 const GROWN_DAY = 30;
-const SIZE_MIN = 0.385;   // baby = 38.5 % of the grown size (0.55 until 0.1, then 30 % smaller)
+const SIZE_MIN = 0.42;   // baby length = 38.5 % of the grown one (agreed in 0.2); 0.42 because the baby body is rounder/shorter since 0.6
 
 /** Poop: after every MEALS pieces of food, a poop appears DELAY_MIN minutes later (at most MAX lie around).
  *  Every poop lying around makes "clean" drop one time faster. */

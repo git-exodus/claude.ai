@@ -20,17 +20,19 @@ const PLATE_COUNT = [4, 5, 6, 7, 7];
  *   o     { colors (optional palette, default STEGO_COLORS), g, stage, t, dir (1 = looks right), pose ('stand'|'walk'|'lie'), walk (phase),
  *           eyes ('open'|'happy'|'closed'|'sad'), blink (0..1), mouth ('smile'|'open'|'chew'|
  *           'sad'|'yawn'|'grin'|'closed'), headDown (0..1), wiggle (0..1), dirt (0..1),
- *           jump (px up), wag (0..1), wear ({ head, eyes, neck } item ids, 0.3) }
+ *           jump (px up), wag (0..1), wear ({ head, eyes, neck } item ids, 0.3),
+ *           0.6: squash (-1 stretched .. 1 squashed), look ({ x, y } pupil offset in eye radii),
+ *           brow ('happy'|'up'), blush (true = red cheeks) }
  * Returns screen positions: mouth {x, y}, head {x, y, r}, box {x, y, w, h} (for touches).
  */
 function drawStego(c, x, y, size, o) {
   const C = o.colors || STEGO_COLORS, t = o.t || 0, g = o.g || 0, stage = o.stage || 0;
   const k = size * lerp(SIZE_MIN, 1, g) / 260;      // pixels per unit
   const dir = o.dir || 1, lie = o.pose === 'lie';
-  const hs = lerp(1.5, 1.0, g);                       // head scale: babies have big heads
+  const hs = lerp(1.6, 1.0, g);                       // head scale: babies have big heads (0.6: a bit bigger)
   const breathe = 1 + Math.sin(t * (lie ? 1.6 : 2.4)) * (lie ? 0.035 : 0.02);
   const legLen = lie ? 0 : lerp(18, 30, g);
-  const rx = 62, ry = lerp(36, 42, g) * breathe;
+  const rx = lerp(54, 62, g), ry = lerp(40, 42, g) * breathe;   // 0.6: the baby is rounder (chubby)
   const cx = 0, cy = lie ? -ry * 0.78 : -legLen - ry * 0.78;
   const walk = o.pose === 'walk' ? o.walk || 0 : 0;
   const bob = o.pose === 'walk' ? Math.abs(Math.sin(walk)) * -3 : 0;
@@ -42,12 +44,15 @@ function drawStego(c, x, y, size, o) {
   c.lineWidth = 3;
   c.strokeStyle = C.line;
   c.translate(0, bob);
+  // Squash and stretch around the feet (jumping and landing, 0.6).
+  if (o.squash) { const q = o.squash; c.scale(1 + 0.1 * q, 1 - 0.12 * q); }
 
   // Soft shadow on the ground (not lifted by the jump).
   c.save();
   c.translate(0, -bob + (o.jump || 0) / k);
-  c.fillStyle = 'rgba(30,60,20,0.18)';
-  c.beginPath(); c.ellipse(8, 2, 95 * (o.jump ? 0.85 : 1), 9, 0, 0, TAU); c.fill();
+  const sh = c.createRadialGradient(8, 2, 5, 8, 2, 100);   // soft round shadow (0.6)
+  sh.addColorStop(0, 'rgba(20,40,20,0.32)'); sh.addColorStop(1, 'rgba(20,40,20,0)');
+  c.fillStyle = sh; c.save(); c.scale(1, 0.12); c.beginPath(); c.arc(8, 16, 100 * (o.jump ? 0.85 : 1), 0, TAU); c.fill(); c.restore();
   c.restore();
 
   // ---- tail with spikes ----
@@ -108,7 +113,10 @@ function drawStego(c, x, y, size, o) {
     const h = plateBase * (0.7 + 0.45 * Math.sin(Math.PI * (0.25 + f * 0.6)));
     c.save();
     c.translate(px, py); c.rotate(ang + Math.PI / 2);
-    c.fillStyle = C.plate[i % 2];
+    // Plates darker at the body, lighter at the tip (0.6).
+    const pg = c.createLinearGradient(0, 6, 0, -h);
+    pg.addColorStop(0, mix(C.plate[i % 2], '#c2410c', 0.35)); pg.addColorStop(1, mix(C.plate[i % 2], '#ffffff', 0.35));
+    c.fillStyle = pg;
     c.strokeStyle = C.plateLine;
     c.beginPath();
     c.moveTo(-h * 0.42, 6);
@@ -124,12 +132,17 @@ function drawStego(c, x, y, size, o) {
   leg(26, Math.PI, false);
 
   // ---- body with belly, spots and dirt ----
-  c.fillStyle = C.body;
+  // Light from above: lighter back, darker belly side (0.6).
+  const bg = c.createLinearGradient(0, cy - ry, 0, cy + ry);
+  bg.addColorStop(0, mix(C.body, '#ffffff', 0.28)); bg.addColorStop(0.55, mix(C.body, '#ffffff', 0.02)); bg.addColorStop(1, mix(C.body, '#1b2530', 0.35));
+  c.fillStyle = bg;
   c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, TAU); c.fill(); c.stroke();
   c.save();
   c.beginPath(); c.ellipse(cx, cy, rx - 1.5, ry - 1.5, 0, 0, TAU); c.clip();
   c.fillStyle = C.belly;
   c.beginPath(); c.ellipse(cx + 10, cy + ry * 0.85, rx * 0.85, ry * 0.5, 0, 0, TAU); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.22)';   // shine on the back
+  c.beginPath(); c.ellipse(cx - 10, cy - ry * 0.62, rx * 0.5, ry * 0.16, -0.12, 0, TAU); c.fill();
   c.fillStyle = C.spot;
   for (const [sx, sy, sr] of [[-28, -0.45, 7], [-6, -0.62, 6], [16, -0.4, 5], [-40, -0.05, 5], [30, -0.65, 4]]) {
     c.beginPath(); c.arc(cx + sx, cy + sy * ry, sr, 0, TAU); c.fill();
@@ -168,17 +181,22 @@ function drawStego(c, x, y, size, o) {
   // Head = round skull + snout, outlined together.
   const skull = () => { c.beginPath(); c.ellipse(hx, hy, 25 * hs, 21 * hs, 0, 0, TAU); };
   const snout = () => { c.beginPath(); c.ellipse(hx + 16 * hs, hy + 6 * hs, 17 * hs, 13 * hs, 0.1, 0, TAU); };
-  skull(); c.stroke(); snout(); c.stroke();
-  c.fillStyle = C.body; skull(); c.fill(); snout(); c.fill();
+  // Outline the skull only at the front: no line where it meets the neck (0.6).
+  c.beginPath(); c.ellipse(hx, hy, 25 * hs, 21 * hs, 0, -1.81, 1.82); c.stroke(); snout(); c.stroke();
+  const hg = c.createLinearGradient(0, hy - 22 * hs, 0, hy + 20 * hs);
+  hg.addColorStop(0, mix(C.body, '#ffffff', 0.3)); hg.addColorStop(1, mix(C.body, '#1b2530', 0.25));
+  c.fillStyle = hg; skull(); c.fill(); snout(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.beginPath(); c.ellipse(hx - 4 * hs, hy - 14 * hs, 10 * hs, 4 * hs, -0.2, 0, TAU); c.fill();
   // Nostril and cheek.
   c.fillStyle = C.line;
   c.beginPath(); c.arc(hx + 28 * hs, hy + 1 * hs, 1.8 * hs, 0, TAU); c.fill();
-  c.fillStyle = C.cheek; c.globalAlpha = 0.55;
+  c.fillStyle = C.cheek; c.globalAlpha = o.blush ? 0.95 : 0.55;
   c.beginPath(); c.ellipse(hx + 10 * hs, hy + 9 * hs, 6 * hs, 4 * hs, 0, 0, TAU); c.fill();
   c.globalAlpha = 1;
 
   // Eye.
-  const ex = hx + 1 * hs, ey = hy - 6 * hs, er = lerp(8.5, 7, g) * hs;
+  const ex = hx + 1 * hs, ey = hy - 6 * hs, er = lerp(10, 7.6, g) * hs;   // 0.6: bigger eyes
+  const lk = o.look || { x: 0.22, y: 0.08 };
   const eyes = o.eyes || 'open';
   c.lineWidth = 2.6;
   if (eyes === 'happy') {
@@ -192,15 +210,19 @@ function drawStego(c, x, y, size, o) {
     c.fillStyle = '#fff';
     c.beginPath(); c.arc(0, 0, er, 0, TAU); c.fill(); c.stroke();
     c.fillStyle = C.eye;
-    c.beginPath(); c.arc(er * 0.22, er * 0.08, er * 0.62, 0, TAU); c.fill();
-    c.fillStyle = '#fff';
-    c.beginPath(); c.arc(er * 0.42, -er * 0.25, er * 0.22, 0, TAU); c.fill();
+    c.beginPath(); c.arc(er * lk.x, er * lk.y, er * 0.64, 0, TAU); c.fill();
+    c.fillStyle = '#fff';   // two shines
+    c.beginPath(); c.arc(er * (lk.x + 0.2), er * (lk.y - 0.33), er * 0.24, 0, TAU); c.fill();
+    c.beginPath(); c.arc(er * (lk.x - 0.2), er * (lk.y + 0.25), er * 0.1, 0, TAU); c.fill();
     c.restore();
     if (eyes === 'sad') {   // worried eyebrow
       c.beginPath(); c.moveTo(ex - er * 0.9, ey - er * 1.25); c.lineTo(ex + er * 0.7, ey - er * 1.6); c.stroke();
     }
   }
 
+  // Eyebrows (0.6): arched when happy, raised when he wonders.
+  if (o.brow === 'happy') { c.beginPath(); c.arc(ex, ey - er * 0.6, er * 1.1, Math.PI * 1.25, Math.PI * 1.75); c.stroke(); }
+  else if (o.brow === 'up') { c.beginPath(); c.moveTo(ex - er * 0.8, ey - er * 1.7); c.quadraticCurveTo(ex, ey - er * 2.1, ex + er * 0.8, ey - er * 1.75); c.stroke(); }
   // Mouth.
   const mx = hx + 19 * hs, my = hy + 12 * hs;
   const mouth = o.mouth || 'smile';
