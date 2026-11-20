@@ -1,0 +1,170 @@
+/* Stegi – all styles. Big round buttons for small fingers, soft colours. */
+:root { --ink: #23405a; --card: rgba(255, 255, 255, 0.96); --accent: #4caf50; --danger: #e5533d; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; margin: 0; background: #6dbb4f; overflow: hidden; }
+body { font-family: 'Nunito', system-ui, sans-serif; font-weight: 800; color: var(--ink);
+  user-select: none; -webkit-user-select: none; touch-action: none; overscroll-behavior: none; }
+#game { position: fixed; inset: 0; overflow: hidden; touch-action: none; }
+#c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+button { font: inherit; color: inherit; border: 0; cursor: pointer; touch-action: manipulation; }
+svg { display: block; width: 100%; height: 100%; }
+
+/* Needs: five icons with a fill bar, top of the screen. */
+#needs { position: absolute; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 64px;
+  display: flex; gap: 6px; justify-content: flex-start; pointer-events: none; transition: opacity .4s; }
+#needs.dim { opacity: .45; }
+.need { flex: 0 1 52px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: rgba(255, 255, 255, .82); border-radius: 16px; padding: 5px 4px 6px; box-shadow: 0 2px 6px rgba(0, 0, 0, .12); }
+.need .ico { width: 30px; height: 30px; }
+.need .bar { width: 38px; height: 8px; border-radius: 4px; background: rgba(0, 0, 0, .12); overflow: hidden; }
+.need .bar b { display: block; height: 100%; border-radius: 4px; background: #5cc15a; transition: width .4s, background .4s; }
+.need.low { animation: wobble 1s ease-in-out infinite; }
+@keyframes wobble { 0%, 100% { transform: rotate(0) } 25% { transform: rotate(-8deg) } 75% { transform: rotate(8deg) } }
+
+/* Gear: must be held for 3 s (ring fills), so the child does not open it by accident. */
+#gear { position: absolute; top: max(10px, env(safe-area-inset-top)); right: 10px; width: 46px; height: 46px; padding: 9px;
+  border-radius: 50%; background: rgba(40, 60, 90, .35); --p: 0; }
+#gear .ring { position: absolute; inset: -3px; border-radius: 50%;
+  background: conic-gradient(#ffd54f calc(var(--p) * 1turn), transparent 0);
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 62%); mask: radial-gradient(circle, transparent 60%, #000 62%); }
+
+/* Small round buttons in a column under the gear (places; more in 0.3). */
+#side { position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 56px); right: 10px; display: flex; flex-direction: column; gap: 8px; }
+.mini { width: 46px; height: 46px; border-radius: 50%; padding: 8px; background: rgba(255, 255, 255, .88); box-shadow: 0 3px 0 rgba(0, 0, 0, .12); }
+.mini:active { transform: translateY(2px); }
+
+/* While walking: footprints -> flag, filled with the distance walked. */
+#walkbar { position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 70px); left: 14px; right: 70px; height: 34px;
+  display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, .82); border-radius: 17px; padding: 0 10px; }
+#walkbar .foot, #walkbar .flag { width: 22px; height: 22px; flex: none; }
+#walkbar i { flex: 1; height: 10px; border-radius: 5px; background: rgba(0, 0, 0, .12); overflow: hidden; }
+#walkbar i b { display: block; height: 100%; width: 0; background: #a1887f; border-radius: 5px; transition: width .5s; }
+
+/* "New place!" banner with a picture of the place. */
+#banner { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); background: #fff; border-radius: 22px; padding: 10px 10px 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .3); text-align: center; pointer-events: none; }
+#banner canvas { display: block; width: 240px; height: 135px; border-radius: 14px; }
+#banner b { display: block; margin-top: 6px; font-family: 'Lilita One', 'Nunito', sans-serif; font-weight: 400; font-size: 24px; }
+#banner.show { animation: pop .5s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes pop { from { transform: translateX(-50%) scale(.3); opacity: 0 } to { transform: translateX(-50%) scale(1); opacity: 1 } }
+
+/* Places list: 30 tiles, "?" for places not found yet. */
+.card.wide { max-width: 460px; }
+#placelist { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 4px; }
+.ptile { position: relative; aspect-ratio: 16 / 10; border-radius: 12px; padding: 0; overflow: hidden; background: #dfe7ee; }
+.ptile canvas { width: 100%; height: 100%; display: block; }
+.ptile span { position: absolute; left: 0; right: 0; bottom: 0; font-size: 11px; color: #fff; background: rgba(20, 30, 50, .55); padding: 2px 3px; line-height: 1.2; }
+.ptile.here { outline: 4px solid #ffb300; outline-offset: -4px; }
+.ptile.locked { background: linear-gradient(#cfd8e3, #b7c3d0); }
+.ptile i { font-style: normal; font-family: 'Lilita One', 'Nunito', sans-serif; font-size: 34px; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .15); }
+.ptile.nope { animation: wobble .4s; }
+
+/* 0.3: play menu, music pad, wardrobe, album. */
+#playtray { position: absolute; left: 0; right: 84px; bottom: max(12px, env(safe-area-inset-bottom)); display: flex; justify-content: center; gap: 14px; }
+#musicpad { position: absolute; left: 8px; right: 84px; bottom: max(10px, env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 5px; justify-content: center; }
+#musicpad .key { flex: 1 1 0; max-width: 46px; border-radius: 10px; box-shadow: 0 4px 0 rgba(0, 0, 0, .2); touch-action: none; }
+#musicpad .key:active, #musicpad .key.hit { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0, 0, 0, .2); }
+#musicpad .drum { flex: 0 0 auto; width: 56px; height: 56px; border-radius: 50%; border: 5px solid #8d6e63; box-shadow: 0 4px 0 rgba(0, 0, 0, .2); touch-action: none; }
+#musicpad .drum.small { width: 44px; height: 44px; }
+#musicpad .drum.hit, #musicpad .drum:active { transform: translateY(3px) scale(.95); }
+#wearlist { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 4px; }
+.wtile { aspect-ratio: 5 / 4; border-radius: 14px; padding: 0; overflow: hidden; background: #e8f4ff; }
+.wtile canvas { width: 100%; height: 100%; display: block; }
+.wtile.on { outline: 4px solid #5cc15a; outline-offset: -4px; }
+.wtile.locked { background: #eef1f5; }
+.wtile.nope { animation: wobble .4s; }
+#photolist { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 4px; }
+.ptile.photo { aspect-ratio: 9 / 16; }
+.ptile.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#photolist .empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px 0; }
+#photolist .empty svg { width: 54px; height: 54px; }
+#atabs { display: flex; gap: 6px; justify-content: center; margin: 2px 0 6px; }
+#b-camera { position: relative; }
+#b-camera.full { opacity: .45; }
+#b-camera .cnt { position: absolute; right: -4px; bottom: -4px; background: #e5533d; color: #fff; font-size: 11px; border-radius: 9px; padding: 1px 5px; }
+#pv-delete { position: relative; overflow: hidden; }
+#pv-delete .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(0, 0, 0, .25); }
+#pv-delete .txt { position: relative; }
+.flyphoto { position: fixed; z-index: 50; border-radius: 8px; border: 3px solid #fff; box-shadow: 0 6px 20px rgba(0, 0, 0, .35); pointer-events: none;
+  transition: left .7s cubic-bezier(.5, 0, .7, 1), top .7s cubic-bezier(.5, 0, .7, 1), width .7s, height .7s, opacity .25s .6s; }
+.warn { margin: 4px 0 6px; padding: 8px 10px; border-radius: 12px; background: #fde3dd; color: #a33a26; font-size: 14px; font-weight: 700; }
+#pv-img { display: block; width: 100%; max-height: 60vh; object-fit: contain; border-radius: 14px; background: #000; margin-bottom: 8px; }
+
+/* Bottom action buttons. */
+#actions { position: absolute; left: 0; right: 0; bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex; justify-content: center; gap: 8px; padding: 0 8px; flex-wrap: wrap; }
+.round { width: 62px; height: 62px; border-radius: 50%; background: var(--card); padding: 13px; flex: none;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, .15), 0 6px 14px rgba(0, 0, 0, .15); transition: transform .1s; }
+.round:active { transform: translateY(3px) scale(.95); box-shadow: 0 1px 0 rgba(0, 0, 0, .15); }
+.round.glow { animation: glow 1.4s ease-in-out infinite; }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 213, 79, .9), 0 6px 14px rgba(0, 0, 0, .15) } 50% { box-shadow: 0 0 0 10px rgba(255, 213, 79, 0), 0 6px 14px rgba(0, 0, 0, .15) } }
+#act-bed { background: #2c3570; }
+/* Six buttons must fit next to each other on a 360 px phone. */
+#actions .round { width: min(60px, calc((100vw - 46px) / 6)); height: min(60px, calc((100vw - 46px) / 6)); padding: 11px; }
+#actions { gap: 6px; }
+#close { position: absolute; right: 14px; bottom: max(16px, env(safe-area-inset-bottom)); }
+
+/* Food tray. */
+#tray { position: absolute; left: 10px; right: 84px; bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex; gap: 6px; justify-content: center; background: rgba(255, 255, 255, .7); border-radius: 22px; padding: 6px; }
+#tray .food { flex: 0 1 58px; height: 58px; border-radius: 16px; background: #fff; padding: 2px; touch-action: none; }
+#tray canvas { width: 100%; height: 100%; pointer-events: none; }
+
+/* Main menu: name on top, "Beenden" below, the stego in the middle is on the canvas. */
+#menu { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: max(48px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom)); pointer-events: none; transition: opacity .5s; }
+/* In the game the menu is gone completely: invisible AND not touchable (until 0.5 only invisible, so the
+   hidden "Beenden" button closed the APK when the middle buttons were tapped). */
+#menu.gone { opacity: 0; visibility: hidden; transition: opacity .5s, visibility 0s .5s; }
+#menu.gone, #menu.gone * { pointer-events: none !important; }
+#menu h1 { margin: 0; font-family: 'Lilita One', 'Nunito', sans-serif; font-weight: 400; font-size: 64px; color: #fff;
+  letter-spacing: 1px; text-shadow: 0 4px 0 #3d7a2c, 0 8px 18px rgba(0, 0, 0, .25); }
+#menu button { pointer-events: auto; }
+
+/* Big buttons, overlays and cards. */
+.big { display: block; width: 100%; min-height: 54px; border-radius: 18px; background: var(--accent); color: #fff; font-size: 20px;
+  padding: 10px 18px; margin: 8px 0 0; box-shadow: 0 4px 0 rgba(0, 0, 0, .18); }
+.big:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0, 0, 0, .18); }
+.big.danger { background: var(--danger); }
+#m-exit { width: auto; min-width: 200px; background: #ffffff; color: var(--ink); }
+.ov { position: absolute; inset: 0; background: rgba(20, 30, 60, .45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.card { width: 100%; max-width: 380px; max-height: 100%; overflow-y: auto; background: var(--card); border-radius: 26px; padding: 18px 18px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .3); touch-action: pan-y; }
+.card h2 { margin: 0 0 6px; font-family: 'Lilita One', 'Nunito', sans-serif; font-weight: 400; font-size: 28px; text-align: center; }
+.info { margin: 0 0 8px; text-align: center; font-weight: 600; font-size: 15px; color: #4a6276; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 2px; border-bottom: 1px solid rgba(0, 0, 0, .07); font-size: 17px; }
+.row input, .row select { font: inherit; font-size: 17px; color: var(--ink); border: 2px solid #cfe0ea; border-radius: 12px; padding: 6px 10px; background: #fff; max-width: 55%; }
+.toggle { min-width: 74px; border-radius: 20px; padding: 7px 12px; background: #cfd8dc; color: #546e7a; }
+.toggle.on { background: var(--accent); color: #fff; }
+#credit { margin: 12px 0 0; text-align: center; font-size: 12px; font-weight: 600; color: #8aa0b0; }
+#r-icon { width: 72px; height: 72px; margin: 0 auto 6px; }
+/* Test mode (0.4): red badge, chips in the test panel. */
+#devbadge { position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 64px); left: 50%; transform: translateX(-50%);
+  background: #e5533d; color: #fff; border-radius: 12px; padding: 3px 12px; font-size: 14px; letter-spacing: 1px; pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .25); }
+.big.alt { background: #607d8b; }
+.card h3 { margin: 12px 0 4px; font-size: 15px; text-transform: uppercase; letter-spacing: 1px; color: #6b8296; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+.chip { border-radius: 14px; padding: 8px 11px; background: #e3ebf2; font-size: 15px; }
+.chip.on { background: var(--accent); color: #fff; }
+.chip.danger { background: var(--danger); color: #fff; }
+.chip.wide { width: 100%; margin-top: 14px; }
+.chip:active { transform: translateY(1px); }
+#dv-day { flex: 1; max-width: none; }
+#dv-dayval { min-width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; }
+/* Training (0.8): choice of tricks in the upper half, back button on the board. */
+#trainpick { position: absolute; left: 14px; right: 66px; top: calc(max(10px, env(safe-area-inset-top)) + 70px); display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.ttile { flex: 0 0 calc(25% - 6px); max-width: 84px; aspect-ratio: 3 / 4; border-radius: 18px; background: rgba(255, 255, 255, .92); padding: 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 4px 0 rgba(0, 0, 0, .12); }
+.ttile canvas { width: 100%; aspect-ratio: 1; }
+.ttile .stars { color: #ffca28; font-size: 14px; letter-spacing: 0; }
+.ttile .stars i { font-style: normal; color: rgba(0, 0, 0, .15); }
+.ttile.locked { background: rgba(225, 232, 240, .92); }
+.ttile.locked b { font-family: 'Lilita One', 'Nunito', sans-serif; font-weight: 400; font-size: 36px; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .15); }
+.ttile.nope { animation: wobble .4s; }
+#train-back { position: absolute; left: 20px; top: calc(max(10px, env(safe-area-inset-top)) + 80px); font-size: 20px; color: #4a7bd0; padding: 0; }
+[hidden] { display: none !important; }
+.mini.nope { animation: wobble .4s; }
+/* 0.8: four buttons in the play menu (ball, hide, music, training) must fit on a 360 px phone. */
+#playtray { gap: 8px; }
+#playtray .round { width: 56px; height: 56px; padding: 12px; }

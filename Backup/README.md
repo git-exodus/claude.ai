@@ -5,6 +5,7 @@ den kompletten Spielordner (`burgwacht/` bzw. `stegi/`) zum Zeitpunkt der Sicher
 
 | Ordner | Version | Gesichert vor |
 |---|---|---|
+| `stegi-v0.9` | Stegi 0.9 | Wetter-Spiele, Jahreszeiten, Spielzeug, Melodie nachspielen, Zähl-/Farbspiele |
 | `stegi-v0.8.2` | Stegi 0.8.2 | 4 neue Tricks, Geburtstag, Gute-Nacht-Ritual |
 | `stegi-v0.7` | Stegi 0.7 | Training: Tricks durch Nachmalen (Rolle, Hinterbeine, Vorderbeine) |
 | `stegi-v0.6.1` | Stegi 0.6.1 | 1 Geschenk pro Tag, Ball-Flackern, Weihnachten, Ostern, Silvester |
