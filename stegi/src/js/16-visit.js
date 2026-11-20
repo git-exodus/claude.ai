@@ -32,7 +32,8 @@ function updateVisit(dt, sleeping) {
   const side = v.side, walking = walkingNow();
   // 0.8.1: if he sets off on a walk, the friend walks along in front of him, at his hind legs.
   v.along = walking && v.phase !== 'out';
-  const targetX = v.along ? box.x + box.w * 0.32
+  // Along: at his hind legs; with a small stego further back (the friend is bigger than a baby and would hide him).
+  const targetX = v.along ? box.x + box.w * 0.32 - (1 - growthAt(now())) * 70 * U
     : side > 0 ? Math.min(W - 45 * U, box.x + box.w + 40 * U) : Math.max(45 * U, box.x - 40 * U);
   // 0.8.1: a big stego steps a little aside (up to 12 % of the screen when grown), so the friend can be seen.
   if (game.mode === 'idle' && !sleeping) pet.tx = walking || v.phase === 'out' ? 0 : -side * W * 0.12 * growthAt(now());

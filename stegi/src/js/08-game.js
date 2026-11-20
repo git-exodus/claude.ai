@@ -340,7 +340,10 @@ function updatePet(dt, sleeping) {
       pet.walk += dt * 12;
     }
   } else if (!['ball', 'hide', 'music'].includes(game.mode) && !(game.visit && game.visit.phase === 'stay') && !sleeping) pet.dir = 1;
-  if (walkingNow()) pet.walk += dt * 6;   // slow steps on the way (the landscape scrolls, 13-travel)
+  if (walkingNow()) {
+    pet.walk += dt * 6;   // slow steps on the way (the landscape scrolls, 13-travel)
+    pet.dir = 1;          // 0.8.2: always facing the way (right), even if he was looking at a visitor on the left
+  }
   updateTravel(dt, sleeping);
 
   // Activities.

@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.8.1.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.8.2.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **265 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 38, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 20).
+Erwartet: **266 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 20).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -147,9 +147,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.8.1';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.8.1` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 11`, `versionName '0.8.1'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.8.2';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.8.2` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 12`, `versionName '0.8.2'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -333,7 +333,9 @@ und nicht wandert). Die Besucher wechseln sich nach Tagesnummer ab: T-Rex-Baby, 
 Triceratops, Schildkröte, Schmetterlinge. Ein Besuch dauert 1 Minute (alle 3 s hüpfen beide, Herzen),
 danach Liebe +10 und Spaß +10. Seit 0.8.1 steht der Besucher **vor** ihm (vorderste Ebene), ein großer
 Stego rückt währenddessen um bis zu 12 % der Bildbreite zur anderen Seite (`growth` × 12 %), und wandert er los,
-läuft der Besucher vorne auf Höhe seiner Hinterbeine mit (`visit.along`).
+läuft der Besucher vorne auf Höhe seiner Hinterbeine mit (`visit.along`; bei einem kleinen Stego bis zu 70 U weiter
+hinten, damit er ihn nicht verdeckt). Beim Wandern schaut er immer nach rechts
+(Laufrichtung), auch wenn er vorher einen Besuch links angeschaut hat (seit 0.8.2).
 
 ### 6.12 Verstecken und Musik (seit 0.3)
 
@@ -444,6 +446,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.8.2 | Fehler behoben: Stand der Besuch links, lief er beim Losgehen rückwärts (schaute weiter den Besuch an); jetzt dreht er sich beim Wandern immer nach rechts, in allen Stufen geprüft |
 | 0.8.1 | Besuch steht vor dem Stego, ein großer Stego rückt dafür etwas zur Seite; beim Wandern läuft der Besuch an den Hinterbeinen mit |
 | 0.8 | Training: Tricks durch Nachmalen (Rolle/Kreis, Hinterbeine/Zickzack, Vorderbeine/Welle), freischalten nacheinander, Bauchplatscher bei Fehlversuch, gelernte Tricks von selbst |
 | 0.7 | Höchstens 1 Geschenk pro Tag; Ballspielen ohne Flackern (dreht sich höchstens alle 0,4 s um, Ballseite einmal pro Wurf); Feiertage: Weihnachtsbaum ab 18.12., Geschenke am 24.12. (Mütze, Geweih, Zuckerstange), Silvester-Feuerwerk, Ostereiersuche mit Schokohase |

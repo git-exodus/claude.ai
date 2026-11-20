@@ -140,14 +140,30 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
     __st.game.visit = null; __st.startVisit('trex'); __st.game.visit.side = 1; __st.step(6);
     const shifted = __st.pet.x, W = __st.pos().W;
     __st.startWalk(); __st.step(3);
-    const v = __st.game.visit, box = __st.pos().box, hind = box.x + box.w * 0.32;
+    const v = __st.game.visit, box = __st.pos().box, hind = box.x + box.w * 0.32 - (1 - __st.growth()) * 70 * __st.pos().U;
     const r = { shifted: shifted / W, along: v.along, nearHind: Math.abs(v.x - hind) < 12, back: __st.pet.x };
-    __st.step(2); r.stillNear = Math.abs(__st.game.visit.x - (__st.pos().box.x + __st.pos().box.w * 0.32)) < 12;
+    __st.step(2); r.stillNear = Math.abs(__st.game.visit.x - (__st.pos().box.x + __st.pos().box.w * 0.32 - (1 - __st.growth()) * 70 * __st.pos().U)) < 12;
     __st.S.walk = null; __st.game.visit = null; __st.S.hatchDay = keep; __st.S.stageSeen = __st.stageAt(); __st.step(3);
     return r;
   });
   R.ok(g.shifted < -0.1 && g.shifted > -0.13, 'Großer Stego rückt beim Besuch ein Stück zur Seite (12 %)', JSON.stringify(g));
   R.ok(g.along && g.nearHind && g.stillNear && Math.abs(g.back) < 2, 'Er wandert los: der Besuch läuft vor ihm an den Hinterbeinen mit', JSON.stringify(g));
+  // 0.8.2: in every growth stage and with the friend on either side he turns and walks to the right.
+  g = await ev(() => {
+    const bad = [], keep = __st.S.hatchDay;
+    for (const day of [1, 6, 13, 23, 30]) for (const side of [-1, 1]) {
+      __st.S.walk = null; __st.game.visit = null; __st.S.hatchDay = __st.dayIndex(__st.now()) - day + 1; __st.S.stageSeen = __st.stageAt(); __st.step(1);
+      __st.startVisit('trex'); __st.game.visit.side = side; __st.game.visit.x = side > 0 ? 500 : -100; __st.step(6);
+      const looked = __st.stegoLook().dir;
+      __st.startWalk(); __st.step(1);
+      const walkDir = __st.stegoLook().dir, along = __st.game.visit && __st.game.visit.along;
+      __st.step(2);
+      if (looked !== side || walkDir !== 1 || __st.stegoLook().dir !== 1 || !along) bad.push('Tag ' + day + ' Seite ' + side + ': ' + looked + '/' + walkDir + '/' + along);
+    }
+    __st.S.walk = null; __st.game.visit = null; __st.S.hatchDay = keep; __st.S.stageSeen = __st.stageAt(); __st.step(3);
+    return bad;
+  });
+  R.ok(g.length === 0, 'Alle Stufen, Besuch links oder rechts: erst schauen sie sich an, beim Wandern dreht er sich nach rechts', g.join('; '));
 
   // ---------- play menu ----------
   await ev(() => __st.step(0.6));
