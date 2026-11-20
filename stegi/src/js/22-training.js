@@ -126,7 +126,7 @@ function finishTrace() {
   tr.result = res;
   tr.phase = 'show';
   const wasLearned = trickLearned(t.id);
-  if (res.ok) S.tricks[t.id]++;
+  if (res.ok) { S.tricks[t.id]++; earn('trick'); }
   addNeed('fun', res.ok ? TRAIN_FUN_OK : TRAIN_FUN_FAIL);
   save();
   startTrick(t.id, res.ok, false);

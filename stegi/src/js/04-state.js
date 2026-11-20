@@ -23,7 +23,7 @@ function blankSave(t) {
     opts: { sound: true, music: true, sleep: SLEEP_DEFAULT, wake: WAKE_DEFAULT, limit: 0 },
     // Places (0.2): where he is, what was found on which day (-1 = start), the walk under way, a find not yet celebrated.
     place: 'meadow',
-    found: [{ id: 'meadow', day: -1 }],
+    found: [{ id: 'meadow', day: -1 }, { id: 'home', day: -1 }],
     walk: null,              // { sec } awake seconds walked so far, or null
     newPlace: null,          // id of a place reached but not yet celebrated
     // 0.3: what he wears per slot (null = nothing), how many presents were opened, today's visit.
@@ -39,6 +39,10 @@ function blankSave(t) {
     lullabyDay: -1,
     snowman: null,           // 0.10: today's snowman { day, stage 0..3 }
     wish: null,              // 0.10: wish in the thought bubble (not kept between app starts)
+    // 0.11: stars, counters for the stickers, stickers earned, home furniture, friendship hearts.
+    stars: 0, stats: {}, stickers: [],
+    home: { owned: [], placed: {} },
+    friends: {},
           // 0.9: day the lullaby was played last (once a night)
     tricks: Object.fromEntries(TRICKS.map(t => [t.id, 0])),   // 0.8: successful tries per trick (TRICK_LEARN = learned)
   };
@@ -87,6 +91,7 @@ function sanitizeSave(o, t) {
     b.found = o.found.filter(f => f && ids.includes(f.id) && !seen.has(f.id) && seen.add(f.id))
       .map(f => ({ id: f.id, day: num(f.day, -1, 1e6, -1) }));
     if (!seen.has('meadow')) b.found.unshift({ id: 'meadow', day: -1 });
+    if (!seen.has('home')) b.found.push({ id: 'home', day: -1 });   // home is always open (0.11)
   }
   b.place = b.found.some(f => f.id === o.place) ? o.place : 'meadow';
   b.walk = o.walk && typeof o.walk.sec === 'number' ? { sec: num(o.walk.sec, 0, WALK_SECONDS, 0) } : null;
@@ -105,6 +110,15 @@ function sanitizeSave(o, t) {
   b.visitDone = o.visitDone === true;
   b.bday = o.bday && typeof o.bday.key === 'string' ? { key: o.bday.key, out: Math.round(num(o.bday.out, 0, 12, 0)), eaten: o.bday.eaten === true, sung: o.bday.sung === true } : null;
   b.lullabyDay = num(o.lullabyDay, -1, 1e6, -1);
+  b.stars = Math.round(num(o.stars, 0, 1e6, 0));
+  if (o.stats && typeof o.stats === 'object') for (const k of Object.keys(STAR_FOR)) if (typeof o.stats[k] === 'number') b.stats[k] = Math.round(num(o.stats[k], 0, 1e7, 0));
+  b.stickers = Array.isArray(o.stickers) ? STICKERS.map(x => x.id).filter(id => o.stickers.includes(id)) : [];
+  const fids = FURNITURE.map(f => f.id);
+  if (o.home && Array.isArray(o.home.owned)) {
+    b.home.owned = fids.filter(id => o.home.owned.includes(id));
+    for (const id of b.home.owned) { const f = furn(id); const want = o.home.placed && o.home.placed[f.spot]; b.home.placed[f.spot] = b.home.owned.includes(want) && furn(want).spot === f.spot ? want : (b.home.placed[f.spot] || id); }
+  }
+  for (const k of VISITORS) if (o.friends && typeof o.friends[k] === 'number') b.friends[k] = Math.round(num(o.friends[k], 0, 5, 0));
   b.snowman = o.snowman && typeof o.snowman.day === 'number' ? { day: o.snowman.day, stage: Math.round(num(o.snowman.stage, 0, 3, 0)) } : null;
   for (const tr of TRICKS) b.tricks[tr.id] = Math.round(num(o.tricks && o.tricks[tr.id], 0, 999, 0));
   const bools = (a, n) => Array.from({ length: n }, (_, i) => !!(Array.isArray(a) && a[i]));

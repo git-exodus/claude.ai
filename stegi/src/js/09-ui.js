@@ -34,6 +34,11 @@ function buildUI() {
   // 0.3: wardrobe, album, camera, play menu, music pad.
   $('b-wear').innerHTML = iconSVG('hat'); $('b-wear').addEventListener('click', openWardrobe);
   $('b-album').innerHTML = iconSVG('album'); $('b-album').addEventListener('click', openAlbum);
+  // 0.11: stars, sticker book, shop (only at home).
+  $('b-stickers').innerHTML = iconSVG('sticker'); $('b-stickers').addEventListener('click', openStickers);
+  $('b-shop').innerHTML = iconSVG('shop'); $('b-shop').addEventListener('click', openShop);
+  $('st-close').addEventListener('click', closeStickers);
+  $('sh-close').addEventListener('click', closeShop);
   $('b-camera').innerHTML = iconSVG('camera') + '<span class="cnt" hidden></span>'; $('b-camera').addEventListener('click', cameraTap);
   $('at-diary').addEventListener('click', () => openAlbum('diary'));
   $('at-mile').addEventListener('click', () => openAlbum('mile'));
@@ -90,6 +95,8 @@ function refreshUI() {
   $('musicpad').hidden = !(inGame && game.mode === 'music');
   $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music', 'train', 'bubbles', 'kite', 'castle'].includes(game.mode));
   refreshCamera();
+  $('starpill').textContent = '★ ' + S.stars;
+  $('b-shop').hidden = !atHome();
   $('devbadge').hidden = !dev.on;
   if (dev.on) $('devbadge').textContent = 'TEST' + (dev.speed > 1 ? ' · ' + dev.speed + '×' : '');
   updateNeedBars();
@@ -224,6 +231,8 @@ window.__back = () => {
   if (!$('rest').hidden) { $('rest').hidden = true; return true; }
   if (!$('dev-confirm').hidden) { $('dev-confirm').hidden = true; return true; }
   if (!$('devpanel').hidden) { closeDev(); return true; }
+  if (!$('stickers').hidden) { closeStickers(); return true; }
+  if (!$('shop').hidden) { closeShop(); return true; }
   if (!$('places').hidden) { closePlaces(); return true; }
   if (!$('photoview').hidden) { $('photoview').hidden = true; return true; }
   if (!$('album').hidden) { closeAlbum(); return true; }

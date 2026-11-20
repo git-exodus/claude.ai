@@ -38,7 +38,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   st = await ev(() => { __st.travel(0.5); __st.step(0.1); return { sec: __st.S.walk && __st.S.walk.sec, place: __st.S.place }; });
   R.ok(st.sec > 1790 && st.sec < 1815 && st.place === 'meadow', 'Nach 30 Minuten (App zu) halb angekommen', JSON.stringify(st));
   st = await ev(() => { __st.travel(0.55); __st.step(0.1); return { walk: __st.S.walk, place: __st.S.place, found: __st.S.found.length, mode: __st.game.mode, banner: !document.getElementById('banner').hidden }; });
-  R.ok(!st.walk && st.place !== 'meadow' && st.found === 2 && st.mode === 'party' && st.banner, 'Nach 1 Stunde: neuer Ort entdeckt, Fest und Bild mit Namen', JSON.stringify(st));
+  R.ok(!st.walk && st.place !== 'meadow' && st.found === 3 && st.mode === 'party' && st.banner, 'Nach 1 Stunde: neuer Ort entdeckt, Fest und Bild mit Namen', JSON.stringify(st));
   await page.screenshot({ path: 'places-new.png' });
   await ev(() => __st.step(3.5));
 
@@ -62,7 +62,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
 
   // ---------- places list ----------
   st = await ev(() => { document.getElementById('b-map').click(); const tiles = [...document.querySelectorAll('#placelist .ptile')]; return { n: tiles.length, locked: tiles.filter(t => t.classList.contains('locked')).length, here: tiles.filter(t => t.classList.contains('here')).length, count: document.getElementById('placecount').textContent, open: __st.visible().places }; });
-  R.ok(st.n === 30 && st.locked === 26 && st.here === 1 && st.count === '4 von 30 entdeckt', 'Orte-Liste: 30 Kärtchen, 26 mit Fragezeichen, aktueller Ort markiert', JSON.stringify(st));
+  R.ok(st.n === 31 && st.locked === 26 && st.here === 1 && st.count === '4 von 30 entdeckt', 'Orte-Liste: Zuhause + 30 Orte, 26 mit Fragezeichen, aktueller Ort markiert', JSON.stringify(st));
   await page.screenshot({ path: 'places-list.png' });
   st = await ev(() => { const locked = document.querySelector('#placelist .ptile.locked'); const before = __st.S.place; locked.click(); return before === __st.S.place && !document.getElementById('places').hidden; });
   R.ok(st, 'Fragezeichen antippen: nichts passiert (wackelt nur)');
@@ -80,7 +80,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
     __st.startWalk(); __st.travel(1.01); __st.step(0.1);
     return { mode, place: __st.S.place, found: __st.S.found.length, newPlace: __st.S.newPlace, limit: __st.walkLimitReached() };
   });
-  R.ok(st.place !== 'beach' && st.found === 30 && !st.limit, 'Alles entdeckt: er wandert zu einem bekannten Ort, ohne Tagesgrenze', JSON.stringify(st));
+  R.ok(st.place !== 'beach' && st.found === 31 && !st.limit, 'Alles entdeckt: er wandert zu einem bekannten Ort, ohne Tagesgrenze', JSON.stringify(st));
 
   // ---------- every place draws without errors ----------
   st = await ev(() => { let bad = []; for (const p of __st.PLACES) { try { __st.S.place = p.id; __st.step(0.05); const c = __st.placePicture(p.id, 160, 100); if (!c.width) bad.push(p.id); } catch (e) { bad.push(p.id + ':' + e.message); } } return bad; });
@@ -108,9 +108,9 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   await page.addInitScript(o => { window.__stOffset = o; }, offset);
   await page.goto(GAME_URL);
   st = await ev(() => { __st.pause(true); return { place: __st.S.place, walk: __st.S.walk, found: __st.S.found.length }; });
-  R.ok(st.place === 'volcano' && st.walk && near(st.walk.sec, 1234, 3) && st.found === 30, 'Ort, Wanderung und Fundliste werden gespeichert', JSON.stringify(st));
+  R.ok(st.place === 'volcano' && st.walk && near(st.walk.sec, 1234, 3) && st.found === 31, 'Ort, Wanderung und Fundliste werden gespeichert', JSON.stringify(st));
   st = await ev(() => { const s = __st.sanitizeSave({ place: 'mars', found: [{ id: 'jungle', day: 3 }, { id: 'jungle' }, { id: 'xyz' }], walk: { sec: 99999 }, newPlace: 'beach' }, __st.now()); return { place: s.place, found: s.found.map(f => f.id).join(), walk: s.walk.sec, np: s.newPlace }; });
-  R.ok(st.place === 'meadow' && st.found === 'meadow,jungle' && st.walk === 3600 && st.np === null, 'Kaputte Orts-Daten werden repariert', JSON.stringify(st));
+  R.ok(st.place === 'meadow' && st.found === 'meadow,jungle,home' && st.walk === 3600 && st.np === null, 'Kaputte Orts-Daten werden repariert', JSON.stringify(st));
 
   R.ok(errors.length === 0, 'Keine Fehler in der Konsole', errors.join(' | '));
   await browser.close();

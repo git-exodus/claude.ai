@@ -46,7 +46,7 @@ function hideTap(i) {
   if (!h || h.phase !== 'seek') return;
   if (i === h.spot) {
     h.phase = 'found'; h.t = 0;
-    addNeed('fun', HIDE_FUN); save();
+    addNeed('fun', HIDE_FUN); earn('hide'); save();
     pet.jumpV = 220 * U; pet.giggleT = 1.2;
     sound('giggle'); sound('sparkle');
     const sp = hideSpots()[i];

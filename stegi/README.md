@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.10.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.11.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **308 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 20, suite-celebrate 17, suite-fun 25).
+Erwartet: **327 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 20, suite-celebrate 17, suite-fun 25, suite-home 19).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -74,6 +74,7 @@ stegi/
     ├── suite-training.js  0.8: Malprüfung, Trick-Auswahl mit „?“, Malen mit der Maus, Bauchplatscher, Lernen, Tricks von selbst
     ├── suite-celebrate.js 0.9: 7 Tricks nacheinander, Geburtstag (Daten, Kuchen, Kerzen, Hut), Gute-Nacht-Ritual
     ├── suite-fun.js       0.10: Jahreszeiten, Pfützen, Schneemann, Laubhaufen, Seifenblasen, Drachen, Sandburg, Melodie, Wünsche
+    ├── suite-home.js      0.11: Sterne, Sticker-Heft, Zuhause, Laden, Möbel umstellen, Freundschaft, Speichern
     ├── suite-dev.js       0.4: Testmodus (eigener Spielstand, Stufen, Zeitraffer, Sprünge, Helfer, echter Stand bleibt unberührt)
     └── make-icon.js       kein Test: zeichnet das App-Symbol mit dem Spielcode neu
 ```
@@ -149,9 +150,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.10';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.10` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 14`, `versionName '0.10'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.11';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.11` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 15`, `versionName '0.11'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -183,6 +184,7 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 | `22-training.js` | 0.8: Training: Trick-Auswahl, Tafel mit Symbol, Malprüfung `judgeTrace`, Trick- und Bauchplatscher-Animation |
 | `23-celebrate.js` | 0.9: monatlicher Geburtstag (Kuchen, Kerzen, Luftballons) und Gute-Nacht-Ritual (Schlaflied, Kuscheltier, dunkler) |
 | `24-fun.js` | 0.10: Jahreszeiten, Wetter-Spiele, Spielzeug (Seifenblasen, Drachen, Sandburg), Melodie nachspielen, Wünsche |
+| `25-home.js` | 0.11: Sterne (`earn`), Zuhause mit Möbeln, Laden, Sticker-Heft, Freundschaft und Freundes-Geschenke |
 | `19-dev.js` | Testmodus für Eltern: Wechsel auf den Test-Spielstand, Zeitraffer, Stufen, Helfer, Test-Fenster |
 | `11-main.js` | `resize`, Bildschleife, Speichern alle 5 s und beim Verlassen, `start()` |
 | `99-debug.js` | `window.__st` für die Tests (wird vom Spiel nicht benutzt), ruft `start()` auf |
@@ -432,6 +434,23 @@ Test-Werkzeuge: Knöpfe „18.12.“, „24.12.“, „31.12.“, „Ostern“ s
   blass) oder einem Farbklecks (Rot = Apfel/Melone, Lila = Beeren, Grün = Farn/Blatt). Erfüllt = Tanz, Sterne,
   Liebe +10, Spaß +5. Verschwindet nach 8 Minuten.
 
+### 6.19 Sterne, Zuhause, Laden, Sticker, Freundschaft (seit 0.11)
+
+- **Sterne** (Anzeige ★ oben in der Knopfspalte): Füttern, Trinken, Kacka weg, Ball, Pfütze je 1; Baden, Zähneputzen,
+  Verstecken, Trick, Melodie, Schneemann, Sandburg, Besuch je 2; Wunsch 3; neuer Ort und Geburtstag je 5;
+  jeder neue Sticker 3. Zählt in `S.stats` mit, wie oft er was gemacht hat.
+- **Zuhause** steht in der Orte-Liste immer ganz oben (offen, zählt nicht zu den 30 Orten, Wandern führt nie dorthin):
+  Höhle mit Holzboden und rundem Himmelsloch, drinnen kein Wetter.
+- **Laden** (Knopf nur zu Hause): 12 Möbel – Blätterbett 5, Holzbett 15, runder Teppich 8, Streifenteppich 12,
+  Glühwürmchenglas 10, Pilzlampe 14, Sonnenbild 6, Eierbild 6, Farn 5, Blumentopf 7, Spielzeugkiste 10, Regal 12.
+  Zu teure sind blass (Tippen = „mm-mm“). Gekauftes steht sofort am festen Platz; Möbel antippen wechselt zwischen
+  gekauften Sachen für denselben Platz. Lampen leuchten nachts.
+- **Sticker-Heft** (Knopf ★-Heft): 24 Sticker für Meilensteine (Schlüpfen, Füttern, Tricks, Orte, Feste, Besuche …),
+  noch nicht verdiente sind grau. Geprüft alle 2 s.
+- **Freundschaft:** Jeder Besuch gibt diesem Freund ein Herz (bis 5). Beim 5. Herz bringt er ein Geschenk fürs Zuhause
+  (T-Rex-Kuscheltier, Feder-Mobile, Blumenkranz, Muschellampe, Schmetterlingsbild), nur einmal.
+- Testmodus: „+50 Sterne“ und „Beste Freunde“ (alle 5 Herzen und Geschenke).
+
 ---
 
 ## 7. Spielstand
@@ -480,6 +499,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.11 | Sterne, Zuhause (Höhle) in der Orte-Liste, Laden mit 12 Möbeln, Sticker-Heft mit 24 Stickern, Freundschaft mit Herzen und Geschenken fürs Zuhause |
 | 0.10 | Jahreszeiten, Wetter-Spiele (Pfützen, Schneemann, Laubhaufen), Seifenblasen, Drachen, Sandburg, Melodie nachspielen, Wünsche (Zählen und Farben) |
 | 0.9 | 4 neue Tricks (Sitz, Drehen, Küsschen, Pirouette), genauere Malprüfung für 7 Symbole, monatlicher Geburtstag mit Kuchen und Kerzen, Gute-Nacht-Ritual |
 | 0.8.2 | Fehler behoben: Stand der Besuch links, lief er beim Losgehen rückwärts (schaute weiter den Besuch an); jetzt dreht er sich beim Wandern immer nach rechts, in allen Stufen geprüft |
@@ -499,7 +519,7 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Gebaut bis 0.10. Vereinbart und noch offen: 0.11 Sterne, Höhle, Laden, Sticker-Heft, Freundschaft; 0.12 Familie (Geschwister ohne eigene
+Gebaut bis 0.11. Vereinbart und noch offen: 0.12 Familie (Geschwister ohne eigene
 Bedürfnisse). Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):

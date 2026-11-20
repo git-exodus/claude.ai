@@ -175,6 +175,22 @@ svg { display: block; width: 100%; height: 100%; }
 /* 0.10: up to seven toys in the play menu (two rows), melody button above the music pad. */
 #playtray { flex-wrap: wrap; row-gap: 10px; max-width: 290px; margin: 0 auto; left: 0; right: 0; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 74px); }
 #mel-btn { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 112px); width: 56px; height: 56px; padding: 6px; }
+/* 0.11: stars, sticker book, shop. */
+#starpill { background: #fff8e1; color: #e0a800; border-radius: 14px; padding: 4px 6px; font-size: 14px; text-align: center; min-width: 46px; box-shadow: 0 2px 0 rgba(0, 0, 0, .12); }
+#stickerlist { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0; }
+.sticker { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.sticker span { width: 56px; height: 56px; border-radius: 50%; padding: 12px; background: var(--c); box-shadow: 0 0 0 3px #fff, 0 3px 6px rgba(0, 0, 0, .2); }
+.sticker i { font-style: normal; font-size: 10px; line-height: 1.1; text-align: center; color: #4a6276; }
+.sticker.locked span { background: #e0e6ec; filter: grayscale(1) opacity(.35); box-shadow: none; }
+.sticker.locked i { opacity: .4; }
+#shoplist { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0; }
+.shopitem { display: flex; flex-direction: column; align-items: center; border-radius: 14px; background: #f3efe9; padding: 4px; }
+.shopitem canvas { width: 100%; aspect-ratio: 5 / 4; }
+.shopitem b { color: #e0a800; font-size: 16px; }
+.shopitem i { font-style: normal; font-size: 10px; color: #4a6276; }
+.shopitem.owned { background: #e8f5e9; } .shopitem.owned b { color: #43a047; }
+.shopitem.poor { opacity: .55; }
+.shopitem.nope { animation: wobble .4s; }
 </style>
 
 <div id="game">
@@ -182,10 +198,13 @@ svg { display: block; width: 100%; height: 100%; }
   <div id="needs" hidden></div>
   <button id="gear" type="button" aria-label="Einstellungen für Eltern (3 Sekunden gedrückt halten)"><span class="ring"></span></button>
   <div id="side" hidden>
+    <div id="starpill" aria-label="Sterne">★ 0</div>
     <button id="b-map" class="mini" type="button" aria-label="Orte"></button>
     <button id="b-wear" class="mini" type="button" aria-label="Verkleiden"></button>
     <button id="b-album" class="mini" type="button" aria-label="Fotoalbum"></button>
     <button id="b-camera" class="mini" type="button" aria-label="Foto machen"></button>
+    <button id="b-stickers" class="mini" type="button" aria-label="Sticker-Heft"></button>
+    <button id="b-shop" class="mini" type="button" aria-label="Laden" hidden></button>
   </div>
   <div id="walkbar" hidden><span class="foot"></span><i><b></b></i><span class="flag"></span></div>
   <div id="banner" hidden><canvas width="240" height="135"></canvas><b></b></div>
@@ -224,7 +243,7 @@ svg { display: block; width: 100%; height: 100%; }
       <button class="big alt" id="s-devopen" type="button" hidden>Test-Werkzeuge öffnen</button>
       <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
       <button class="big" id="s-close" type="button">Schließen</button>
-      <p id="credit">@made by Brownii (Claude.ai) · v0.10</p>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.11</p>
     </div>
   </div>
   <div id="confirm" class="ov" hidden>
@@ -285,6 +304,22 @@ svg { display: block; width: 100%; height: 100%; }
       <button class="big" id="dvc-no" type="button">Abbrechen</button>
     </div>
   </div>
+  <div id="stickers" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="st-title">
+      <h2 id="st-title">Sticker-Heft</h2>
+      <p id="stickercount" class="info"></p>
+      <div id="stickerlist"></div>
+      <button class="big" id="st-close" type="button">Schließen</button>
+    </div>
+  </div>
+  <div id="shop" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="sh-title">
+      <h2 id="sh-title">Laden</h2>
+      <p id="shopstars" class="info"></p>
+      <div id="shoplist"></div>
+      <button class="big" id="sh-close" type="button">Schließen</button>
+    </div>
+  </div>
   <div id="rest" class="ov" hidden>
     <div class="card" role="dialog" aria-labelledby="r-title">
       <div id="r-icon"></div>
@@ -333,7 +368,7 @@ function mix(c1, c2, k) {
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.10';
+const VERSION = '0.11';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -419,6 +454,7 @@ const WALK_PER_DAY = 2;
  * The drawing of each place is in 07-places.js (PLACE_DRAW).
  */
 const PLACES = [
+  { id: 'home', name: 'Zuhause', indoor: true, home: true },   // 0.11: his own cave, always open, not one of the 30
   { id: 'meadow', name: 'Wiese' },
   { id: 'jungle', name: 'Dschungel', ff: true },
   { id: 'savanna', name: 'Savanne', dry: true },
@@ -450,7 +486,7 @@ const PLACES = [
   { id: 'berryhill', name: 'Beerenhügel' },
   { id: 'treasure', name: 'Schatzinsel' },
 ];
-const placeById = id => PLACES.find(p => p.id === id) || PLACES[0];
+const placeById = id => PLACES.find(p => p.id === id) || PLACES[1];   // unknown (e.g. 'travel') = meadow
 
 /** Dressing up (0.3): 12 things, one per slot (head / eyes / neck). Each becomes a present on its day of
  *  life (every 2–3 days, the first on the hatch day); opening the present puts it on. */
@@ -627,6 +663,15 @@ const ICONS = {
     { d: 'M10 16V7l6-1v8', stroke: '#ffffff', w: 1.8 },
     { d: 'M7 16a2.5 2 0 1 0 5 0a2.5 2 0 1 0-5 0zM13 14a2.5 2 0 1 0 5 0a2.5 2 0 1 0-5 0z', fill: '#ffffff' },
   ],
+  sticker: [
+    { d: 'M12 2l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.1-5.4 3.1 1.3-6-4.6-4.1 6.1-.6z', fill: '#ff8fb1', stroke: '#c2185b', w: 1.2 },
+    { d: 'M12 8a3 3 0 1 0 0.01 0z', fill: '#ffffff' },
+  ],
+  shop: [
+    { d: 'M4 8h16l-1.5 13h-13z', fill: '#ffb74d', stroke: '#e65100', w: 1.2 },
+    { d: 'M8 8V6a4 4 0 0 1 8 0v2', stroke: '#e65100', w: 1.8 },
+    { d: 'M12 12l1.2 2.4 2.6.3-2 1.8.6 2.6-2.4-1.4-2.4 1.4.6-2.6-2-1.8 2.6-.3z', fill: '#fff59d' },
+  ],
   close: [
     { d: 'M6 6l12 12M18 6L6 18', stroke: '#e5533d', w: 3.4 },
   ],
@@ -771,7 +816,7 @@ function blankSave(t) {
     opts: { sound: true, music: true, sleep: SLEEP_DEFAULT, wake: WAKE_DEFAULT, limit: 0 },
     // Places (0.2): where he is, what was found on which day (-1 = start), the walk under way, a find not yet celebrated.
     place: 'meadow',
-    found: [{ id: 'meadow', day: -1 }],
+    found: [{ id: 'meadow', day: -1 }, { id: 'home', day: -1 }],
     walk: null,              // { sec } awake seconds walked so far, or null
     newPlace: null,          // id of a place reached but not yet celebrated
     // 0.3: what he wears per slot (null = nothing), how many presents were opened, today's visit.
@@ -787,6 +832,10 @@ function blankSave(t) {
     lullabyDay: -1,
     snowman: null,           // 0.10: today's snowman { day, stage 0..3 }
     wish: null,              // 0.10: wish in the thought bubble (not kept between app starts)
+    // 0.11: stars, counters for the stickers, stickers earned, home furniture, friendship hearts.
+    stars: 0, stats: {}, stickers: [],
+    home: { owned: [], placed: {} },
+    friends: {},
           // 0.9: day the lullaby was played last (once a night)
     tricks: Object.fromEntries(TRICKS.map(t => [t.id, 0])),   // 0.8: successful tries per trick (TRICK_LEARN = learned)
   };
@@ -835,6 +884,7 @@ function sanitizeSave(o, t) {
     b.found = o.found.filter(f => f && ids.includes(f.id) && !seen.has(f.id) && seen.add(f.id))
       .map(f => ({ id: f.id, day: num(f.day, -1, 1e6, -1) }));
     if (!seen.has('meadow')) b.found.unshift({ id: 'meadow', day: -1 });
+    if (!seen.has('home')) b.found.push({ id: 'home', day: -1 });   // home is always open (0.11)
   }
   b.place = b.found.some(f => f.id === o.place) ? o.place : 'meadow';
   b.walk = o.walk && typeof o.walk.sec === 'number' ? { sec: num(o.walk.sec, 0, WALK_SECONDS, 0) } : null;
@@ -853,6 +903,15 @@ function sanitizeSave(o, t) {
   b.visitDone = o.visitDone === true;
   b.bday = o.bday && typeof o.bday.key === 'string' ? { key: o.bday.key, out: Math.round(num(o.bday.out, 0, 12, 0)), eaten: o.bday.eaten === true, sung: o.bday.sung === true } : null;
   b.lullabyDay = num(o.lullabyDay, -1, 1e6, -1);
+  b.stars = Math.round(num(o.stars, 0, 1e6, 0));
+  if (o.stats && typeof o.stats === 'object') for (const k of Object.keys(STAR_FOR)) if (typeof o.stats[k] === 'number') b.stats[k] = Math.round(num(o.stats[k], 0, 1e7, 0));
+  b.stickers = Array.isArray(o.stickers) ? STICKERS.map(x => x.id).filter(id => o.stickers.includes(id)) : [];
+  const fids = FURNITURE.map(f => f.id);
+  if (o.home && Array.isArray(o.home.owned)) {
+    b.home.owned = fids.filter(id => o.home.owned.includes(id));
+    for (const id of b.home.owned) { const f = furn(id); const want = o.home.placed && o.home.placed[f.spot]; b.home.placed[f.spot] = b.home.owned.includes(want) && furn(want).spot === f.spot ? want : (b.home.placed[f.spot] || id); }
+  }
+  for (const k of VISITORS) if (o.friends && typeof o.friends[k] === 'number') b.friends[k] = Math.round(num(o.friends[k], 0, 5, 0));
   b.snowman = o.snowman && typeof o.snowman.day === 'number' ? { day: o.snowman.day, stage: Math.round(num(o.snowman.stage, 0, 3, 0)) } : null;
   for (const tr of TRICKS) b.tricks[tr.id] = Math.round(num(o.tricks && o.tricks[tr.id], 0, 999, 0));
   const bools = (a, n) => Array.from({ length: n }, (_, i) => !!(Array.isArray(a) && a[i]));
@@ -2582,6 +2641,7 @@ const FOREGROUND = {
   berryhill: { kind: 'grass', flowers: ['#e53935', '#7b3fb0'], life: 'butterflies' },
   treasure: { kind: 'shells' },
   travel: { kind: 'grass', flowers: ['#ffd54f', '#ffffff'] },
+  home: { kind: 'none' },   // 0.11: wooden floor, nothing in front
 };
 const fgOf = id => FOREGROUND[id] || FOREGROUND.meadow;
 
@@ -2898,6 +2958,7 @@ function eat(id) {
   addNeed('love', 1);
   countMeal();
   wishEat(id);   // 0.10: was it what he wished for?
+  earn('feed');   // 0.11 stars
   pet.eatT = 1.3;
   sound('munch');
   const m = game.stegoInfo.mouth;
@@ -2911,6 +2972,7 @@ function removePoop(i) {
   const p = S.poops[i];
   S.poops.splice(i, 1);
   addNeed('clean', POOP_CLEAN);
+  earn('poop');
   sound('pling');
   for (let k = 0; k < 6; k++) addPart('sparkle', p.x * W + rnd(-15, 15) * U, standY + 18 * U - rnd(0, 30) * U, { size: 7, max: 0.8 });
   save();
@@ -3079,7 +3141,7 @@ function updatePet(dt, sleeping) {
   }
   if (game.mode === 'drink') {
     if (Math.floor(game.modeT / 0.8) !== Math.floor((game.modeT - dt) / 0.8) && game.modeT > 0.5) sound('slurp');
-    if (game.modeT >= 2.6) { addNeed('drink', DRINK_VALUE); save(); game.mode = 'idle'; refreshUI(); }
+    if (game.modeT >= 2.6) { addNeed('drink', DRINK_VALUE); earn('drink'); save(); game.mode = 'idle'; refreshUI(); }
   }
   if (game.mode === 'bath') updateBath(dt);
   if (game.mode === 'brush') updateBrush(dt);
@@ -3087,6 +3149,7 @@ function updatePet(dt, sleeping) {
   if (game.mode === 'hide') updateHide(dt);
   updateVisit(dt, sleeping);
   if (game.mode === 'party' && game.modeT > 3) { game.mode = 'idle'; refreshUI(); }
+  if (Math.floor(game.t / 2) !== Math.floor((game.t - dt) / 2)) checkStickers();   // 0.11 (25-home.js)
   if (game.mode === 'party' && pet.jump === 0 && game.modeT < 2.4) { pet.jumpV = 200 * U; }
 
   if (!inGame) return;
@@ -3120,7 +3183,7 @@ function updateBath(dt) {
     }
   } else if (b.phase === 'rinse') {
     for (let i = 0; i < 3; i++) addPart('drop', W / 2 + rnd(-90, 90) * U, standY - 230 * U, { vx: 0, vy: rnd(250, 350) * U, g: 300, size: 7, max: 0.8 });
-    if (b.t > 1.6) { b.phase = 'done'; b.t = 0; sound('sparkle'); for (let i = 0; i < 12; i++) addPart('sparkle', W / 2 + rnd(-100, 100) * U, standY - rnd(20, 160) * U, { size: 9 }); save(); }
+    if (b.t > 1.6) { b.phase = 'done'; b.t = 0; earn('bath'); sound('sparkle'); for (let i = 0; i < 12; i++) addPart('sparkle', W / 2 + rnd(-100, 100) * U, standY - rnd(20, 160) * U, { size: 9 }); save(); }
   } else if (b.t > 1.4) endMode();
 }
 
@@ -3137,6 +3200,7 @@ function updateBrush(dt) {
     if (b.progress >= 1) {
       b.done = true; b.t = 0;
       S.teethDay = today();
+      earn('brush');
       addNeed('clean', BRUSH_CLEAN); addNeed('love', BRUSH_LOVE);
       sound('sparkle');
       for (let i = 0; i < 10; i++) addPart('star', m.x + rnd(-30, 30) * U, m.y + rnd(-30, 10) * U, { size: 7 });
@@ -3154,7 +3218,7 @@ function updateBall(dt) {
     pet.tx = 0;
     if (!pet.moving && Math.abs(pet.x) < 4 * U) {   // back in the middle: drop it, happy
       b.carried = false; b.thrown = false; b.vx = 0; b.vh = 120 * U; b.x = Math.min(W - 40 * U, W / 2 + 140 * U);
-      addNeed('fun', FETCH_FUN); save();
+      addNeed('fun', FETCH_FUN); earn('fetch'); save();
       pet.giggleT = 0.9; pet.jumpV = 160 * U; sound('giggle');
       for (let i = 0; i < 3; i++) addPart('heart', info.head.x + rnd(-20, 20) * U, info.head.y - 30 * U, { size: 8 });
     }
@@ -3263,6 +3327,7 @@ function drawWorld() {
   } else {
     drawSeasonGround(ctx, placeId, sky.light);   // 0.10: golden autumn, frosty winter
     drawWeatherGame(ctx, game.t);                 // 0.10: puddles, leaf piles, snowman
+    drawHome(ctx, game.t, sky.light);             // 0.11: furniture at home
     S.poops.forEach((p, i) => { const pp = poopPos(i); drawPoop(ctx, pp.x, pp.y, 1.1 * U, game.t + i); });
     const sx = W / 2 + pet.x, look = stegoLook();
     const tubW = game.stegoInfo ? game.stegoInfo.box.w * 0.8 : stegoSize * 0.6;
@@ -3419,6 +3484,11 @@ function buildUI() {
   // 0.3: wardrobe, album, camera, play menu, music pad.
   $('b-wear').innerHTML = iconSVG('hat'); $('b-wear').addEventListener('click', openWardrobe);
   $('b-album').innerHTML = iconSVG('album'); $('b-album').addEventListener('click', openAlbum);
+  // 0.11: stars, sticker book, shop (only at home).
+  $('b-stickers').innerHTML = iconSVG('sticker'); $('b-stickers').addEventListener('click', openStickers);
+  $('b-shop').innerHTML = iconSVG('shop'); $('b-shop').addEventListener('click', openShop);
+  $('st-close').addEventListener('click', closeStickers);
+  $('sh-close').addEventListener('click', closeShop);
   $('b-camera').innerHTML = iconSVG('camera') + '<span class="cnt" hidden></span>'; $('b-camera').addEventListener('click', cameraTap);
   $('at-diary').addEventListener('click', () => openAlbum('diary'));
   $('at-mile').addEventListener('click', () => openAlbum('mile'));
@@ -3475,6 +3545,8 @@ function refreshUI() {
   $('musicpad').hidden = !(inGame && game.mode === 'music');
   $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music', 'train', 'bubbles', 'kite', 'castle'].includes(game.mode));
   refreshCamera();
+  $('starpill').textContent = '★ ' + S.stars;
+  $('b-shop').hidden = !atHome();
   $('devbadge').hidden = !dev.on;
   if (dev.on) $('devbadge').textContent = 'TEST' + (dev.speed > 1 ? ' · ' + dev.speed + '×' : '');
   updateNeedBars();
@@ -3609,6 +3681,8 @@ window.__back = () => {
   if (!$('rest').hidden) { $('rest').hidden = true; return true; }
   if (!$('dev-confirm').hidden) { $('dev-confirm').hidden = true; return true; }
   if (!$('devpanel').hidden) { closeDev(); return true; }
+  if (!$('stickers').hidden) { closeStickers(); return true; }
+  if (!$('shop').hidden) { closeShop(); return true; }
   if (!$('places').hidden) { closePlaces(); return true; }
   if (!$('photoview').hidden) { $('photoview').hidden = true; return true; }
   if (!$('album').hidden) { closeAlbum(); return true; }
@@ -3727,7 +3801,7 @@ function onUp(e) {
     const p = poopPos(i);
     if (dist(x, y, p.x, p.y - 15 * U) < 38 * U) { removePoop(i); return; }
   }
-  if (game.mode === 'idle' && (weatherGameTap(x, y) || cakeTap(x, y) || holidayTap(x, y))) return;   // 0.9 cake, 0.7 holidays   // 0.7: Christmas boxes, Easter eggs, chocolate bunny
+  if (game.mode === 'idle' && (weatherGameTap(x, y) || cakeTap(x, y) || holidayTap(x, y) || homeTap(x, y))) return;   // 0.9 cake, 0.7 holidays   // 0.7: Christmas boxes, Easter eggs, chocolate bunny
   if (giftWaiting() && game.mode === 'idle' && !asleepNow() && !S.walk) {
     const gp = giftPos();
     if (dist(x, y, gp.x, gp.y - 25 * U) < 45 * U) { openGift(); return; }
@@ -3817,7 +3891,7 @@ function start() {
 const walkFx = { scroll: 0 };
 
 const isFound = id => S.found.some(f => f.id === id);
-const undiscovered = () => PLACES.filter(p => !isFound(p.id));
+const undiscovered = () => PLACES.filter(p => !p.home && !isFound(p.id));   // home is never 'discovered'
 /** New places found today (the start meadow does not count). */
 function foundToday() { const d = dayIndex(now()); return S.found.filter(f => f.day === d).length; }
 /** Today's limit of new places reached (only matters while there is still something to find). */
@@ -3843,6 +3917,7 @@ function arrive(t) {
     id = und[Math.floor(Math.random() * und.length)].id;
     S.found.push({ id, day: dayIndex(t) });
     S.newPlace = id;
+    earn('place');   // 0.11: stars for a new place
   } else {
     const others = S.found.filter(f => f.id !== S.place);
     id = others.length ? others[Math.floor(Math.random() * others.length)].id : S.place;
@@ -3907,7 +3982,7 @@ function openPlaces() {
     if (isFound(p.id)) el.querySelector('canvas').getContext('2d').drawImage(placePicture(p.id, 160, 100), 0, 0);
     el.addEventListener('click', () => { if (isFound(p.id)) goPlace(p.id); else { sound('refuse'); el.classList.remove('nope'); void el.offsetWidth; el.classList.add('nope'); } });
   }
-  $('placecount').textContent = S.found.length + ' von ' + PLACES.length + ' entdeckt';
+  $('placecount').textContent = realFound() + ' von ' + (PLACES.length - 1) + ' entdeckt';
   $('places').hidden = false;
 }
 function closePlaces() { $('places').hidden = true; }
@@ -4037,7 +4112,7 @@ function hideTap(i) {
   if (!h || h.phase !== 'seek') return;
   if (i === h.spot) {
     h.phase = 'found'; h.t = 0;
-    addNeed('fun', HIDE_FUN); save();
+    addNeed('fun', HIDE_FUN); earn('hide'); save();
     pet.jumpV = 220 * U; pet.giggleT = 1.2;
     sound('giggle'); sound('sparkle');
     const sp = hideSpots()[i];
@@ -4120,7 +4195,7 @@ function updateVisit(dt, sleeping) {
   if (v.phase === 'in') {
     v.x += Math.sign(targetX - v.x) * Math.min(Math.abs(targetX - v.x), 110 * U * dt);
     v.walk += dt * 10;
-    if (Math.abs(targetX - v.x) < 2 * U + 2) { v.phase = 'stay'; v.t = 0; sound('hello'); pet.giggleT = 1; }
+    if (Math.abs(targetX - v.x) < 2 * U + 2) { v.phase = 'stay'; v.t = 0; sound('hello'); pet.giggleT = 1; v.present = friendArrives(v.kind); }   // 0.11: best friends bring a present
   } else if (v.phase === 'stay') {
     // Stay next to him (or at his hind legs while walking); follow when he moves.
     v.x += Math.sign(targetX - v.x) * Math.min(Math.abs(targetX - v.x), 160 * U * dt);
@@ -4133,7 +4208,7 @@ function updateVisit(dt, sleeping) {
     if (game.mode === 'idle' && !sleeping && !walking) pet.dir = side;   // he looks at his friend
     if (v.t >= VISIT_SECONDS || sleeping) {
       v.phase = 'out'; v.t = 0;
-      addNeed('love', VISIT_LOVE); addNeed('fun', VISIT_FUN); save();
+      addNeed('love', VISIT_LOVE); addNeed('fun', VISIT_FUN); friendVisited(v.kind); earn('visit'); save();
       sound('hello');
     }
   } else if (v.phase === 'out') {
@@ -4589,7 +4664,7 @@ function buildDev() {
       b('dv-x18', '18.12.') + b('dv-x24', '24.12.') + b('dv-x31', '31.12.') + b('dv-easter', 'Ostern') + b('dv-bday', 'Geburtstag') + '</div>' +
     '<h3>Helfer</h3><div class="chips">' +
       b('dv-full', 'Alles voll') + b('dv-low', 'Fast leer') + b('dv-arrive', 'Sofort ankommen') + b('dv-places', 'Alle Orte') +
-      b('dv-gifts', 'Alle Geschenke') + b('dv-visit', 'Besuch jetzt') + '</div>' +
+      b('dv-gifts', 'Alle Geschenke') + b('dv-visit', 'Besuch jetzt') + b('dv-stars', '+50 Sterne') + b('dv-friends', 'Beste Freunde') + '</div>' +
     '<h3>Wetter</h3><div class="chips">' + DEV_WEATHER.map(([w, t]) => b('dv-w-' + w, t)).join('') + '</div>' +
     b('dv-reset', 'Test-Spielstand zurücksetzen', ' danger wide');
   const on = (id, f) => $(id).addEventListener('click', () => { sound('tap'); f(); fillDev(); });
@@ -4605,7 +4680,7 @@ function buildDev() {
   on('dv-bday', devGoBirthday);
   on('dv-t1945', () => devTimeOfDay(19 * 60 + 45)); on('dv-t22', () => devTimeOfDay(22 * 60));
   on('dv-full', () => devNeeds(100)); on('dv-low', () => devNeeds(15));
-  on('dv-arrive', devArrive); on('dv-places', devAllPlaces); on('dv-gifts', devAllGifts); on('dv-visit', devVisit);
+  on('dv-arrive', devArrive); on('dv-stars', () => { S.stars += 50; save(); refreshUI(); }); on('dv-friends', () => { for (const k of VISITORS) S.friends[k] = 5; save(); }); on('dv-places', devAllPlaces); on('dv-gifts', devAllGifts); on('dv-visit', devVisit);
   DEV_WEATHER.forEach(([w]) => on('dv-w-' + w, () => devWeather(w)));
   $('dv-reset').addEventListener('click', () => { $('dev-confirm').hidden = false; });
   $('dvc-no').addEventListener('click', () => { $('dev-confirm').hidden = true; });
@@ -5032,7 +5107,7 @@ function finishTrace() {
   tr.result = res;
   tr.phase = 'show';
   const wasLearned = trickLearned(t.id);
-  if (res.ok) S.tricks[t.id]++;
+  if (res.ok) { S.tricks[t.id]++; earn('trick'); }
   addNeed('fun', res.ok ? TRAIN_FUN_OK : TRAIN_FUN_FAIL);
   save();
   startTrick(t.id, res.ok, false);
@@ -5231,7 +5306,7 @@ function updateBirthday() {
   if (game.cakeEatAt && game.t >= game.cakeEatAt) {
     game.cakeEatAt = 0;
     const st = bdayState();
-    if (st && !st.eaten) { st.eaten = true; addNeed('food', BDAY_FOOD); addNeed('love', BDAY_LOVE); pet.eatT = 1.3; sound('munch'); save(); }
+    if (st && !st.eaten) { st.eaten = true; earn('birthday'); addNeed('food', BDAY_FOOD); addNeed('love', BDAY_LOVE); pet.eatT = 1.3; sound('munch'); save(); }
   }
 }
 
@@ -5379,7 +5454,7 @@ function weatherGameTap(x, y) {
       st.stage++;
       sound(st.stage === 3 ? 'fanfare' : 'pop');
       for (let i = 0; i < 8; i++) addPart('sparkle', p.x + rnd(-30, 30) * U, p.y - rnd(0, 70) * U, { size: 7 });
-      if (st.stage === 3) { addNeed('fun', 10); pet.jumpV = 200 * U; pet.giggleT = 1.2; }
+      if (st.stage === 3) { earn('snowman'); addNeed('fun', 10); pet.jumpV = 200 * U; pet.giggleT = 1.2; }
       save();
       return true;
     }
@@ -5395,7 +5470,7 @@ function updateWeatherGame(dt) {
   if (!j.jumped) {
     j.jumped = true; j.t = 0;
     pet.jumpV = 230 * U; pet.giggleT = 1;
-    addNeed('fun', 5);
+    addNeed('fun', 5); earn('jump');
     if (j.kind === 'puddles') {
       sound('splash'); addNeed('clean', -8);   // muddy – a reason for a bath
       for (let i = 0; i < 16; i++) addPart('drop', j.p.x + rnd(-30, 30) * U, j.p.y - 6 * U, { vx: rnd(-150, 150) * U, vy: rnd(-260, -120) * U, g: 700, size: 7, max: 0.9 });
@@ -5488,7 +5563,7 @@ function toyTap(x, y) {
     if (c.stage < 4 && dist(x, y, p.x, p.y - 30 * U) < 55 * U) {
       c.stage++; sound(c.stage === 4 ? 'fanfare' : 'scrub');
       for (let k = 0; k < 8; k++) addPart('crumb', p.x + rnd(-30, 30) * U, p.y - rnd(0, 40) * U, { vx: rnd(-60, 60) * U, vy: rnd(-120, -40) * U, g: 400, color: '#e2be72', size: 4, max: 0.7 });
-      if (c.stage === 4) { addNeed('fun', 10); pet.giggleT = 1; }
+      if (c.stage === 4) { earn('castle'); addNeed('fun', 10); pet.giggleT = 1; }
       return true;
     }
     if (c.stage === 4 && game.stegoInfo && inBox(x, y, game.stegoInfo.box)) {
@@ -5574,7 +5649,7 @@ function melodyKey(i) {
   if (i === m.seq[m.pos]) {
     m.pos++;
     if (m.pos >= m.len) {
-      m.phase = 'done'; sound('applause'); addNeed('fun', 5); pet.danceT = 1.5;
+      m.phase = 'done'; earn('melody'); sound('applause'); addNeed('fun', 5); pet.danceT = 1.5;
       setTimeout(() => { if (game.melody === m) startMelody(Math.min(6, m.len + 1)); }, 1400);
     }
   } else {
@@ -5608,6 +5683,7 @@ function wishEat(id) {
   if (w.type === 'count' && id === w.food) w.got++;
   if ((w.type === 'count' && w.got >= w.n) || (w.type === 'color' && FOOD_COLOR[id] === w.color)) {
     S.wish = null;
+    earn('wish');
     addNeed('love', 10); addNeed('fun', 5);
     pet.danceT = 1.6; sound('applause');
     const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U };
@@ -5632,6 +5708,244 @@ function wishBubbleIcon(c, x, y, r) {
     c.fillStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.arc(x - r * 0.18, y - r * 0.18, r * 0.12, 0, TAU); c.fill();
   }
 }
+
+/* ===== 25-home.js ===== */
+/* 25-home.js – stars, home, shop, sticker book and friendship (0.11).
+ *   Stars     earned for caring and playing (earn(kind)); counted in S.stars, shown at the top of the button column.
+ *   Home      a cosy cave ("Zuhause", first in the places list, always open). Furniture bought in the shop stands
+ *             in its spot; tapping a piece switches to the next one owned for that spot. Friends' presents too.
+ *   Shop      (bag button, only at home) furniture for stars.
+ *   Stickers  24 stickers for things done (S.stats counters); not yet earned ones are grey. New sticker = +3 stars.
+ *   Friends   every visit gives that friend a heart (max 5); at 5 hearts his next visit brings a present for home. */
+
+/** Stars for each kind of thing; also counted in S.stats (for the stickers). */
+const STAR_FOR = { feed: 1, drink: 1, bath: 2, brush: 2, poop: 1, fetch: 1, hide: 2, trick: 2, melody: 2, wish: 3, place: 5,
+  snowman: 2, castle: 2, jump: 1, birthday: 5, visit: 2, photo: 0, bubble: 0 };
+
+/** Counts a thing done and gives its stars (with a little star flying up). */
+function earn(kind) {
+  S.stats[kind] = (S.stats[kind] || 0) + 1;
+  const n = STAR_FOR[kind] || 0;
+  if (n) {
+    S.stars += n;
+    const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U };
+    for (let i = 0; i < Math.min(n, 3); i++) addPart('star', h.x + rnd(-30, 30) * U, h.y - 30 * U, { vy: -90 * U, size: 8, max: 1.2 });
+  }
+  checkStickers();
+}
+
+/* ---------- home and furniture ---------- */
+
+/** Furniture: spot (where it stands), price in stars, friend = present from that visitor (not for sale). */
+const FURNITURE = [
+  { id: 'bed_leaves', spot: 'bed', price: 5, name: 'Blätterbett' }, { id: 'bed_wood', spot: 'bed', price: 15, name: 'Holzbett' },
+  { id: 'rug_round', spot: 'rug', price: 8, name: 'Runder Teppich' }, { id: 'rug_stripes', spot: 'rug', price: 12, name: 'Streifenteppich' },
+  { id: 'lamp_jar', spot: 'lamp', price: 10, name: 'Glühwürmchenglas' }, { id: 'lamp_mushroom', spot: 'lamp', price: 14, name: 'Pilzlampe' },
+  { id: 'pic_sun', spot: 'pic', price: 6, name: 'Sonnenbild' }, { id: 'pic_egg', spot: 'pic', price: 6, name: 'Eierbild' },
+  { id: 'plant_fern', spot: 'plant', price: 5, name: 'Farn im Topf' }, { id: 'plant_flower', spot: 'plant', price: 7, name: 'Blumentopf' },
+  { id: 'toybox', spot: 'toys', price: 10, name: 'Spielzeugkiste' }, { id: 'shelf', spot: 'shelf', price: 12, name: 'Regal mit Muscheln' },
+  { id: 'friend_trex', spot: 'f_trex', friend: 'trex', name: 'T-Rex-Kuscheltier' },
+  { id: 'friend_ptero', spot: 'f_ptero', friend: 'ptero', name: 'Feder-Mobile' },
+  { id: 'friend_trike', spot: 'f_trike', friend: 'trike', name: 'Blumenkranz' },
+  { id: 'friend_turtle', spot: 'f_turtle', friend: 'turtle', name: 'Muschellampe' },
+  { id: 'friend_butterflies', spot: 'f_butterflies', friend: 'butterflies', name: 'Schmetterlingsbild' },
+];
+const furn = id => FURNITURE.find(f => f.id === id);
+
+/** Where each spot is in the home (fractions of the screen, y relative to standY / groundY). */
+function spotPos(spot) {
+  return {
+    bed: { x: W * 0.2, y: standY + 6 * U }, rug: { x: W * 0.5, y: standY + 20 * U }, lamp: { x: W * 0.88, y: standY - 4 * U },
+    pic: { x: W * 0.3, y: groundY - 110 * U }, plant: { x: W * 0.08, y: standY + 44 * U }, toys: { x: W * 0.78, y: standY + 52 * U },
+    shelf: { x: W * 0.62, y: groundY - 70 * U }, f_trex: { x: W * 0.55, y: groundY - 82 * U }, f_ptero: { x: W * 0.5, y: 120 * U },
+    f_trike: { x: W * 0.12, y: groundY - 120 * U }, f_turtle: { x: W * 0.72, y: groundY - 82 * U }, f_butterflies: { x: W * 0.45, y: groundY - 115 * U },
+  }[spot];
+}
+
+const atHome = () => hatched() && !S.walk && S.place === 'home';
+
+/** Buys a piece of furniture (if he has the stars) and puts it in its spot. */
+function buyFurniture(id) {
+  const f = furn(id);
+  if (!f || f.friend || S.home.owned.includes(id) || S.stars < f.price) { sound('refuse'); return false; }
+  S.stars -= f.price;
+  S.home.owned.push(id);
+  S.home.placed[f.spot] = id;
+  sound('fanfare');
+  save(); checkStickers();
+  return true;
+}
+
+/** Tap at home: a placed piece switches to the next owned one for its spot (bed: leaves -> wood -> ...). */
+function homeTap(x, y) {
+  if (!atHome() || game.mode !== 'idle') return false;
+  for (const spot of ['bed', 'rug', 'lamp', 'pic', 'plant']) {
+    const id = S.home.placed[spot], p = spotPos(spot);
+    if (!id || dist(x, y, p.x, p.y - 20 * U) > 34 * U) continue;
+    const owned = FURNITURE.filter(f => f.spot === spot && S.home.owned.includes(f.id)).map(f => f.id);
+    if (owned.length < 2) return false;
+    S.home.placed[spot] = owned[(owned.indexOf(id) + 1) % owned.length];
+    sound('pop'); save();
+    return true;
+  }
+  return false;
+}
+
+/* ---------- friendship ---------- */
+
+/** A visit ended: one more heart for that friend; with 5 hearts the next visit brings a present. */
+function friendVisited(kind) {
+  const h = S.friends[kind] = Math.min(5, (S.friends[kind] || 0) + 1);
+  return h;
+}
+/** Called when a visitor arrives: a best friend (5 hearts) brings his present once. */
+function friendArrives(kind) {
+  const id = 'friend_' + kind;
+  if ((S.friends[kind] || 0) >= 5 && !S.home.owned.includes(id)) {
+    S.home.owned.push(id); S.home.placed[furn(id).spot] = id;
+    sound('fanfare'); confetti(); save(); checkStickers();
+    return true;
+  }
+  return false;
+}
+
+/* ---------- stickers ---------- */
+
+/** 24 stickers: icon, colour and when it is earned (from S.stats and the game). */
+const STICKERS = [
+  { id: 'hatch', icon: 'love', col: '#ff8fb1', name: 'Geschlüpft', ok: () => hatched() },
+  { id: 'feed1', icon: 'food', col: '#a5d6a7', name: 'Erstes Futter', ok: () => st('feed') >= 1 },
+  { id: 'feed10', icon: 'food', col: '#66bb6a', name: '10-mal gefüttert', ok: () => st('feed') >= 10 },
+  { id: 'bath1', icon: 'bath', col: '#81d4fa', name: 'Erstes Bad', ok: () => st('bath') >= 1 },
+  { id: 'brush5', icon: 'brush', col: '#80cbc4', name: '5-mal Zähne geputzt', ok: () => st('brush') >= 5 },
+  { id: 'poop10', icon: 'clean', col: '#bcaaa4', name: '10-mal Kacka weg', ok: () => st('poop') >= 10 },
+  { id: 'fetch10', icon: 'fun', col: '#ffe082', name: '10 Bälle gebracht', ok: () => st('fetch') >= 10 },
+  { id: 'hide5', icon: 'hide', col: '#c5e1a5', name: '5-mal gefunden', ok: () => st('hide') >= 5 },
+  { id: 'trick1', icon: 'train', col: '#fff59d', name: 'Erster Trick', ok: () => learnedTricks().length >= 1 },
+  { id: 'trick7', icon: 'train', col: '#ffd54f', name: 'Alle Tricks', ok: () => learnedTricks().length >= TRICKS.length },
+  { id: 'melody', icon: 'melody', col: '#d1c4e9', name: 'Melodie nachgespielt', ok: () => st('melody') >= 1 },
+  { id: 'wish', icon: 'love', col: '#f8bbd0', name: 'Wunsch erfüllt', ok: () => st('wish') >= 1 },
+  { id: 'visit1', icon: 'love', col: '#ffccbc', name: 'Erster Besuch', ok: () => st('visit') >= 1 },
+  { id: 'friend5', icon: 'love', col: '#ef9a9a', name: 'Bester Freund', ok: () => Object.values(S.friends).some(h => h >= 5) },
+  { id: 'places5', icon: 'map', col: '#ffe0b2', name: '5 Orte', ok: () => realFound() >= 5 },
+  { id: 'places15', icon: 'map', col: '#ffcc80', name: '15 Orte', ok: () => realFound() >= 15 },
+  { id: 'places30', icon: 'map', col: '#ffb74d', name: 'Alle 30 Orte', ok: () => realFound() >= 30 },
+  { id: 'photo1', icon: 'camera', col: '#b0bec5', name: 'Erstes Foto', ok: () => photos.some(p => !p.auto) },
+  { id: 'snowman', icon: 'clean', col: '#e3f2fd', name: 'Schneemann', ok: () => st('snowman') >= 1 },
+  { id: 'castle', icon: 'castle', col: '#ffe082', name: 'Sandburg', ok: () => st('castle') >= 1 },
+  { id: 'jump', icon: 'drink', col: '#90caf9', name: 'Pfützen-Springer', ok: () => st('jump') >= 1 },
+  { id: 'birthday', icon: 'hat', col: '#f48fb1', name: 'Geburtstag gefeiert', ok: () => st('birthday') >= 1 },
+  { id: 'grown', icon: 'love', col: '#9575cd', name: 'Ganz groß', ok: () => hatched() && stageAt(now()) >= STAGES.length - 1 },
+  { id: 'home5', icon: 'bed', col: '#a1887f', name: 'Zuhause eingerichtet', ok: () => S.home.owned.length >= 5 },
+];
+const st = k => S.stats[k] || 0;
+const realFound = () => S.found.filter(f => f.id !== 'home').length;
+
+/** Gives every sticker whose condition is now true (+3 stars and a little fanfare for each new one). */
+function checkStickers() {
+  let got = 0;
+  for (const s of STICKERS) if (!S.stickers.includes(s.id) && s.ok()) { S.stickers.push(s.id); S.stars += 3; got++; }
+  if (got && game.screen === 'game') { sound('sparkle'); const b = $('b-stickers'); if (b) { b.classList.remove('glow'); void b.offsetWidth; b.classList.add('glow'); } }
+  if (got) save();
+  return got;
+}
+
+function openStickers() {
+  sound('tap');
+  checkStickers();
+  $('stickerlist').innerHTML = STICKERS.map(s => '<div class="sticker' + (S.stickers.includes(s.id) ? '' : ' locked') + '" style="--c:' + s.col + '"><span>' +
+    iconSVG(s.icon) + '</span><i>' + s.name + '</i></div>').join('');
+  $('stickercount').textContent = S.stickers.length + ' von ' + STICKERS.length + ' Stickern';
+  $('stickers').hidden = false;
+}
+function closeStickers() { $('stickers').hidden = true; }
+
+/* ---------- shop ---------- */
+
+function openShop() {
+  if (!atHome()) return;
+  sound('tap');
+  const items = FURNITURE.filter(f => !f.friend);
+  $('shoplist').innerHTML = items.map(f => {
+    const owned = S.home.owned.includes(f.id), can = S.stars >= f.price;
+    return '<button class="shopitem' + (owned ? ' owned' : can ? '' : ' poor') + '" id="si-' + f.id + '" type="button"><canvas width="120" height="96"></canvas>' +
+      '<b>' + (owned ? '✓' : '★ ' + f.price) + '</b><i>' + f.name + '</i></button>';
+  }).join('');
+  for (const f of items) {
+    const el = $('si-' + f.id), c = el.querySelector('canvas').getContext('2d');
+    c.save(); c.translate(60, 80); drawFurniture(c, f.id, 0, 0, 0.75, 0.5, 1); c.restore();
+    el.addEventListener('click', () => { if (buyFurniture(f.id)) openShop(); else { el.classList.remove('nope'); void el.offsetWidth; el.classList.add('nope'); } });
+  }
+  $('shopstars').textContent = '★ ' + S.stars;
+  $('shop').hidden = false;
+}
+function closeShop() { $('shop').hidden = true; }
+
+/* ---------- drawing ---------- */
+
+/** Draws one piece of furniture with its foot at (x, y), size s (1 = normal), light L, time t. */
+function drawFurniture(c, id, x, y, s, t = 0, L = 1) {
+  const u = U * s;
+  c.save(); c.translate(x, y);
+  if (id === 'bed_leaves') { c.fillStyle = '#7cb342'; for (let i = 0; i < 7; i++) { c.beginPath(); c.ellipse((i - 3) * 16 * u, -8 * u - (i % 2) * 4 * u, 18 * u, 9 * u, (i - 3) * 0.2, 0, TAU); c.fill(); } c.fillStyle = '#558b2f'; c.beginPath(); c.ellipse(0, -2 * u, 64 * u, 8 * u, 0, 0, TAU); c.fill(); }
+  else if (id === 'bed_wood') { c.fillStyle = '#8d6e63'; c.fillRect(-66 * u, -22 * u, 132 * u, 18 * u); c.fillRect(-66 * u, -46 * u, 10 * u, 46 * u); c.fillStyle = '#90caf9'; c.fillRect(-56 * u, -30 * u, 120 * u, 10 * u); c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(-40 * u, -32 * u, 16 * u, 7 * u, 0, 0, TAU); c.fill(); }
+  else if (id === 'rug_round') { c.fillStyle = '#ef9a9a'; c.beginPath(); c.ellipse(0, 0, 110 * u, 18 * u, 0, 0, TAU); c.fill(); c.strokeStyle = '#fff3e0'; c.lineWidth = 3 * u; c.beginPath(); c.ellipse(0, 0, 80 * u, 12 * u, 0, 0, TAU); c.stroke(); }
+  else if (id === 'rug_stripes') { const cols = ['#4fc3f7', '#fff59d', '#a5d6a7', '#ffab91']; for (let i = 0; i < 4; i++) { c.fillStyle = cols[i]; c.fillRect(-110 * u + i * 55 * u, -14 * u, 55 * u, 28 * u); } }
+  else if (id === 'lamp_jar' || id === 'friend_turtle') {
+    const glow = clamp(1.2 - L, 0.25, 1), col = id === 'lamp_jar' ? '#e6ff8c' : '#ffcc80';
+    const g = c.createRadialGradient(0, -30 * u, 2, 0, -30 * u, 46 * u); g.addColorStop(0, col + 'cc'); g.addColorStop(1, col + '00');
+    c.globalAlpha = glow; c.fillStyle = g; c.beginPath(); c.arc(0, -30 * u, 46 * u, 0, TAU); c.fill(); c.globalAlpha = 1;
+    if (id === 'lamp_jar') { c.fillStyle = 'rgba(200,230,255,0.6)'; c.fillRect(-12 * u, -46 * u, 24 * u, 46 * u); c.fillStyle = '#8d6e63'; c.fillRect(-13 * u, -50 * u, 26 * u, 6 * u); c.fillStyle = col; for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(Math.sin(t * 2 + i) * 6 * u, -10 * u - i * 9 * u, 2.5 * u, 0, TAU); c.fill(); } }
+    else { c.fillStyle = '#ffccbc'; c.beginPath(); c.moveTo(-16 * u, -20 * u); c.lineTo(0, -44 * u); c.lineTo(16 * u, -20 * u); c.fill(); c.fillStyle = '#a1887f'; c.fillRect(-4 * u, -20 * u, 8 * u, 20 * u); }
+  }
+  else if (id === 'lamp_mushroom') { const glow = clamp(1.2 - L, 0.25, 1); const g = c.createRadialGradient(0, -40 * u, 2, 0, -40 * u, 50 * u); g.addColorStop(0, '#ffab91cc'); g.addColorStop(1, '#ffab9100'); c.globalAlpha = glow; c.fillStyle = g; c.beginPath(); c.arc(0, -40 * u, 50 * u, 0, TAU); c.fill(); c.globalAlpha = 1; c.fillStyle = '#f5ecd7'; c.fillRect(-5 * u, -40 * u, 10 * u, 40 * u); c.fillStyle = '#e57373'; c.beginPath(); c.ellipse(0, -40 * u, 24 * u, 16 * u, 0, Math.PI, TAU); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(-8 * u, -48 * u, 3 * u, 0, TAU); c.arc(8 * u, -46 * u, 2.5 * u, 0, TAU); c.fill(); }
+  else if (id === 'pic_sun' || id === 'pic_egg' || id === 'friend_butterflies') {
+    c.fillStyle = '#8d6e63'; c.fillRect(-26 * u, -40 * u, 52 * u, 40 * u); c.fillStyle = '#e3f2fd'; c.fillRect(-21 * u, -35 * u, 42 * u, 30 * u);
+    if (id === 'pic_sun') { c.fillStyle = '#ffd54f'; c.beginPath(); c.arc(0, -20 * u, 9 * u, 0, TAU); c.fill(); c.fillStyle = '#81c784'; c.fillRect(-21 * u, -12 * u, 42 * u, 7 * u); }
+    else if (id === 'pic_egg') { c.fillStyle = '#fff4d6'; c.beginPath(); c.ellipse(0, -20 * u, 8 * u, 11 * u, 0, 0, TAU); c.fill(); c.fillStyle = '#9ad9b0'; c.beginPath(); c.arc(-3 * u, -22 * u, 2 * u, 0, TAU); c.arc(3 * u, -16 * u, 2 * u, 0, TAU); c.fill(); }
+    else { for (const [ox, col] of [[-8, '#ff8a65'], [8, '#4fc3f7']]) { c.fillStyle = col; c.beginPath(); c.ellipse(ox * u - 4 * u, -20 * u, 5 * u, 7 * u, -0.4, 0, TAU); c.ellipse(ox * u + 4 * u, -20 * u, 5 * u, 7 * u, 0.4, 0, TAU); c.fill(); } }
+  }
+  else if (id === 'plant_fern' || id === 'plant_flower') { c.fillStyle = '#bf6d3a'; c.beginPath(); c.moveTo(-14 * u, -22 * u); c.lineTo(14 * u, -22 * u); c.lineTo(10 * u, 0); c.lineTo(-10 * u, 0); c.fill();
+    if (id === 'plant_fern') { c.strokeStyle = '#43a047'; c.lineWidth = 3 * u; for (const a of [-0.6, -0.2, 0.2, 0.6]) { c.beginPath(); c.moveTo(0, -22 * u); c.quadraticCurveTo(a * 40 * u, -50 * u, a * 60 * u, -40 * u); c.stroke(); } }
+    else { c.strokeStyle = '#43a047'; c.lineWidth = 2.5 * u; for (const [ox, col] of [[-8, '#ec407a'], [2, '#ffca28'], [10, '#7e57c2']]) { c.beginPath(); c.moveTo(0, -22 * u); c.lineTo(ox * u, -44 * u); c.stroke(); c.fillStyle = col; c.beginPath(); c.arc(ox * u, -46 * u, 6 * u, 0, TAU); c.fill(); } } }
+  else if (id === 'toybox') { c.fillStyle = '#ffb74d'; c.fillRect(-26 * u, -26 * u, 52 * u, 26 * u); c.fillStyle = '#ef6c00'; c.fillRect(-28 * u, -30 * u, 56 * u, 6 * u); drawBall(c, -8 * u, -34 * u, 9 * u, 0); c.fillStyle = '#42a5f5'; c.fillRect(6 * u, -40 * u, 10 * u, 10 * u); }
+  else if (id === 'shelf') { c.fillStyle = '#8d6e63'; c.fillRect(-40 * u, -6 * u, 80 * u, 6 * u); for (const [ox, col] of [[-26, '#ffccbc'], [-6, '#f8bbd0'], [16, '#fff3e0']]) { c.fillStyle = col; c.beginPath(); c.arc(ox * u, -6 * u, 7 * u, Math.PI, TAU); c.fill(); } }
+  else if (id === 'friend_trex') { c.fillStyle = '#ff8a4c'; c.beginPath(); c.ellipse(0, -12 * u, 12 * u, 11 * u, 0, 0, TAU); c.fill(); c.beginPath(); c.arc(9 * u, -25 * u, 8 * u, 0, TAU); c.fill(); c.fillStyle = '#222'; c.beginPath(); c.arc(11 * u, -27 * u, 1.6 * u, 0, TAU); c.fill(); }
+  else if (id === 'friend_ptero') { c.strokeStyle = '#8d6e63'; c.lineWidth = 1.5 * u; c.beginPath(); c.moveTo(0, -60 * u); c.lineTo(0, -20 * u); c.moveTo(-30 * u, -20 * u); c.lineTo(30 * u, -20 * u); c.stroke(); for (const [ox, col] of [[-30, '#b388ff'], [0, '#ffca28'], [30, '#4fc3f7']]) { c.fillStyle = col; c.beginPath(); c.ellipse(ox * u, -6 * u + Math.sin(t * 2 + ox) * 3 * u, 4 * u, 12 * u, 0.3, 0, TAU); c.fill(); } }
+  else if (id === 'friend_trike') { for (let i = 0; i < 10; i++) { const a = i * TAU / 10; c.fillStyle = ['#ff8fb1', '#ffd54f', '#b39ddb'][i % 3]; c.beginPath(); c.arc(Math.cos(a) * 18 * u, -20 * u + Math.sin(a) * 18 * u, 5 * u, 0, TAU); c.fill(); } }
+  c.restore();
+}
+
+/** The home's furniture (everything owned and placed), drawn behind him; the rug under him. */
+function drawHome(c, time, L) {
+  if (!atHome()) return;
+  const pl = S.home.placed;
+  for (const spot of ['rug', 'pic', 'shelf', 'f_trex', 'f_turtle', 'f_trike', 'f_butterflies', 'f_ptero', 'bed', 'lamp', 'plant', 'toys']) {
+    const id = pl[spot]; if (!id) continue;
+    const p = spotPos(spot);
+    drawFurniture(c, id, p.x, p.y, ['pic', 'shelf', 'f_trex', 'f_turtle', 'f_trike', 'f_butterflies', 'f_ptero'].includes(spot) ? 1.25 : 1.4, time, L);   // bigger than in the shop
+  }
+}
+
+/** The home itself: cave wall, a round opening to the sky (day or night), wooden floor. */
+PLACE_DRAW.home = { indoor: true, draw(c, e) {
+  const g = c.createLinearGradient(0, 0, 0, groundY);
+  g.addColorStop(0, '#6d4c41'); g.addColorStop(1, '#8d6e63');
+  c.fillStyle = g; c.fillRect(0, 0, W, groundY + 2);
+  // Round opening with the sky outside.
+  const ox = W * 0.8, oy = groundY * 0.42, r = Math.min(W * 0.16, 70 * U);
+  c.fillStyle = mix(SKY.night[1], SKY.day[0], e.L); c.beginPath(); c.arc(ox, oy, r, 0, TAU); c.fill();
+  if (e.L < 0.5) { c.fillStyle = '#fff8d8'; for (let i = 0; i < 5; i++) { c.beginPath(); c.arc(ox + Math.cos(i * 2.1) * r * 0.6, oy + Math.sin(i * 1.7) * r * 0.5, 1.6 * U, 0, TAU); c.fill(); } }
+  else { c.fillStyle = '#ffe066'; c.beginPath(); c.arc(ox + r * 0.3, oy - r * 0.2, r * 0.25, 0, TAU); c.fill(); }
+  c.strokeStyle = '#4e342e'; c.lineWidth = 8 * U; c.beginPath(); c.arc(ox, oy, r, 0, TAU); c.stroke();
+  // Stones in the wall.
+  c.fillStyle = 'rgba(0,0,0,0.12)'; const r2 = mulberry(151);
+  for (let i = 0; i < 14; i++) { c.beginPath(); c.ellipse(r2() * W, r2() * groundY, (10 + r2() * 14) * U, (6 + r2() * 8) * U, 0, 0, TAU); c.fill(); }
+  // Wooden floor.
+  pGround(c, { ...e, d: k => k }, '#c49a6c', '#a77b4f');
+  c.strokeStyle = 'rgba(80,50,30,0.25)'; c.lineWidth = 2 * U;
+  for (let y = groundY + 24 * U; y < H; y += 26 * U) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
+} };
 
 /* ===== 99-debug.js ===== */
 /* 99-debug.js – window.__st: hooks for the tests (tests/*.js). The game itself never uses them.
@@ -5660,6 +5974,7 @@ window.__st = {
   TRICKS, startTrain, pickTrick, trainBackToPick, finishTrace, judgeTrace, trickGuide, trainBoard, startTrick, learnedTricks, trickOpen,
   birthdayAt, birthdayNow, bdayState, cakeTap, cakePos, candlePos, goodnightDim, devGoBirthday, shapeUnit,
   seasonKind, weatherGame, weatherGameTap, puddlePos, leafPos, snowPos, snowmanState, startToy, toyTap, kiteDrag, kiteOk, castleOk, startMelody, melodyKey, wishEat, updateWish, FOOD_COLOR,
+  earn, FURNITURE, buyFurniture, homeTap, spotPos, atHome, friendVisited, friendArrives, STICKERS, checkStickers, openStickers, openShop, closeShop, closeStickers, realFound,
   startWalk, arrive, goPlace, openPlaces, closePlaces, foundToday, walkLimitReached, firefliesNow, placePicture, walkFx,
   enterGame, showMenu, startMode, endMode, goToBed, offerFood, removePoop, tapStego, strokeStego, throwBall,
   eggPhase, eggProgress, eggRub, stageAt: () => stageAt(now()), growth: () => growthAt(now()), lifeDay: () => lifeDay(now()),

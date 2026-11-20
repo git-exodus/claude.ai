@@ -73,7 +73,7 @@ function weatherGameTap(x, y) {
       st.stage++;
       sound(st.stage === 3 ? 'fanfare' : 'pop');
       for (let i = 0; i < 8; i++) addPart('sparkle', p.x + rnd(-30, 30) * U, p.y - rnd(0, 70) * U, { size: 7 });
-      if (st.stage === 3) { addNeed('fun', 10); pet.jumpV = 200 * U; pet.giggleT = 1.2; }
+      if (st.stage === 3) { earn('snowman'); addNeed('fun', 10); pet.jumpV = 200 * U; pet.giggleT = 1.2; }
       save();
       return true;
     }
@@ -89,7 +89,7 @@ function updateWeatherGame(dt) {
   if (!j.jumped) {
     j.jumped = true; j.t = 0;
     pet.jumpV = 230 * U; pet.giggleT = 1;
-    addNeed('fun', 5);
+    addNeed('fun', 5); earn('jump');
     if (j.kind === 'puddles') {
       sound('splash'); addNeed('clean', -8);   // muddy – a reason for a bath
       for (let i = 0; i < 16; i++) addPart('drop', j.p.x + rnd(-30, 30) * U, j.p.y - 6 * U, { vx: rnd(-150, 150) * U, vy: rnd(-260, -120) * U, g: 700, size: 7, max: 0.9 });
@@ -182,7 +182,7 @@ function toyTap(x, y) {
     if (c.stage < 4 && dist(x, y, p.x, p.y - 30 * U) < 55 * U) {
       c.stage++; sound(c.stage === 4 ? 'fanfare' : 'scrub');
       for (let k = 0; k < 8; k++) addPart('crumb', p.x + rnd(-30, 30) * U, p.y - rnd(0, 40) * U, { vx: rnd(-60, 60) * U, vy: rnd(-120, -40) * U, g: 400, color: '#e2be72', size: 4, max: 0.7 });
-      if (c.stage === 4) { addNeed('fun', 10); pet.giggleT = 1; }
+      if (c.stage === 4) { earn('castle'); addNeed('fun', 10); pet.giggleT = 1; }
       return true;
     }
     if (c.stage === 4 && game.stegoInfo && inBox(x, y, game.stegoInfo.box)) {
@@ -268,7 +268,7 @@ function melodyKey(i) {
   if (i === m.seq[m.pos]) {
     m.pos++;
     if (m.pos >= m.len) {
-      m.phase = 'done'; sound('applause'); addNeed('fun', 5); pet.danceT = 1.5;
+      m.phase = 'done'; earn('melody'); sound('applause'); addNeed('fun', 5); pet.danceT = 1.5;
       setTimeout(() => { if (game.melody === m) startMelody(Math.min(6, m.len + 1)); }, 1400);
     }
   } else {
@@ -302,6 +302,7 @@ function wishEat(id) {
   if (w.type === 'count' && id === w.food) w.got++;
   if ((w.type === 'count' && w.got >= w.n) || (w.type === 'color' && FOOD_COLOR[id] === w.color)) {
     S.wish = null;
+    earn('wish');
     addNeed('love', 10); addNeed('fun', 5);
     pet.danceT = 1.6; sound('applause');
     const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U };

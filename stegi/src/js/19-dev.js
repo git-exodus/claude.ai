@@ -125,7 +125,7 @@ function buildDev() {
       b('dv-x18', '18.12.') + b('dv-x24', '24.12.') + b('dv-x31', '31.12.') + b('dv-easter', 'Ostern') + b('dv-bday', 'Geburtstag') + '</div>' +
     '<h3>Helfer</h3><div class="chips">' +
       b('dv-full', 'Alles voll') + b('dv-low', 'Fast leer') + b('dv-arrive', 'Sofort ankommen') + b('dv-places', 'Alle Orte') +
-      b('dv-gifts', 'Alle Geschenke') + b('dv-visit', 'Besuch jetzt') + '</div>' +
+      b('dv-gifts', 'Alle Geschenke') + b('dv-visit', 'Besuch jetzt') + b('dv-stars', '+50 Sterne') + b('dv-friends', 'Beste Freunde') + '</div>' +
     '<h3>Wetter</h3><div class="chips">' + DEV_WEATHER.map(([w, t]) => b('dv-w-' + w, t)).join('') + '</div>' +
     b('dv-reset', 'Test-Spielstand zurücksetzen', ' danger wide');
   const on = (id, f) => $(id).addEventListener('click', () => { sound('tap'); f(); fillDev(); });
@@ -141,7 +141,7 @@ function buildDev() {
   on('dv-bday', devGoBirthday);
   on('dv-t1945', () => devTimeOfDay(19 * 60 + 45)); on('dv-t22', () => devTimeOfDay(22 * 60));
   on('dv-full', () => devNeeds(100)); on('dv-low', () => devNeeds(15));
-  on('dv-arrive', devArrive); on('dv-places', devAllPlaces); on('dv-gifts', devAllGifts); on('dv-visit', devVisit);
+  on('dv-arrive', devArrive); on('dv-stars', () => { S.stars += 50; save(); refreshUI(); }); on('dv-friends', () => { for (const k of VISITORS) S.friends[k] = 5; save(); }); on('dv-places', devAllPlaces); on('dv-gifts', devAllGifts); on('dv-visit', devVisit);
   DEV_WEATHER.forEach(([w]) => on('dv-w-' + w, () => devWeather(w)));
   $('dv-reset').addEventListener('click', () => { $('dev-confirm').hidden = false; });
   $('dvc-no').addEventListener('click', () => { $('dev-confirm').hidden = true; });

@@ -57,7 +57,7 @@ function updateBirthday() {
   if (game.cakeEatAt && game.t >= game.cakeEatAt) {
     game.cakeEatAt = 0;
     const st = bdayState();
-    if (st && !st.eaten) { st.eaten = true; addNeed('food', BDAY_FOOD); addNeed('love', BDAY_LOVE); pet.eatT = 1.3; sound('munch'); save(); }
+    if (st && !st.eaten) { st.eaten = true; earn('birthday'); addNeed('food', BDAY_FOOD); addNeed('love', BDAY_LOVE); pet.eatT = 1.3; sound('munch'); save(); }
   }
 }
 

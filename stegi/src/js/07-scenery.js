@@ -44,6 +44,7 @@ const FOREGROUND = {
   berryhill: { kind: 'grass', flowers: ['#e53935', '#7b3fb0'], life: 'butterflies' },
   treasure: { kind: 'shells' },
   travel: { kind: 'grass', flowers: ['#ffd54f', '#ffffff'] },
+  home: { kind: 'none' },   // 0.11: wooden floor, nothing in front
 };
 const fgOf = id => FOREGROUND[id] || FOREGROUND.meadow;
 

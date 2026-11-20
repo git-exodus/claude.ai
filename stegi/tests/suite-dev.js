@@ -79,7 +79,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   R.ok(st.n === st.n0 + 3 && st.p !== st.p0, 'Sofort ankommen: neuer Ort, auch über die 2-pro-Tag-Grenze', JSON.stringify(st));
   await ev(() => __st.step(4));
   st = await ev(() => { __st.devAllPlaces(); __st.devAllGifts(); return [__st.S.found.length, __st.S.giftSeen]; });
-  R.ok(st[0] === 30 && st[1] === 12, 'Alle Orte und alle Geschenke freigeschaltet', JSON.stringify(st));
+  R.ok(st[0] === 31 && st[1] === 12, 'Alle Orte und alle Geschenke freigeschaltet', JSON.stringify(st));
   st = await ev(() => { __st.devVisit(); const a = __st.game.visit && __st.game.visit.kind; __st.devVisit(); return [a, __st.game.visit && __st.game.visit.kind]; });
   R.ok(st[0] === 'trex' && st[1] === 'ptero', 'Besuch jetzt (bei jedem Druck der nächste Freund)', JSON.stringify(st));
   await ev(() => { __st.game.visit = null; });
@@ -104,7 +104,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   await ev(() => { document.getElementById('settings').hidden = false; });
   await page.click('#s-dev');
   st = await ev(() => ({ found: __st.S.found.length, gifts: __st.S.giftSeen, off: __st.clock.offset }));
-  R.ok(st.found === 30 && st.gifts === 12 && near(st.off, testOffset, 5000), 'Wieder an: Test-Stegi und Testuhr sind noch da', JSON.stringify({ found: st.found, gifts: st.gifts }));
+  R.ok(st.found === 31 && st.gifts === 12 && near(st.off, testOffset, 5000), 'Wieder an: Test-Stegi und Testuhr sind noch da', JSON.stringify({ found: st.found, gifts: st.gifts }));
 
   // ---------- reset the test game ----------
   await ev(() => __st.openDev());
@@ -112,7 +112,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   R.ok(await ev(() => !document.getElementById('dev-confirm').hidden), 'Test-Spielstand zurücksetzen fragt nach');
   await page.click('#dvc-yes');
   st = await ev(() => ({ hatched: __st.state().hatched, found: __st.S.found.length }));
-  R.ok(!st.hatched && st.found === 1, 'Test-Spielstand ist wieder ein Ei', JSON.stringify(st));
+  R.ok(!st.hatched && st.found === 2, 'Test-Spielstand ist wieder ein Ei', JSON.stringify(st));
   R.ok((await realRaw()) === JSON.stringify(real0), 'Der echte Spielstand ist weiterhin unverändert');
 
   // ---------- a restart always starts the real game ----------

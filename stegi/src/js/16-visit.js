@@ -40,7 +40,7 @@ function updateVisit(dt, sleeping) {
   if (v.phase === 'in') {
     v.x += Math.sign(targetX - v.x) * Math.min(Math.abs(targetX - v.x), 110 * U * dt);
     v.walk += dt * 10;
-    if (Math.abs(targetX - v.x) < 2 * U + 2) { v.phase = 'stay'; v.t = 0; sound('hello'); pet.giggleT = 1; }
+    if (Math.abs(targetX - v.x) < 2 * U + 2) { v.phase = 'stay'; v.t = 0; sound('hello'); pet.giggleT = 1; v.present = friendArrives(v.kind); }   // 0.11: best friends bring a present
   } else if (v.phase === 'stay') {
     // Stay next to him (or at his hind legs while walking); follow when he moves.
     v.x += Math.sign(targetX - v.x) * Math.min(Math.abs(targetX - v.x), 160 * U * dt);
@@ -53,7 +53,7 @@ function updateVisit(dt, sleeping) {
     if (game.mode === 'idle' && !sleeping && !walking) pet.dir = side;   // he looks at his friend
     if (v.t >= VISIT_SECONDS || sleeping) {
       v.phase = 'out'; v.t = 0;
-      addNeed('love', VISIT_LOVE); addNeed('fun', VISIT_FUN); save();
+      addNeed('love', VISIT_LOVE); addNeed('fun', VISIT_FUN); friendVisited(v.kind); earn('visit'); save();
       sound('hello');
     }
   } else if (v.phase === 'out') {

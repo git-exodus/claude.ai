@@ -180,6 +180,7 @@ function eat(id) {
   addNeed('love', 1);
   countMeal();
   wishEat(id);   // 0.10: was it what he wished for?
+  earn('feed');   // 0.11 stars
   pet.eatT = 1.3;
   sound('munch');
   const m = game.stegoInfo.mouth;
@@ -193,6 +194,7 @@ function removePoop(i) {
   const p = S.poops[i];
   S.poops.splice(i, 1);
   addNeed('clean', POOP_CLEAN);
+  earn('poop');
   sound('pling');
   for (let k = 0; k < 6; k++) addPart('sparkle', p.x * W + rnd(-15, 15) * U, standY + 18 * U - rnd(0, 30) * U, { size: 7, max: 0.8 });
   save();
@@ -361,7 +363,7 @@ function updatePet(dt, sleeping) {
   }
   if (game.mode === 'drink') {
     if (Math.floor(game.modeT / 0.8) !== Math.floor((game.modeT - dt) / 0.8) && game.modeT > 0.5) sound('slurp');
-    if (game.modeT >= 2.6) { addNeed('drink', DRINK_VALUE); save(); game.mode = 'idle'; refreshUI(); }
+    if (game.modeT >= 2.6) { addNeed('drink', DRINK_VALUE); earn('drink'); save(); game.mode = 'idle'; refreshUI(); }
   }
   if (game.mode === 'bath') updateBath(dt);
   if (game.mode === 'brush') updateBrush(dt);
@@ -369,6 +371,7 @@ function updatePet(dt, sleeping) {
   if (game.mode === 'hide') updateHide(dt);
   updateVisit(dt, sleeping);
   if (game.mode === 'party' && game.modeT > 3) { game.mode = 'idle'; refreshUI(); }
+  if (Math.floor(game.t / 2) !== Math.floor((game.t - dt) / 2)) checkStickers();   // 0.11 (25-home.js)
   if (game.mode === 'party' && pet.jump === 0 && game.modeT < 2.4) { pet.jumpV = 200 * U; }
 
   if (!inGame) return;
@@ -402,7 +405,7 @@ function updateBath(dt) {
     }
   } else if (b.phase === 'rinse') {
     for (let i = 0; i < 3; i++) addPart('drop', W / 2 + rnd(-90, 90) * U, standY - 230 * U, { vx: 0, vy: rnd(250, 350) * U, g: 300, size: 7, max: 0.8 });
-    if (b.t > 1.6) { b.phase = 'done'; b.t = 0; sound('sparkle'); for (let i = 0; i < 12; i++) addPart('sparkle', W / 2 + rnd(-100, 100) * U, standY - rnd(20, 160) * U, { size: 9 }); save(); }
+    if (b.t > 1.6) { b.phase = 'done'; b.t = 0; earn('bath'); sound('sparkle'); for (let i = 0; i < 12; i++) addPart('sparkle', W / 2 + rnd(-100, 100) * U, standY - rnd(20, 160) * U, { size: 9 }); save(); }
   } else if (b.t > 1.4) endMode();
 }
 
@@ -419,6 +422,7 @@ function updateBrush(dt) {
     if (b.progress >= 1) {
       b.done = true; b.t = 0;
       S.teethDay = today();
+      earn('brush');
       addNeed('clean', BRUSH_CLEAN); addNeed('love', BRUSH_LOVE);
       sound('sparkle');
       for (let i = 0; i < 10; i++) addPart('star', m.x + rnd(-30, 30) * U, m.y + rnd(-30, 10) * U, { size: 7 });
@@ -436,7 +440,7 @@ function updateBall(dt) {
     pet.tx = 0;
     if (!pet.moving && Math.abs(pet.x) < 4 * U) {   // back in the middle: drop it, happy
       b.carried = false; b.thrown = false; b.vx = 0; b.vh = 120 * U; b.x = Math.min(W - 40 * U, W / 2 + 140 * U);
-      addNeed('fun', FETCH_FUN); save();
+      addNeed('fun', FETCH_FUN); earn('fetch'); save();
       pet.giggleT = 0.9; pet.jumpV = 160 * U; sound('giggle');
       for (let i = 0; i < 3; i++) addPart('heart', info.head.x + rnd(-20, 20) * U, info.head.y - 30 * U, { size: 8 });
     }
@@ -545,6 +549,7 @@ function drawWorld() {
   } else {
     drawSeasonGround(ctx, placeId, sky.light);   // 0.10: golden autumn, frosty winter
     drawWeatherGame(ctx, game.t);                 // 0.10: puddles, leaf piles, snowman
+    drawHome(ctx, game.t, sky.light);             // 0.11: furniture at home
     S.poops.forEach((p, i) => { const pp = poopPos(i); drawPoop(ctx, pp.x, pp.y, 1.1 * U, game.t + i); });
     const sx = W / 2 + pet.x, look = stegoLook();
     const tubW = game.stegoInfo ? game.stegoInfo.box.w * 0.8 : stegoSize * 0.6;

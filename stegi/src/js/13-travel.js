@@ -7,7 +7,7 @@
 const walkFx = { scroll: 0 };
 
 const isFound = id => S.found.some(f => f.id === id);
-const undiscovered = () => PLACES.filter(p => !isFound(p.id));
+const undiscovered = () => PLACES.filter(p => !p.home && !isFound(p.id));   // home is never 'discovered'
 /** New places found today (the start meadow does not count). */
 function foundToday() { const d = dayIndex(now()); return S.found.filter(f => f.day === d).length; }
 /** Today's limit of new places reached (only matters while there is still something to find). */
@@ -33,6 +33,7 @@ function arrive(t) {
     id = und[Math.floor(Math.random() * und.length)].id;
     S.found.push({ id, day: dayIndex(t) });
     S.newPlace = id;
+    earn('place');   // 0.11: stars for a new place
   } else {
     const others = S.found.filter(f => f.id !== S.place);
     id = others.length ? others[Math.floor(Math.random() * others.length)].id : S.place;
@@ -97,7 +98,7 @@ function openPlaces() {
     if (isFound(p.id)) el.querySelector('canvas').getContext('2d').drawImage(placePicture(p.id, 160, 100), 0, 0);
     el.addEventListener('click', () => { if (isFound(p.id)) goPlace(p.id); else { sound('refuse'); el.classList.remove('nope'); void el.offsetWidth; el.classList.add('nope'); } });
   }
-  $('placecount').textContent = S.found.length + ' von ' + PLACES.length + ' entdeckt';
+  $('placecount').textContent = realFound() + ' von ' + (PLACES.length - 1) + ' entdeckt';
   $('places').hidden = false;
 }
 function closePlaces() { $('places').hidden = true; }

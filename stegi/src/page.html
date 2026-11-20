@@ -3,10 +3,13 @@
   <div id="needs" hidden></div>
   <button id="gear" type="button" aria-label="Einstellungen für Eltern (3 Sekunden gedrückt halten)"><span class="ring"></span></button>
   <div id="side" hidden>
+    <div id="starpill" aria-label="Sterne">★ 0</div>
     <button id="b-map" class="mini" type="button" aria-label="Orte"></button>
     <button id="b-wear" class="mini" type="button" aria-label="Verkleiden"></button>
     <button id="b-album" class="mini" type="button" aria-label="Fotoalbum"></button>
     <button id="b-camera" class="mini" type="button" aria-label="Foto machen"></button>
+    <button id="b-stickers" class="mini" type="button" aria-label="Sticker-Heft"></button>
+    <button id="b-shop" class="mini" type="button" aria-label="Laden" hidden></button>
   </div>
   <div id="walkbar" hidden><span class="foot"></span><i><b></b></i><span class="flag"></span></div>
   <div id="banner" hidden><canvas width="240" height="135"></canvas><b></b></div>
@@ -45,7 +48,7 @@
       <button class="big alt" id="s-devopen" type="button" hidden>Test-Werkzeuge öffnen</button>
       <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
       <button class="big" id="s-close" type="button">Schließen</button>
-      <p id="credit">@made by Brownii (Claude.ai) · v0.10</p>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.11</p>
     </div>
   </div>
   <div id="confirm" class="ov" hidden>
@@ -104,6 +107,22 @@
       <p class="info">Der Test-Stegi wird wieder ein Ei, Testfotos und Testuhr werden gelöscht. Der echte Spielstand bleibt.</p>
       <button class="big danger" id="dvc-yes" type="button">Ja, zurücksetzen</button>
       <button class="big" id="dvc-no" type="button">Abbrechen</button>
+    </div>
+  </div>
+  <div id="stickers" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="st-title">
+      <h2 id="st-title">Sticker-Heft</h2>
+      <p id="stickercount" class="info"></p>
+      <div id="stickerlist"></div>
+      <button class="big" id="st-close" type="button">Schließen</button>
+    </div>
+  </div>
+  <div id="shop" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="sh-title">
+      <h2 id="sh-title">Laden</h2>
+      <p id="shopstars" class="info"></p>
+      <div id="shoplist"></div>
+      <button class="big" id="sh-close" type="button">Schließen</button>
     </div>
   </div>
   <div id="rest" class="ov" hidden>

@@ -1,7 +1,7 @@
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.10';
+const VERSION = '0.11';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -87,6 +87,7 @@ const WALK_PER_DAY = 2;
  * The drawing of each place is in 07-places.js (PLACE_DRAW).
  */
 const PLACES = [
+  { id: 'home', name: 'Zuhause', indoor: true, home: true },   // 0.11: his own cave, always open, not one of the 30
   { id: 'meadow', name: 'Wiese' },
   { id: 'jungle', name: 'Dschungel', ff: true },
   { id: 'savanna', name: 'Savanne', dry: true },
@@ -118,7 +119,7 @@ const PLACES = [
   { id: 'berryhill', name: 'Beerenhügel' },
   { id: 'treasure', name: 'Schatzinsel' },
 ];
-const placeById = id => PLACES.find(p => p.id === id) || PLACES[0];
+const placeById = id => PLACES.find(p => p.id === id) || PLACES[1];   // unknown (e.g. 'travel') = meadow
 
 /** Dressing up (0.3): 12 things, one per slot (head / eyes / neck). Each becomes a present on its day of
  *  life (every 2–3 days, the first on the hatch day); opening the present puts it on. */
@@ -294,6 +295,15 @@ const ICONS = {
     { d: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0z', fill: '#7e57c2' },
     { d: 'M10 16V7l6-1v8', stroke: '#ffffff', w: 1.8 },
     { d: 'M7 16a2.5 2 0 1 0 5 0a2.5 2 0 1 0-5 0zM13 14a2.5 2 0 1 0 5 0a2.5 2 0 1 0-5 0z', fill: '#ffffff' },
+  ],
+  sticker: [
+    { d: 'M12 2l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.1-5.4 3.1 1.3-6-4.6-4.1 6.1-.6z', fill: '#ff8fb1', stroke: '#c2185b', w: 1.2 },
+    { d: 'M12 8a3 3 0 1 0 0.01 0z', fill: '#ffffff' },
+  ],
+  shop: [
+    { d: 'M4 8h16l-1.5 13h-13z', fill: '#ffb74d', stroke: '#e65100', w: 1.2 },
+    { d: 'M8 8V6a4 4 0 0 1 8 0v2', stroke: '#e65100', w: 1.8 },
+    { d: 'M12 12l1.2 2.4 2.6.3-2 1.8.6 2.6-2.4-1.4-2.4 1.4.6-2.6-2-1.8 2.6-.3z', fill: '#fff59d' },
   ],
   close: [
     { d: 'M6 6l12 12M18 6L6 18', stroke: '#e5533d', w: 3.4 },
