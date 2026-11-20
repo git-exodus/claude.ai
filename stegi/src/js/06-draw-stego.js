@@ -23,7 +23,7 @@ const PLATE_COUNT = [4, 5, 6, 7, 7];
  *           jump (px up), wag (0..1), wear ({ head, eyes, neck } item ids, 0.3),
  *           0.6: squash (-1 stretched .. 1 squashed), look ({ x, y } pupil offset in eye radii),
  *           brow ('happy'|'up'), blush (true = red cheeks),
- *           0.8: pivot ({ x, y, a } turn the body for tricks; y null = body middle) }
+ *           0.8: pivot ({ x, y, a } turn the body for tricks; y null = body middle; 0.12.6: { tail, a, k } = tail stand) }
  * Returns screen positions: mouth {x, y}, head {x, y, r}, box {x, y, w, h} (for touches).
  */
 function drawStego(c, x, y, size, o) {
@@ -57,7 +57,13 @@ function drawStego(c, x, y, size, o) {
   c.restore();
 
   // 0.8 tricks: turn the whole body around a point (o.pivot = { x, y, a } in units; y null = middle of the body).
-  if (o.pivot) { const py = o.pivot.y == null ? cy : o.pivot.y; c.translate(o.pivot.x, py); c.rotate(o.pivot.a); c.translate(-o.pivot.x, -py); }
+  // 0.12.6 tail stand: o.pivot = { tail: true, a, k }: turn around the tail tip and move the tip (k = 1) to the
+  // ground under his middle, so he stands upright on it.
+  if (o.pivot && o.pivot.tail) {
+    const ttx = cx - rx - lerp(38, 78, g), tty = cy - 6, pk = o.pivot.k;
+    c.translate(-ttx * pk, -tty * pk);
+    c.translate(ttx, tty); c.rotate(o.pivot.a); c.translate(-ttx, -tty);
+  } else if (o.pivot) { const py = o.pivot.y == null ? cy : o.pivot.y; c.translate(o.pivot.x, py); c.rotate(o.pivot.a); c.translate(-o.pivot.x, -py); }
 
   // ---- tail with spikes ----
   const tailLen = lerp(38, 78, g), wagA = Math.sin(t * (o.wag ? 9 : 2.2)) * (o.wag ? 7 : 3);

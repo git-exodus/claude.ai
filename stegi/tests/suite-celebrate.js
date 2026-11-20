@@ -25,7 +25,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at } = require(
   });
   R.ok(g === 'o?????? oo????? ooo???? oooo??? ooooo?? oooooo? ooooooo ooooooo', '7 Tricks werden nacheinander frei', g);
   g = await ev(() => __st.TRICKS.map(t => t.name + '=' + t.shape).join(', '));
-  R.ok(g === 'Rolle=circle, Hinterbeine=zigzag, Vorderbeine=wave, Sitz=triangle, Drehen=spiral, Küsschen=heart, Pirouette=star', 'Neue Tricks: Dreieck=Sitz, Spirale=Drehen, Herz=Küsschen, Stern=Pirouette', g);
+  R.ok(g === 'Rolle=circle, Hinterbeine=zigzag, Vorderbeine=wave, Sitz=triangle, Drehen=spiral, Schwanzstand=arrow, Pirouette=star', 'Neue Tricks: Dreieck=Sitz, Spirale=Drehen, Pfeil=Schwanzstand, Stern=Pirouette', g);
   await ev(() => { __st.TRICKS.forEach((t, i) => { __st.S.tricks[t.id] = i < 3 ? 3 : 0; }); __st.openPlayMenu(); __st.startMode('train'); __st.step(0.3); });
   g = await ev(() => [...document.querySelectorAll('#trainpick .ttile')].map(t => t.classList.contains('locked') ? '?' : 'o').join(''));
   R.ok(g === 'oooo???', 'Trick-Auswahl zeigt 7 Kärtchen: 3 gelernt, Sitz offen, Rest „?“', g);
@@ -39,10 +39,10 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at } = require(
   R.ok(g.trick === 'sit:true' && g.sit === 1, 'Dreieck mit der Maus nachgemalt: er macht Sitz', JSON.stringify(g));
   g = await ev(() => {
     const out = [];
-    for (const k of ['spin', 'kiss', 'pirouette']) { __st.step(3); __st.startTrick(k, true, false); __st.soundLog.length = 0; let hearts = 0; for (let i = 0; i < 60; i++) { __st.step(1 / 30); } out.push(k + ':' + (__st.pet.trick === null) + ':' + __st.soundLog.map(s => s.name).filter(n => n === 'applause' || n === 'happy').join('+')); }
+    for (const k of ['spin', 'tail', 'pirouette']) { __st.step(3); __st.startTrick(k, true, false); __st.soundLog.length = 0; let hearts = 0; for (let i = 0; i < 80; i++) { __st.step(1 / 30); } out.push(k + ':' + (__st.pet.trick === null) + ':' + __st.soundLog.map(s => s.name).filter(n => n === 'applause' || n === 'boing').join('+')); }
     return out.join(' ');
   });
-  R.ok(/spin:true:applause/.test(g) && /kiss:true:happy\+applause/.test(g) && /pirouette:true:applause/.test(g), 'Drehen, Küsschen (mit Herzen) und Pirouette laufen ab', g);
+  R.ok(/spin:true:applause/.test(g) && /tail:true:boing\+applause/.test(g) && /pirouette:true:applause/.test(g), 'Drehen, Schwanzstand (mit Hüpfer) und Pirouette laufen ab', g);
   await ev(() => { __st.step(2); __st.endMode(); __st.step(0.3); });
 
   // ---------- birthday dates ----------

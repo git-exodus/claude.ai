@@ -1,7 +1,7 @@
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.12.5';
+const VERSION = '0.12.6';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -162,7 +162,7 @@ const RAINBOW_FROM = 15 * 60;
 
 /** Training (0.8, 7 tricks since 0.9): draw the symbol, he does the trick. In this order; a trick is open once the one before
  *  is learned (TRICK_LEARN successes). Learned tricks he sometimes does by himself (IDLE_TRICK_CHANCE of the
- *  idle moments). shape: 'circle' | 'zigzag' (up and down) | 'wave' (left to right) | 'triangle' | 'spiral' | 'heart' | 'star'. */
+ *  idle moments). shape: 'circle' | 'zigzag' (up and down) | 'wave' (left to right) | 'triangle' | 'spiral' | 'arrow' (up) | 'star'. */
 const TRICKS = [
   { id: 'roll', shape: 'circle', name: 'Rolle' },
   { id: 'stand', shape: 'zigzag', name: 'Hinterbeine' },
@@ -170,11 +170,15 @@ const TRICKS = [
   // 0.9: four more, opened one after the other.
   { id: 'sit', shape: 'triangle', name: 'Sitz' },
   { id: 'spin', shape: 'spiral', name: 'Drehen' },
-  { id: 'kiss', shape: 'heart', name: 'Küsschen' },
+  { id: 'tail', shape: 'arrow', name: 'Schwanzstand' },   // 0.12.6: replaces 'Küsschen' (looked like the handstand)
   { id: 'pirouette', shape: 'star', name: 'Pirouette' },
 ];
 const TRICK_LEARN = 3;
 const TRAIN_FUN_OK = 8, TRAIN_FUN_FAIL = 3;
+/** 0.12.6: after TRAIN_TIRED.stars new stars (successful tries of tricks not yet learned) he is worn out and
+ *  needs TRAIN_TIRED.minutes of rest before he learns more. Failed tries and learned tricks do not count.
+ *  No display: while tired he just yawns when asked to learn. */
+const TRAIN_TIRED = { stars: 2, minutes: 60 };
 const IDLE_TRICK_CHANCE = 0.2;
 /** Drawing check (generous for small children, but no scribbling): share of the dotted line the finger
  *  must pass near, share of the finger's line that must stay near the dotted line, share of the finger's
@@ -185,6 +189,8 @@ const TRACE_COVER = 0.72, TRACE_ON_LINE = 0.8, TRACE_ORDER = 0.8, TRACE_LEN = [0
  *  most TRACE_MEAN, and 90 % of the finger line within TRACE_P90. A child's wobble stays below 10, a different
  *  shape is 12 or more (measured for every pair of shapes, see README 6.16). */
 const TRACE_MEAN = 11, TRACE_P90 = 20;
+/** 0.12.6: looser order and mean distance for the thin arrow (see judgeTrace). */
+const TRACE_ARROW = { order: 0.7, mean: 13 };
 
 /** Seconds the gear button must be held to open the parents' settings. */
 const GEAR_HOLD = 3;

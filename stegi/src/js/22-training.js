@@ -1,6 +1,7 @@
 /* 22-training.js – training (0.8): choose a trick, trace its symbol on the board in the upper half,
  * and he does the trick – or, if the line was not good enough, flops onto his belly (funny, not sad).
- *   Rolle = circle, Hinterbeine = up-and-down zigzag, Vorderbeine = wave.
+ *   Rolle = circle, Hinterbeine = up-and-down zigzag, Vorderbeine = wave (0.9 and 0.12.6: see TRICKS).
+ * 0.12.6: two new stars, then he needs an hour of rest before he learns more (TRAIN_TIRED, no display).
  * Tricks open one after the other: the next one shows "?" until the one before is learned (TRICK_LEARN).
  * Learned tricks he sometimes does by himself in idle moments (see updateIdle in 08-game.js).
  * game.train = { phase: 'pick' | 'draw' | 'show', trick, stroke: [{x, y}], drawing, demo } */
@@ -16,7 +17,7 @@ function trainBoard() {
 }
 
 /** Shapes whose line ends where it starts (the order check wraps around for them). */
-const CLOSED_SHAPES = ['circle', 'triangle', 'heart', 'star'];
+const CLOSED_SHAPES = ['circle', 'triangle', 'heart', 'star'];   // ('heart' is no longer used since 0.12.6)
 
 /** A shape as points in a box from -1 to 1 (y down). Lines with corners are filled in every 1/12 of a side. */
 function shapeUnit(shape) {
@@ -27,6 +28,10 @@ function shapeUnit(shape) {
   else if (shape === 'triangle') fill([{ x: 0, y: -1 }, { x: 0.95, y: 0.8 }, { x: -0.95, y: 0.8 }, { x: 0, y: -1 }]);
   else if (shape === 'spiral') for (let i = 0; i <= 80; i++) { const k = i / 80, r = 0.14 + 0.86 * k, a = k * TAU * 2; pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r }); }
   else if (shape === 'heart') for (let i = 0; i <= 64; i++) { const t = i / 64 * TAU; pts.push({ x: 16 * Math.sin(t) ** 3 / 17, y: -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) / 17 + 0.1 }); }
+  else if (shape === 'arrow') {   // 0.12.6: a line straight up, then the arrow's tip down to the left (points spaced evenly on screen)
+    for (let i = 0; i < 36; i++) pts.push({ x: 0, y: 1 - 2 * i / 36 });
+    for (let i = 0; i <= 18; i++) pts.push({ x: -0.95 * i / 18, y: -1 + 0.55 * i / 18 });
+  }
   else if (shape === 'star') fill(Array.from({ length: 11 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 0.42 : 1; return { x: Math.cos(a) * r, y: Math.sin(a) * r * 0.95 + 0.05 }; }));
   return pts;
 }
@@ -36,8 +41,9 @@ function shapeUnit(shape) {
 function trickGuide(shape) {
   const b = trainBoard(), p = 30 * U, cx = b.x + b.w / 2, cy = b.y + b.h / 2 + 8 * U;
   const hx = b.w / 2 - p, hy = (b.h - 16 * U) / 2 - p, s = Math.min(hx, hy);
-  const sx = shape === 'zigzag' ? Math.min(b.w * 0.2, 54 * U) : shape === 'wave' ? hx : s;
-  const sy = shape === 'zigzag' ? hy - 7 * U : shape === 'wave' ? hy * 0.75 : s;
+  const tall = shape === 'zigzag' || shape === 'arrow';   // narrow and tall
+  const sx = tall ? Math.min(b.w * 0.2, 54 * U) : shape === 'wave' ? hx : s;
+  const sy = tall ? hy - 7 * U : shape === 'wave' ? hy * 0.75 : s;
   return shapeUnit(shape).map(q => ({ x: cx + q.x * sx, y: cy + q.y * sy }));
 }
 
@@ -87,14 +93,22 @@ function judgeTrace(shape, stroke) {
   const g2s = guide.map(g => nearest(g, pts)), s2g = pts.map(p => nearest(p, guide));
   const mean = a => a.reduce((x, y) => x + y, 0) / a.length / U;
   const meanG = mean(g2s), meanS = mean(s2g), p90 = s2g.slice().sort((x, y) => x - y)[Math.floor(s2g.length * 0.9)] / U;
-  const ok = cover >= TRACE_COVER && onLine >= TRACE_ON_LINE && order >= TRACE_ORDER && len >= TRACE_LEN[0] && len <= TRACE_LEN[1]
-    && meanG <= TRACE_MEAN && meanS <= TRACE_MEAN && p90 <= TRACE_P90;
+  // 0.12.6: the arrow is a thin straight line: a wobbly hand goes back and forth along it and any sideways
+  // shift counts fully, so it gets a little more room (TRACE_ARROW).
+  const rl = shape === 'arrow' ? TRACE_ARROW : { order: TRACE_ORDER, mean: TRACE_MEAN };
+  const ok = cover >= TRACE_COVER && onLine >= TRACE_ON_LINE && order >= rl.order && len >= TRACE_LEN[0] && len <= TRACE_LEN[1]
+    && meanG <= rl.mean && meanS <= rl.mean && p90 <= TRACE_P90;
   return { ok, cover, onLine, order, len, meanG, meanS, p90 };
 }
 
 /* ---------- flow ---------- */
 
+/** 0.12.6: worn out from learning (TRAIN_TIRED)? Nothing is shown; he only yawns. */
+const trainTired = () => now() < S.trainRest.until;
+function tiredYawn() { pet.yawnT = 1.6; sound('yawn'); }
+
 function startTrain() {
+  if (trainTired()) { game.mode = 'idle'; tiredYawn(); refreshUI(); return; }   // too tired to learn now
   game.mode = 'train'; game.modeT = 0;
   game.train = { phase: 'pick', trick: null, stroke: [], drawing: false, demo: 0 };
   buildTrainPick();
@@ -105,6 +119,7 @@ function startTrain() {
 function pickTrick(id) {
   const i = TRICKS.findIndex(t => t.id === id);
   if (i < 0 || !trickOpen(i) || !game.train) return;
+  if (trainTired() && !trickLearned(id)) { tiredYawn(); return; }   // 0.12.6: learned tricks may still be shown
   sound('tap');
   Object.assign(game.train, { phase: 'draw', trick: id, stroke: [], drawing: false, demo: 0 });
   refreshUI();
@@ -122,11 +137,16 @@ function trainBackToPick() {
 function finishTrace() {
   const tr = game.train;
   tr.drawing = false;
-  const t = TRICKS.find(x => x.id === tr.trick), res = judgeTrace(t.shape, tr.stroke);
+  const t = TRICKS.find(x => x.id === tr.trick);
+  // 0.12.6: worn out (two new stars in the last hour): he only yawns, the line is wiped.
+  if (trainTired() && !trickLearned(t.id)) { tr.stroke = []; tiredYawn(); refreshUI(); return; }
+  const res = judgeTrace(t.shape, tr.stroke);
   tr.result = res;
   tr.phase = 'show';
   const wasLearned = trickLearned(t.id);
   if (res.ok) { S.tricks[t.id]++; earn('trick'); }
+  // 0.12.6: every new star of a trick not learned yet tires him; after TRAIN_TIRED.stars he needs a rest.
+  if (res.ok && !wasLearned && ++S.trainRest.n >= TRAIN_TIRED.stars) { S.trainRest.n = 0; S.trainRest.until = now() + TRAIN_TIRED.minutes * 60000; }
   addNeed('fun', res.ok ? TRAIN_FUN_OK : TRAIN_FUN_FAIL);
   save();
   startTrick(t.id, res.ok, false);
@@ -137,7 +157,7 @@ function finishTrace() {
 /** Starts the trick animation. ok = false: he tries and flops on his belly. idle = he does it by himself. */
 function startTrick(id, ok, idle) {
   pet.idle = null;
-  pet.trick = { kind: id, ok, idle, t: 0, dur: ok ? (id === 'roll' ? 1.6 : 2.0) : 2.4 };
+  pet.trick = { kind: id, ok, idle, t: 0, dur: ok ? (id === 'roll' ? 1.6 : id === 'tail' ? 2.6 : 2.0) : 2.4 };
 }
 
 /** Every frame (from updatePet): trick timing, sounds at the right moments, back to the board after. */
@@ -147,8 +167,8 @@ function updateTrick(dt) {
   const prev = tr.t;
   tr.t += dt;
   const at = s => prev < s && tr.t >= s;
-  // 0.9: hearts for the kiss, sparkles for the pirouette.
-  if (tr.ok && tr.kind === 'kiss' && at(tr.dur * 0.45)) { const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U }; for (let i = 0; i < 6; i++) addPart('heart', h.x + rnd(-20, 40) * U, h.y - 10 * U, { size: 9, vy: -70 * U }); sound('happy'); }
+  // 0.12.6: a 'boing' for the hop on the tail tip; 0.9: sparkles for the pirouette.
+  if (tr.ok && tr.kind === 'tail' && at(tr.dur * 0.4)) sound('boing');
   if (tr.ok && tr.kind === 'pirouette' && at(tr.dur * 0.4)) { const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U }; for (let i = 0; i < 14; i++) addPart('sparkle', h.x + rnd(-120, 60) * U, h.y + rnd(-60, 60) * U, { size: 9 }); }
   if (tr.ok && at(tr.dur * 0.6)) { sound(tr.idle ? 'giggle' : 'applause'); const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U }; for (let i = 0; i < 8; i++) addPart('star', h.x + rnd(-60, 60) * U, h.y + rnd(-40, 40) * U, { size: 8 }); }
   if (!tr.ok && at(0.55)) {
@@ -172,7 +192,7 @@ function applyTrickLook(o) {
   const hold = smooth(Math.min(q, 1 - q) / 0.25);   // up, hold, back down
   const pivotFor = (kind, k) => kind === 'roll' ? { x: 0, y: null, a: TAU * k }
     : kind === 'stand' ? { x: -34, y: 0, a: -0.85 * k } : kind === 'hand' ? { x: 34, y: 0, a: 0.55 * k }
-    : kind === 'sit' ? { x: -34, y: 0, a: -0.35 * k } : kind === 'kiss' ? { x: 34, y: 0, a: 0.16 * k } : { x: 0, y: null, a: 0.12 * k };
+    : kind === 'sit' ? { x: -34, y: 0, a: -0.35 * k } : kind === 'tail' ? { tail: true, a: -Math.PI / 2 * k, k } : { x: 0, y: null, a: 0.12 * k };
   // Lift (px) so that no part of him goes into the ground: half his length while rolling, a little for the handstand.
   const len = game.stegoInfo ? game.stegoInfo.box.w : 200 * U;
   o.headDown = 0;
@@ -182,7 +202,12 @@ function applyTrickLook(o) {
     if (tr.kind === 'roll') { const k = smooth(clamp((q - 0.1) / 0.75, 0, 1)); o.pivot = pivotFor('roll', k); o.jump = Math.sin(Math.PI * clamp((q - 0.1) / 0.75, 0, 1)) * len * 0.42; }
     else if (tr.kind === 'sit') { o.pivot = pivotFor('sit', hold); o.squash = hold * 0.25; o.jump = 0; o.mouth = 'smile'; }
     else if (tr.kind === 'spin') { o.dir = Math.floor(q * 8) % 2 ? -1 : 1; o.jump = Math.abs(Math.sin(q * Math.PI * 4)) * len * 0.05; }
-    else if (tr.kind === 'kiss') { o.pivot = pivotFor('kiss', hold); o.eyes = 'closed'; o.mouth = 'closed'; o.blush = true; o.jump = 0; }
+    else if (tr.kind === 'tail') {
+      // 0.12.6: up onto the tail tip (straight up, head on top), one hop on the tail, back down on all fours.
+      const up = smooth(clamp(Math.min(q, 1 - q) / 0.28, 0, 1)), hop = clamp((q - 0.38) / 0.24, 0, 1);
+      o.pivot = pivotFor('tail', up); o.wag = 0; o.wiggle = 0;
+      o.jump = hop > 0 && hop < 1 ? Math.sin(Math.PI * hop) * len * 0.22 : 0;
+    }
     else if (tr.kind === 'pirouette') { o.dir = Math.floor(q * 12) % 2 ? -1 : 1; o.jump = Math.sin(Math.PI * q) * len * 0.3; o.squash = -Math.sin(Math.PI * q) * 0.5; }
     else { o.pivot = pivotFor(tr.kind, hold); o.jump = hold * len * (tr.kind === 'hand' ? 0.1 : 0.04); }
     return;

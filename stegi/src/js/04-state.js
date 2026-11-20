@@ -43,6 +43,7 @@ function blankSave(t) {
     stars: 0, stats: {}, stickers: [],
     home: { owned: [], placed: {} },
     friends: {},
+    trainRest: { n: 0, until: 0 },   // 0.12.6: new trick stars since the last rest, and end of the rest
     sib: null,               // 0.12: sibling { egg (like egg above), hatchDay (null = still an egg), seen } (26-family.js)
           // 0.9: day the lullaby was played last (once a night)
     tricks: Object.fromEntries(TRICKS.map(t => [t.id, 0])),   // 0.8: successful tries per trick (TRICK_LEARN = learned)
@@ -127,7 +128,9 @@ function sanitizeSave(o, t) {
       hatchDay: typeof o.sib.hatchDay === 'number' && isFinite(o.sib.hatchDay) ? o.sib.hatchDay : null, seen: o.sib.seen === true };
   }
   b.snowman = o.snowman && typeof o.snowman.day === 'number' ? { day: o.snowman.day, stage: Math.round(num(o.snowman.stage, 0, 3, 0)) } : null;
-  for (const tr of TRICKS) b.tricks[tr.id] = Math.round(num(o.tricks && o.tricks[tr.id], 0, 999, 0));
+  // 0.12.6: 'tail' took the place of 'kiss' and keeps its progress.
+  for (const tr of TRICKS) b.tricks[tr.id] = Math.round(num(o.tricks && (tr.id === 'tail' && o.tricks.tail == null ? o.tricks.kiss : o.tricks[tr.id]), 0, 999, 0));
+  if (o.trainRest) b.trainRest = { n: Math.round(num(o.trainRest.n, 0, TRAIN_TIRED.stars, 0)), until: num(o.trainRest.until, 0, t + TRAIN_TIRED.minutes * 60000, 0) };
   const bools = (a, n) => Array.from({ length: n }, (_, i) => !!(Array.isArray(a) && a[i]));
   b.xmas = o.xmas && typeof o.xmas.year === 'number' ? { year: o.xmas.year, opened: bools(o.xmas.opened, 3) } : null;
   b.easter = o.easter && typeof o.easter.year === 'number' ? { year: o.easter.year, found: bools(o.easter.found, EASTER_EGGS),

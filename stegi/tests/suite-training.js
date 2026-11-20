@@ -81,8 +81,23 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   await ev(() => __st.step(2.6));
   R.ok((await ev(() => __st.S.tricks.roll)) === 1, 'Nur ein Stück vom Kreis: zählt nicht');
 
+  // ---------- tired after two new stars (0.12.6) ----------
+  R.ok((await ev(() => __st.S.trainRest.n)) === 1, 'Fehlversuche zählen nicht zur Müdigkeit (1 Stern = 1)');
+  await trace('circle'); await ev(() => __st.step(2.2));
+  g = await ev(() => ({ roll: __st.S.tricks.roll, tired: __st.trainTired(), mins: Math.round((__st.S.trainRest.until - __st.now()) / 60000) }));
+  R.ok(g.roll === 2 && g.tired && g.mins === 60, 'Zweiter neuer Stern: jetzt ist er für 1 Stunde schlapp', JSON.stringify(g));
+  await ev(() => { __st.soundLog.length = 0; });
+  await trace('circle'); await ev(() => __st.step(0.3));
+  g = await ev(() => ({ roll: __st.S.tricks.roll, trick: __st.pet.trick, yawn: __st.soundLog.some(s => s.name === 'yawn'), phase: __st.game.train.phase }));
+  R.ok(g.roll === 2 && !g.trick && g.yawn && g.phase === 'draw', 'Müde: Nachmalen gibt keinen Stern, er gähnt nur (keine Anzeige)', JSON.stringify(g));
+  g = await ev(() => { __st.trainBackToPick(); __st.pickTrick('roll'); const a = __st.game.train.phase; __st.endMode(); __st.step(0.2); __st.startMode('train'); return { pick: a, mode: __st.game.mode }; });
+  R.ok(g.pick === 'pick' && g.mode === 'idle', 'Müde: ungelernte Tricks und das Training selbst gehen nicht', JSON.stringify(g));
+  g = await ev(() => { __st.travel(0.98); __st.step(0.2); const a = __st.trainTired(); __st.travel(0.04); __st.step(0.2); return { at59: a, at61: __st.trainTired() }; });
+  R.ok(g.at59 && !g.at61, 'Nach 1 Stunde ist er wieder fit', JSON.stringify(g));
+  await ev(() => { for (const k in __st.S.needs) __st.S.needs[k] = 50; __st.startMode('train'); __st.step(0.2); __st.pickTrick('roll'); __st.step(0.3); });
+
   // ---------- learning and the next trick ----------
-  for (let i = 0; i < 2; i++) { await trace('circle'); await ev(() => __st.step(2)); }
+  await trace('circle'); await ev(() => __st.step(2));
   g = await ev(() => ({ roll: __st.S.tricks.roll, learned: __st.learnedTricks().join(), fanfare: __st.soundLog.some(s => s.name === 'fanfare') }));
   R.ok(g.roll === 3 && g.learned === 'roll' && g.fanfare, '3-mal geschafft: Rolle gelernt (Fanfare)', JSON.stringify(g));
   await page.click('#train-back');
@@ -95,7 +110,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   await ev(() => __st.step(1.0));
   await page.screenshot({ path: 'training-stand.png' });
   await ev(() => __st.step(1.2));
-  g = await ev(() => { __st.S.tricks.stand = 3; __st.trainBackToPick(); return [...document.querySelectorAll('#trainpick .ttile')].map(t => t.classList.contains('locked') ? '?' : 'offen').join(); });
+  g = await ev(() => { __st.S.tricks.stand = 3; __st.S.trainRest = { n: 0, until: 0 }; __st.trainBackToPick(); return [...document.querySelectorAll('#trainpick .ttile')].map(t => t.classList.contains('locked') ? '?' : 'offen').join(); });
   R.ok(g === 'offen,offen,offen,?,?,?,?', 'Hinterbeine gelernt: Vorderbeine offen', g);
   await page.click('#tt-hand'); await ev(() => __st.step(0.3));
   await trace('wave');
@@ -128,8 +143,10 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   await page.addInitScript(o => { window.__stOffset = o; }, offset);
   await page.goto(GAME_URL);
   g = await ev(() => { __st.pause(true); return JSON.stringify(__st.S.tricks); });
-  R.ok(g === '{"roll":3,"stand":3,"hand":0,"sit":0,"spin":0,"kiss":0,"pirouette":0}', 'Gelernte Tricks werden gespeichert', g);
+  R.ok(g === '{"roll":3,"stand":3,"hand":0,"sit":0,"spin":0,"tail":0,"pirouette":0}', 'Gelernte Tricks werden gespeichert', g);
 
+  g = await ev(() => { const s = __st.sanitizeSave({ tricks: { kiss: 2 }, trainRest: { n: 7, until: 9e15 } }, __st.now()); return { tail: s.tricks.tail, n: s.trainRest.n, max: (s.trainRest.until - __st.now()) / 60000 <= 60.01 }; });
+  R.ok(g.tail === 2 && g.n === 2 && g.max, 'Alter Stand: Küsschen-Fortschritt gilt für den Schwanzstand, Müdigkeit wird begrenzt', JSON.stringify(g));
   R.ok(errors.length === 0, 'Keine Fehler in der Konsole', errors.join(' | '));
   await browser.close();
   R.finish();

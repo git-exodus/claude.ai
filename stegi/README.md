@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.12.5.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.12.6.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **354 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 20, suite-celebrate 17, suite-fun 26, suite-home 20, suite-family 25).
+Erwartet: **360 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 26, suite-celebrate 17, suite-fun 26, suite-home 20, suite-family 25).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -151,9 +151,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12.5';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12.5` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 21`, `versionName '0.12.5'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12.6';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12.6` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 22`, `versionName '0.12.6'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -397,7 +397,12 @@ Test-Werkzeuge: Knöpfe „18.12.“, „24.12.“, „31.12.“, „Ostern“ s
 
 - Spielen-Menü → Stern: Auswahl der 7 Tricks, die nacheinander frei werden (der nächste, sobald der vorige gelernt
   ist; gesperrte zeigen „?“): **Rolle** (Kreis), **Hinterbeine** (Zickzack), **Vorderbeine** (Welle), seit 0.9
-  **Sitz** (Dreieck), **Drehen** (Spirale), **Küsschen** (Herz, mit Herzchen), **Pirouette** (Stern, hoher Sprung).
+  **Sitz** (Dreieck), **Drehen** (Spirale), **Schwanzstand** (seit 0.12.6 statt Küsschen: Pfeil nach oben; er richtet sich senkrecht
+  auf die Schwanzspitze auf und hüpft einmal darauf), **Pirouette** (Stern, hoher Sprung).
+- **Müdigkeit** (seit 0.12.6, ohne Anzeige): nach **2 neuen Sternen** (erfolgreiche Versuche bei noch nicht gelernten
+  Tricks) ist er **1 Stunde** schlapp. Dann gähnt er nur: kein Training, keine ungelernten Tricks, Nachmalen
+  gibt keinen Stern. Fehlversuche und schon gelernte Tricks zählen nicht. Pfeil-Prüfung etwas großzügiger
+  (Reihenfolge 70 %, Abstand 13 U), ein Strich nach oben ohne Spitze reicht auch.
 - Oben erscheint eine Tafel mit dem Symbol als gepunktete Linie (grüner Startpunkt, eine Hand fährt es alle 2,5 s vor).
   Rolle = Kreis, Hinterbeine = senkrechter Zickzack, Vorderbeine = waagerechte Welle (1,5 Wellen).
 - **Prüfung** (`judgeTrace`, großzügig, aber kein Gekritzel): mindestens 72 % der Linie berührt (Abstand 28 U),
@@ -518,6 +523,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.12.6 | Schwanzstand (Pfeil) statt Küsschen, Fortschritt bleibt erhalten; Training-Müdigkeit: nach 2 neuen Sternen 1 Stunde Pause (unsichtbar, er gähnt) |
 | 0.12.5 | Weicher Hals (Vorschlag 1): Hals mit Licht und Schatten wie der Körper, keine Ecke mehr im Bauch; Halslinien nur außerhalb des Körpers (auch beim Trinken); gilt auch fürs Geschwisterchen |
 | 0.12.4 | Zuhause: Spielzeugkiste und Blumentopf stehen vor dem Dino, alles andere dahinter |
 | 0.12.3 | Melodie-Knopf über der großen Trommel, große Trommel 50 % lauter, Melodie nachspielen beginnt mit 3 Tönen |
@@ -544,7 +550,7 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Gebaut bis 0.12.5. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
+Gebaut bis 0.12.6. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):
 - Fotos aufs Handy speichern (heute nur im Spiel ansehen).
