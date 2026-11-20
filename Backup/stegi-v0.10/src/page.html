@@ -1,0 +1,117 @@
+<div id="game">
+  <canvas id="c"></canvas>
+  <div id="needs" hidden></div>
+  <button id="gear" type="button" aria-label="Einstellungen für Eltern (3 Sekunden gedrückt halten)"><span class="ring"></span></button>
+  <div id="side" hidden>
+    <button id="b-map" class="mini" type="button" aria-label="Orte"></button>
+    <button id="b-wear" class="mini" type="button" aria-label="Verkleiden"></button>
+    <button id="b-album" class="mini" type="button" aria-label="Fotoalbum"></button>
+    <button id="b-camera" class="mini" type="button" aria-label="Foto machen"></button>
+  </div>
+  <div id="walkbar" hidden><span class="foot"></span><i><b></b></i><span class="flag"></span></div>
+  <div id="banner" hidden><canvas width="240" height="135"></canvas><b></b></div>
+  <div id="actions" hidden></div>
+  <div id="tray" hidden></div>
+  <div id="playtray" hidden>
+    <button class="round" id="play-ball" type="button" aria-label="Ball spielen"></button>
+    <button class="round" id="play-hide" type="button" aria-label="Verstecken"></button>
+    <button class="round" id="play-music" type="button" aria-label="Musik machen"></button>
+    <button class="round" id="play-train" type="button" aria-label="Tricks üben"></button>
+    <button class="round" id="play-bubbles" type="button" aria-label="Seifenblasen"></button>
+    <button class="round" id="play-kite" type="button" aria-label="Drachen steigen lassen"></button>
+    <button class="round" id="play-castle" type="button" aria-label="Sandburg bauen"></button>
+  </div>
+  <div id="trainpick" hidden></div>
+  <button id="train-back" class="mini" type="button" aria-label="Anderen Trick wählen" hidden>◀</button>
+  <div id="musicpad" hidden></div>
+  <button id="mel-btn" class="round" type="button" aria-label="Melodie nachspielen" hidden></button>
+  <button id="close" class="round" type="button" aria-label="Fertig" hidden></button>
+  <div id="menu">
+    <h1 id="m-title">Stegi</h1>
+    <button class="big" id="m-exit" type="button" hidden>Beenden</button>
+  </div>
+  <div id="settings" class="ov" hidden>
+    <div class="card" role="dialog" aria-labelledby="s-title">
+      <h2 id="s-title">Einstellungen</h2>
+      <p id="s-info" class="info"></p>
+      <p id="s-storage" class="warn" hidden>Dieses Gerät speichert nicht. Fortschritt und Fotos gehen beim Schließen verloren. Bitte die App oder den Link benutzen.</p>
+      <label class="row">Name <input id="s-name" type="text" maxlength="12" autocomplete="off"></label>
+      <div class="row">Geräusche <button id="s-sound" class="toggle" type="button"></button></div>
+      <div class="row">Musik <button id="s-music" class="toggle" type="button"></button></div>
+      <label class="row">Schlafenszeit <select id="s-sleep"></select></label>
+      <label class="row">Aufstehen <select id="s-wake"></select></label>
+      <label class="row">Spielzeit pro Tag <select id="s-limit"></select></label>
+      <div class="row">Testmodus <button id="s-dev" class="toggle" type="button"></button></div>
+      <button class="big alt" id="s-devopen" type="button" hidden>Test-Werkzeuge öffnen</button>
+      <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
+      <button class="big" id="s-close" type="button">Schließen</button>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.10</p>
+    </div>
+  </div>
+  <div id="confirm" class="ov" hidden>
+    <div class="card" role="dialog" aria-labelledby="c-title">
+      <h2 id="c-title">Wirklich alles löschen?</h2>
+      <p class="info">Stegi wird wieder ein Ei. Alle Tage, Fotos, Kleider und Einstellungen sind dann weg. Das kann man nicht rückgängig machen.</p>
+      <button class="big danger" id="c-yes" type="button">Ja, alles löschen</button>
+      <button class="big" id="c-no" type="button">Abbrechen</button>
+    </div>
+  </div>
+  <div id="places" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="pl-title">
+      <h2 id="pl-title">Orte</h2>
+      <p id="placecount" class="info"></p>
+      <div id="placelist"></div>
+      <button class="big" id="pl-close" type="button">Schließen</button>
+    </div>
+  </div>
+  <div id="wardrobe" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="w-title">
+      <h2 id="w-title">Verkleiden</h2>
+      <p class="info">Antippen zum Anziehen, nochmal antippen zum Ausziehen.</p>
+      <div id="wearlist"></div>
+      <button class="big" id="w-close" type="button">Fertig</button>
+    </div>
+  </div>
+  <div id="album" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="a-title">
+      <h2 id="a-title">Fotoalbum</h2>
+      <div id="atabs"><button id="at-diary" class="chip on" type="button">Fototagebuch</button><button id="at-mile" class="chip" type="button">Meilensteine</button></div>
+      <p id="photocount" class="info"></p>
+      <div id="photolist"></div>
+      <button class="big" id="a-close" type="button">Schließen</button>
+    </div>
+  </div>
+  <div id="photoview" class="ov" hidden>
+    <div class="card" role="dialog" aria-label="Foto">
+      <img id="pv-img" alt="Foto von Stegi">
+      <p id="pv-text" class="info"></p>
+      <button class="big danger" id="pv-delete" type="button"><span class="fill"></span><span class="txt">Löschen (3 Sekunden halten)</span></button>
+      <button class="big" id="pv-close" type="button">Zurück</button>
+    </div>
+  </div>
+  <div id="devbadge" hidden>TEST</div>
+  <div id="devpanel" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="dev-title">
+      <h2 id="dev-title">Test-Werkzeuge</h2>
+      <p class="info">Nur der Test-Spielstand ändert sich. Stegi deines Kindes bleibt, wie er ist.</p>
+      <div id="dev-body"></div>
+      <button class="big" id="dev-close" type="button">Zum Spiel</button>
+    </div>
+  </div>
+  <div id="dev-confirm" class="ov" hidden>
+    <div class="card" role="dialog" aria-labelledby="dvc-title">
+      <h2 id="dvc-title">Test-Spielstand zurücksetzen?</h2>
+      <p class="info">Der Test-Stegi wird wieder ein Ei, Testfotos und Testuhr werden gelöscht. Der echte Spielstand bleibt.</p>
+      <button class="big danger" id="dvc-yes" type="button">Ja, zurücksetzen</button>
+      <button class="big" id="dvc-no" type="button">Abbrechen</button>
+    </div>
+  </div>
+  <div id="rest" class="ov" hidden>
+    <div class="card" role="dialog" aria-labelledby="r-title">
+      <div id="r-icon"></div>
+      <h2 id="r-title">Pause</h2>
+      <p class="info">Die Spielzeit für heute ist um. Morgen geht es weiter!</p>
+      <button class="big" id="r-ok" type="button">OK</button>
+    </div>
+  </div>
+</div>
