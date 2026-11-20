@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.7.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.8.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **243 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 36, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22).
+Erwartet: **263 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 36, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 20).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -71,6 +71,7 @@ stegi/
     ├── suite-apk.js       0.5.1: wie in der APK (mit Beenden-Knopf): kein Knopf verdeckt, nur Beenden im Menü schließt
     ├── suite-design.js    0.6: Horizont, Kleinigkeiten (schnuppern, staunen, freuen, hüpfen), Stauchen/Strecken, Vordergrund aller Orte
     ├── suite-holidays.js  0.7: Ostern-Datum, Baum/Geschenke/Feuerwerk/Eier nach Datum, 1 Geschenk pro Tag, Ball ohne Flackern
+    ├── suite-training.js  0.8: Malprüfung, Trick-Auswahl mit „?“, Malen mit der Maus, Bauchplatscher, Lernen, Tricks von selbst
     ├── suite-dev.js       0.4: Testmodus (eigener Spielstand, Stufen, Zeitraffer, Sprünge, Helfer, echter Stand bleibt unberührt)
     └── make-icon.js       kein Test: zeichnet das App-Symbol mit dem Spielcode neu
 ```
@@ -108,6 +109,7 @@ Rechts das Zahnrad für die Eltern.
 | Zähne putzen | Zahnbürste folgt dem Finger, am Maul hin und her reiben |
 | Ball | (Spielen → Ball) Ball wegschnipsen, er rennt hin, bringt ihn zurück und freut sich |
 | Verstecken | (Spielen → Busch) er versteckt sich hinter einem von zwei Büschen oder dem Felsen; antippen, wo er ist; falsch = wackelt; nach ein paar Sekunden wackelt sein Versteck und er kichert als Hinweis |
+| Training | (Spielen → Stern) Trick wählen (gesperrte mit „?“), Symbol auf der Tafel oben nachmalen: Kreis = Rolle, Zickzack = Hinterbeine, Welle = Vorderbeine; nicht geschafft = Bauchplatscher; ◀ = anderen Trick wählen |
 | Musik | (Spielen → Note) 6 farbige Xylophon-Stäbe und 2 Trommeln; bei jedem Ton tanzt er |
 | Geschenk | liegt neben ihm und hüpft; antippen = auspacken und anziehen |
 | Verkleiden | Partyhut-Knopf: alle 12 Teile, antippen = an, nochmal = aus; noch nicht fällige als Geschenkpaket |
@@ -145,9 +147,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.7';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.7` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 9`, `versionName '0.7'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.8';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.8` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 10`, `versionName '0.8'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -176,6 +178,7 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 | `17-wardrobe.js` | Geschenke, Kleiderschrank, automatische Kleidung je Ort (`wearNow`) |
 | `18-photos.js` | Kamera (2 pro Tag), Meilenstein-Fotos, Speichern (Fehler behalten das Foto), Album mit zwei Reitern, Löschen durch Halten |
 | `20-holidays.js` | 0.7: Feiertage nach Handy-Datum: Weihnachtsbaum, Weihnachtsgeschenke, Silvester-Feuerwerk, Ostereier, Osterformel |
+| `22-training.js` | 0.8: Training: Trick-Auswahl, Tafel mit Symbol, Malprüfung `judgeTrace`, Trick- und Bauchplatscher-Animation |
 | `19-dev.js` | Testmodus für Eltern: Wechsel auf den Test-Spielstand, Zeitraffer, Stufen, Helfer, Test-Fenster |
 | `11-main.js` | `resize`, Bildschleife, Speichern alle 5 s und beim Verlassen, `start()` |
 | `99-debug.js` | `window.__st` für die Tests (wird vom Spiel nicht benutzt), ruft `start()` auf |
@@ -378,6 +381,19 @@ Erkannt an der Uhr des Handys (kein Internet). Ostersonntag rechnet `easterSunda
 
 Test-Werkzeuge: Knöpfe „18.12.“, „24.12.“, „31.12.“, „Ostern“ springen mit der Testuhr dorthin (10:00 Uhr).
 
+### 6.16 Training (seit 0.8)
+
+- Spielen-Menü → Stern: Auswahl der Tricks. Offen ist zuerst nur die **Rolle**; **Hinterbeine** öffnen sich, wenn
+  die Rolle gelernt ist, **Vorderbeine**, wenn die Hinterbeine gelernt sind. Gesperrte zeigen „?“.
+- Oben erscheint eine Tafel mit dem Symbol als gepunktete Linie (grüner Startpunkt, eine Hand fährt es alle 2,5 s vor).
+  Rolle = Kreis, Hinterbeine = senkrechter Zickzack, Vorderbeine = waagerechte Welle (1,5 Wellen).
+- **Prüfung** (`judgeTrace`, großzügig, aber kein Gekritzel): mindestens 72 % der Linie berührt (Abstand 28 U),
+  80 % der Fingerlinie nah an der Linie, 80 % der Schritte in eine Richtung entlang der Linie, Länge 0,6–2,2-mal
+  die Linie. Startpunkt und Richtung egal. Geprüfte Fälle stehen in suite-training.js.
+- Geschafft: Trick, Applaus, Sterne, Spaß +8. Nicht geschafft: Ansatz, dann Bauchplatscher mit Staub, Spaß +3.
+- **3-mal geschafft = gelernt** (Fanfare). Gelernte Tricks macht er bei etwa jeder 5. Kleinigkeit von selbst
+  (nur gelungene Tricks, kein Bauchplatscher). Nicht nachts, nicht unterwegs.
+
 ---
 
 ## 7. Spielstand
@@ -426,6 +442,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.8 | Training: Tricks durch Nachmalen (Rolle/Kreis, Hinterbeine/Zickzack, Vorderbeine/Welle), freischalten nacheinander, Bauchplatscher bei Fehlversuch, gelernte Tricks von selbst |
 | 0.7 | Höchstens 1 Geschenk pro Tag; Ballspielen ohne Flackern (dreht sich höchstens alle 0,4 s um, Ballseite einmal pro Wurf); Feiertage: Weihnachtsbaum ab 18.12., Geschenke am 24.12. (Mütze, Geweih, Zuckerstange), Silvester-Feuerwerk, Ostereiersuche mit Schokohase |
 | 0.6.1 | Unterwegs wandern Gras und Blumen im Vordergrund mit dem Weg aus dem Bild (standen still); das Geschenk wartet unterwegs unsichtbar und liegt nach dem Ankommen wieder da |
 | 0.6 | Neues Aussehen: Stego mit Licht und Schatten, größere Augen, Augenbrauen, Bäckchen, rundlicheres Baby, Stauchen/Strecken; Kleinigkeiten von selbst (schnuppern, staunen, freuen, hüpfen); höherer Horizont; Sonnenstrahlen, Vögel; Vordergrund für alle 30 Orte; Schmetterlinge und springende Fische |
@@ -440,7 +457,7 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Alles bisher Vereinbarte ist gebaut (0.1–0.7). Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
+Alles bisher Vereinbarte ist gebaut (0.1–0.8). Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):
 - Benachrichtigungen am Handy („Stegi hat Hunger“, „Stegi ist angekommen“) – braucht Android-Code.

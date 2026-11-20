@@ -152,5 +152,19 @@ svg { display: block; width: 100%; height: 100%; }
 .chip:active { transform: translateY(1px); }
 #dv-day { flex: 1; max-width: none; }
 #dv-dayval { min-width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; }
+/* Training (0.8): choice of tricks in the upper half, back button on the board. */
+#trainpick { position: absolute; left: 14px; right: 66px; top: calc(max(10px, env(safe-area-inset-top)) + 70px); display: flex; gap: 10px; justify-content: center; }
+.ttile { flex: 1 1 0; max-width: 110px; aspect-ratio: 3 / 4; border-radius: 18px; background: rgba(255, 255, 255, .92); padding: 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 4px 0 rgba(0, 0, 0, .12); }
+.ttile canvas { width: 100%; aspect-ratio: 1; }
+.ttile .stars { color: #ffca28; font-size: 20px; letter-spacing: 1px; }
+.ttile .stars i { font-style: normal; color: rgba(0, 0, 0, .15); }
+.ttile.locked { background: rgba(225, 232, 240, .92); }
+.ttile.locked b { font-family: 'Lilita One', 'Nunito', sans-serif; font-weight: 400; font-size: 48px; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .15); }
+.ttile.nope { animation: wobble .4s; }
+#train-back { position: absolute; left: 20px; top: calc(max(10px, env(safe-area-inset-top)) + 80px); font-size: 20px; color: #4a7bd0; padding: 0; }
 [hidden] { display: none !important; }
 .mini.nope { animation: wobble .4s; }
+/* 0.8: four buttons in the play menu (ball, hide, music, training) must fit on a 360 px phone. */
+#playtray { gap: 8px; }
+#playtray .round { width: 56px; height: 56px; padding: 12px; }

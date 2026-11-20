@@ -157,8 +157,22 @@ svg { display: block; width: 100%; height: 100%; }
 .chip:active { transform: translateY(1px); }
 #dv-day { flex: 1; max-width: none; }
 #dv-dayval { min-width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; }
+/* Training (0.8): choice of tricks in the upper half, back button on the board. */
+#trainpick { position: absolute; left: 14px; right: 66px; top: calc(max(10px, env(safe-area-inset-top)) + 70px); display: flex; gap: 10px; justify-content: center; }
+.ttile { flex: 1 1 0; max-width: 110px; aspect-ratio: 3 / 4; border-radius: 18px; background: rgba(255, 255, 255, .92); padding: 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 4px 0 rgba(0, 0, 0, .12); }
+.ttile canvas { width: 100%; aspect-ratio: 1; }
+.ttile .stars { color: #ffca28; font-size: 20px; letter-spacing: 1px; }
+.ttile .stars i { font-style: normal; color: rgba(0, 0, 0, .15); }
+.ttile.locked { background: rgba(225, 232, 240, .92); }
+.ttile.locked b { font-family: 'Lilita One', 'Nunito', sans-serif; font-weight: 400; font-size: 48px; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .15); }
+.ttile.nope { animation: wobble .4s; }
+#train-back { position: absolute; left: 20px; top: calc(max(10px, env(safe-area-inset-top)) + 80px); font-size: 20px; color: #4a7bd0; padding: 0; }
 [hidden] { display: none !important; }
 .mini.nope { animation: wobble .4s; }
+/* 0.8: four buttons in the play menu (ball, hide, music, training) must fit on a 360 px phone. */
+#playtray { gap: 8px; }
+#playtray .round { width: 56px; height: 56px; padding: 12px; }
 </style>
 
 <div id="game">
@@ -179,7 +193,10 @@ svg { display: block; width: 100%; height: 100%; }
     <button class="round" id="play-ball" type="button" aria-label="Ball spielen"></button>
     <button class="round" id="play-hide" type="button" aria-label="Verstecken"></button>
     <button class="round" id="play-music" type="button" aria-label="Musik machen"></button>
+    <button class="round" id="play-train" type="button" aria-label="Tricks üben"></button>
   </div>
+  <div id="trainpick" hidden></div>
+  <button id="train-back" class="mini" type="button" aria-label="Anderen Trick wählen" hidden>◀</button>
   <div id="musicpad" hidden></div>
   <button id="close" class="round" type="button" aria-label="Fertig" hidden></button>
   <div id="menu">
@@ -201,7 +218,7 @@ svg { display: block; width: 100%; height: 100%; }
       <button class="big alt" id="s-devopen" type="button" hidden>Test-Werkzeuge öffnen</button>
       <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
       <button class="big" id="s-close" type="button">Schließen</button>
-      <p id="credit">@made by Brownii (Claude.ai) · v0.7</p>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.8</p>
     </div>
   </div>
   <div id="confirm" class="ov" hidden>
@@ -310,7 +327,7 @@ function mix(c1, c2, k) {
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.7';
+const VERSION = '0.8';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -468,6 +485,23 @@ const MUSIC_FUN = 1.5;
 const WEATHER_SHARES = { sun: 0.45, clouds: 0.25, rain: 0.30 };
 const RAINBOW_FROM = 15 * 60;
 
+/** Training (0.8): draw the symbol, he does the trick. In this order; a trick is open once the one before
+ *  is learned (TRICK_LEARN successes). Learned tricks he sometimes does by himself (IDLE_TRICK_CHANCE of the
+ *  idle moments). shape: 'circle' | 'zigzag' (up and down) | 'wave' (left to right). */
+const TRICKS = [
+  { id: 'roll', shape: 'circle', name: 'Rolle' },
+  { id: 'stand', shape: 'zigzag', name: 'Hinterbeine' },
+  { id: 'hand', shape: 'wave', name: 'Vorderbeine' },
+];
+const TRICK_LEARN = 3;
+const TRAIN_FUN_OK = 8, TRAIN_FUN_FAIL = 3;
+const IDLE_TRICK_CHANCE = 0.2;
+/** Drawing check (generous for small children, but no scribbling): share of the dotted line the finger
+ *  must pass near, share of the finger's line that must stay near the dotted line, share of the finger's
+ *  steps that must go along the line in one direction (no zigzagging back and forth), allowed length of
+ *  the finger's line compared to the dotted line, and the distance that counts as "near" (in U). */
+const TRACE_COVER = 0.72, TRACE_ON_LINE = 0.8, TRACE_ORDER = 0.8, TRACE_LEN = [0.6, 2.2], TRACE_TOL = 28;
+
 /** Seconds the gear button must be held to open the parents' settings. */
 const GEAR_HOLD = 3;
 
@@ -553,6 +587,10 @@ const ICONS = {
     { d: 'M2 8h5l2-3h6l2 3h5v12H2z', fill: '#455a64' },
     { d: 'M8 13.5a4 4 0 1 0 8 0a4 4 0 1 0-8 0z', fill: '#90caf9', stroke: '#ffffff', w: 1.6 },
     { d: 'M18 10h2', stroke: '#ffd54f', w: 2 },
+  ],
+  train: [
+    { d: 'M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z', fill: '#ffca28', stroke: '#e0a800', w: 1.2 },
+    { d: 'M9 12.5l2 2 4-4.5', stroke: '#ffffff', w: 2 },
   ],
   close: [
     { d: 'M6 6l12 12M18 6L6 18', stroke: '#e5533d', w: 3.4 },
@@ -710,6 +748,7 @@ function blankSave(t) {
     xmas: null,              // { year, opened: [3 x bool] }
     easter: null,            // { year, found: [5 x bool], bunny: 'none'|'shown'|'eaten' }
     extraWear: [],           // ids from WEAR_EXTRA he owns
+    tricks: { roll: 0, stand: 0, hand: 0 },   // 0.8: successful tries per trick (TRICK_LEARN = learned)
   };
 }
 
@@ -772,6 +811,7 @@ function sanitizeSave(o, t) {
   b.visitDay = num(o.visitDay, -1, 1e6, -1);
   b.visitAt = num(o.visitAt, 0, 1e14, 0);
   b.visitDone = o.visitDone === true;
+  for (const tr of TRICKS) b.tricks[tr.id] = Math.round(num(o.tricks && o.tricks[tr.id], 0, 999, 0));
   const bools = (a, n) => Array.from({ length: n }, (_, i) => !!(Array.isArray(a) && a[i]));
   b.xmas = o.xmas && typeof o.xmas.year === 'number' ? { year: o.xmas.year, opened: bools(o.xmas.opened, 3) } : null;
   b.easter = o.easter && typeof o.easter.year === 'number' ? { year: o.easter.year, found: bools(o.easter.found, EASTER_EGGS),
@@ -1004,6 +1044,9 @@ const SOUNDS = {
   drum: i => { if (i) { noise(0.12, { freq: 2500, q: 0.8, vol: 0.3 }); } else { tone(110, 0.35, { f2: 45, vol: 0.4, type: 'sine' }); noise(0.08, { freq: 300, vol: 0.2 }); } },
   // 0.7: a soft firework bang with a little crackle (quiet on purpose).
   firework: () => { noise(0.35, { freq: 400, q: 0.8, vol: 0.12, freq2: 150 }); [0.15, 0.22, 0.3, 0.37].forEach(at => noise(0.05, { at, freq: 3000, q: 1, vol: 0.05 })); },
+  // 0.8 training: applause after a trick, a soft belly flop.
+  applause: () => { for (let i = 0; i < 14; i++) noise(0.05, { at: i * 0.05 + Math.random() * 0.03, freq: 2200 + Math.random() * 1500, q: 1.2, vol: 0.12 }); tone(784, 0.2, { vol: 0.08, type: 'triangle' }); tone(1047, 0.35, { at: 0.18, vol: 0.08, type: 'triangle' }); },
+  flop: () => { noise(0.25, { freq: 160, q: 1, vol: 0.4, type: 'lowpass' }); tone(140, 0.2, { f2: 70, vol: 0.18, type: 'triangle' }); tone(600, 0.25, { at: 0.35, f2: 380, vol: 0.06, vib: 10 }); },
   // Camera click.
   shutter: () => { noise(0.05, { freq: 4000, q: 1, vol: 0.3 }); noise(0.07, { at: 0.08, freq: 3000, q: 1, vol: 0.25 }); },
   // Wrong hiding place: a soft "boing".
@@ -1083,7 +1126,8 @@ const PLATE_COUNT = [4, 5, 6, 7, 7];
  *           'sad'|'yawn'|'grin'|'closed'), headDown (0..1), wiggle (0..1), dirt (0..1),
  *           jump (px up), wag (0..1), wear ({ head, eyes, neck } item ids, 0.3),
  *           0.6: squash (-1 stretched .. 1 squashed), look ({ x, y } pupil offset in eye radii),
- *           brow ('happy'|'up'), blush (true = red cheeks) }
+ *           brow ('happy'|'up'), blush (true = red cheeks),
+ *           0.8: pivot ({ x, y, a } turn the body for tricks; y null = body middle) }
  * Returns screen positions: mouth {x, y}, head {x, y, r}, box {x, y, w, h} (for touches).
  */
 function drawStego(c, x, y, size, o) {
@@ -1115,6 +1159,9 @@ function drawStego(c, x, y, size, o) {
   sh.addColorStop(0, 'rgba(20,40,20,0.32)'); sh.addColorStop(1, 'rgba(20,40,20,0)');
   c.fillStyle = sh; c.save(); c.scale(1, 0.12); c.beginPath(); c.arc(8, 16, 100 * (o.jump ? 0.85 : 1), 0, TAU); c.fill(); c.restore();
   c.restore();
+
+  // 0.8 tricks: turn the whole body around a point (o.pivot = { x, y, a } in units; y null = middle of the body).
+  if (o.pivot) { const py = o.pivot.y == null ? cy : o.pivot.y; c.translate(o.pivot.x, py); c.rotate(o.pivot.a); c.translate(-o.pivot.x, -py); }
 
   // ---- tail with spikes ----
   const tailLen = lerp(38, 78, g), wagA = Math.sin(t * (o.wag ? 9 : 2.2)) * (o.wag ? 7 : 3);
@@ -1782,7 +1829,7 @@ function drawThought(c, x, y, icon, t) {
 /* ---------- particles ---------- */
 
 const parts = [];
-/** Adds a particle. kind: heart, sparkle, bubble, confetti, zzz, crumb, drop, shell, star, note. */
+/** Adds a particle. kind: heart, sparkle, bubble, confetti, zzz, crumb, drop, shell, star, note, dust. */
 function addPart(kind, x, y, o = {}) {
   if (parts.length > 260) parts.shift();
   parts.push({ kind, x, y, vx: o.vx ?? rnd(-20, 20) * U, vy: o.vy ?? rnd(-60, -30) * U, g: o.g ?? 0, life: 0,
@@ -1821,6 +1868,8 @@ function drawParts(c) {
       c.fillStyle = p.color; c.strokeStyle = p.color; c.lineWidth = p.size * 0.22;
       c.beginPath(); c.ellipse(0, 0, p.size * 0.55, p.size * 0.42, -0.4, 0, TAU); c.fill();
       c.beginPath(); c.moveTo(p.size * 0.48, -p.size * 0.1); c.lineTo(p.size * 0.48, -p.size * 1.6); c.quadraticCurveTo(p.size * 1.1, -p.size * 1.2, p.size * 1.0, -p.size * 0.7); c.stroke();
+    } else if (p.kind === 'dust') {   // 0.8: a little cloud of dust (belly flop)
+      c.fillStyle = 'rgba(190,160,120,0.55)'; c.beginPath(); c.arc(0, 0, p.size * (0.6 + k * 0.6), 0, TAU); c.fill();
     } else if (p.kind === 'drop') {
       c.fillStyle = '#7fd0ff'; c.beginPath(); c.ellipse(0, 0, p.size * 0.35, p.size * 0.6, 0, 0, TAU); c.fill();
     }
@@ -2626,7 +2675,7 @@ function drawGroundLife(c, placeId, time, sky, weather) {
 /** Screen and activity state.
  *  screen: 'menu' | 'game'.  trans: 0 = menu camera .. 1 = game camera (animated).
  *  mode:   'idle' | 'eat' | 'drink' | 'bath' | 'brush' | 'ball' | 'hatch' | 'party'
- *          | 'play' (menu: ball, hide, music) | 'hide' | 'music' (0.3). */
+ *          | 'play' (menu: ball, hide, music, training) | 'hide' | 'music' (0.3) | 'train' (0.8). */
 const game = {
   screen: 'menu', trans: 0, mode: 'idle', modeT: 0, t: 0,
   flying: null,      // food on its way to the mouth: { id, x, y, sx, sy, k }
@@ -2654,6 +2703,7 @@ const pet = {
   idle: null, idleNext: 6,   // 0.6: little things he does by himself ({ kind, t, dur }) and when the next one comes
   landT: 0,    // > 0 just after landing from a jump (squash)
   turnT: 0,    // 0.7: > 0 right after turning around (no new turn yet)
+  trick: null, // 0.8: trick being shown { kind, ok, idle, t, dur } (22-training.js)
   depth: 0,    // 0 = in front .. 1 = far back behind a hiding place
 };
 
@@ -2741,6 +2791,8 @@ function endMode() {
   game.held = null; game.flying = null; game.bath = null; game.brush = null;
   if (game.ball) game.ball = null;
   game.hide = null; pet.depth = 0; pet.danceT = 0;
+  if (game.mode === 'train') pet.trick = null;
+  game.train = null;
   pet.tx = 0;
   refreshUI();
 }
@@ -2759,6 +2811,7 @@ function startMode(m) {
   if (m === 'bath') game.bath = { phase: 'scrub', t: 0 };
   if (m === 'brush') game.brush = { x: W * 0.75, y: standY - 60 * U, progress: 0, done: false, t: 0, scrubT: 0 };
   if (m === 'hide') { game.mode = 'hide'; startHide(); refreshUI(); return; }
+  if (m === 'train') { startTrain(); return; }
   if (m === 'ball') game.ball = { x: Math.min(W - 40 * U, W / 2 + 140 * U), h: 0, vx: 0, vh: 0, rot: 0, carried: false, thrown: false };
   game.mode = m; game.modeT = 0;
   if (m !== 'ball') pet.tx = 0;
@@ -2850,9 +2903,12 @@ function updateIdle(dt, low) {
     if (pet.idle.t >= pet.idle.dur) { pet.idle = null; pet.idleNext = game.t + rnd(7, 14); }
     return;
   }
-  const busy = pet.moving || walkingNow() || game.visit || pet.jump > 0 || pet.happyT > 0 || pet.eatT > 0 || pet.yawnT > 0 || pet.giggleT > 0;
+  const busy = !!pet.trick || pet.moving || walkingNow() || game.visit || pet.jump > 0 || pet.happyT > 0 || pet.eatT > 0 || pet.yawnT > 0 || pet.giggleT > 0;
   if (busy || low.value < NEED_SAD || isSleepy(now())) { pet.idleNext = Math.max(pet.idleNext, game.t + 3); return; }
   if (game.t < pet.idleNext) return;
+  // 0.8: now and then a trick he has learned instead.
+  const learned = learnedTricks();
+  if (learned.length && Math.random() < IDLE_TRICK_CHANCE) { startTrick(learned[Math.floor(Math.random() * learned.length)], true, true); pet.idleNext = game.t + rnd(7, 14); return; }
   const kinds = Object.keys(IDLE_KINDS), kind = kinds[Math.floor(Math.random() * kinds.length)];
   pet.idle = { kind, t: 0, dur: IDLE_KINDS[kind] };
   if (kind === 'hop') pet.jumpV = 200 * U;
@@ -2928,6 +2984,7 @@ function updatePet(dt, sleeping) {
   pet.yawnT = Math.max(0, pet.yawnT - dt);
   pet.wiggle = Math.max(0, pet.wiggle - dt * 1.5);
   pet.danceT = Math.max(0, pet.danceT - dt);
+  updateTrick(dt);
   pet.landT = Math.max(0, pet.landT - dt);
   // Jumping.
   if (pet.jumpV || pet.jump > 0) {
@@ -3097,6 +3154,7 @@ function stegoLook() {
     eyes: 'open', mouth: 'smile', blink: pet.blink > 0 ? 1 : 0, jump: pet.jump, wiggle: pet.wiggle,
     dirt: clamp((50 - S.needs.clean) / 50, 0, 1), headDown: 0, wag: 0, wear: wearNow() };
   if (sleeping) { o.pose = 'lie'; o.eyes = 'closed'; o.mouth = 'closed'; o.blink = 0; return o; }
+  if (pet.trick) { applyTrickLook(o); return o; }   // 0.8: a trick wins over everything else
   if (pet.moving || walkingNow()) o.pose = 'walk';
   if (game.mode === 'drink') { o.headDown = smooth(Math.min(game.modeT, 2.6 - game.modeT) / 0.4); o.mouth = 'open'; o.eyes = 'happy'; }
   else if (pet.eatT > 0) { o.mouth = 'chew'; o.eyes = 'happy'; }
@@ -3185,6 +3243,7 @@ function drawWorld() {
   }
   ctx.restore();
 
+  if (game.mode === 'train') drawTrainBoard(ctx);   // 0.8: the board is drawn without the camera
   // A photo shows the picture as it is now (no finger things, no flash).
   if (game.photoPending) capturePhoto();
   if (game.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,' + game.flash.toFixed(2) + ')'; ctx.fillRect(0, 0, W, H); }
@@ -3304,6 +3363,8 @@ function buildUI() {
   $('play-ball').innerHTML = iconSVG('fun'); $('play-ball').addEventListener('click', () => startMode('ball'));
   $('play-hide').innerHTML = iconSVG('hide'); $('play-hide').addEventListener('click', () => startMode('hide'));
   $('play-music').innerHTML = iconSVG('music'); $('play-music').addEventListener('click', () => startMode('music'));
+  $('play-train').innerHTML = iconSVG('train'); $('play-train').addEventListener('click', () => startMode('train'));
+  $('train-back').addEventListener('click', () => { sound('tap'); trainBackToPick(); });
   buildMusicPad();
   $('pl-close').addEventListener('click', closePlaces);
   $('walkbar').querySelector('.foot').innerHTML = iconSVG('walk');
@@ -3336,8 +3397,10 @@ function refreshUI() {
   $('act-bed').classList.add('glow');
   $('tray').hidden = !(inGame && game.mode === 'eat');
   $('playtray').hidden = !(inGame && game.mode === 'play');
+  $('trainpick').hidden = !(inGame && game.mode === 'train' && game.train && game.train.phase === 'pick');
+  $('train-back').hidden = !(inGame && game.mode === 'train' && game.train && game.train.phase === 'draw');
   $('musicpad').hidden = !(inGame && game.mode === 'music');
-  $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music'].includes(game.mode));
+  $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music', 'train'].includes(game.mode));
   refreshCamera();
   $('devbadge').hidden = !dev.on;
   if (dev.on) $('devbadge').textContent = 'TEST' + (dev.speed > 1 ? ' · ' + dev.speed + '×' : '');
@@ -3478,6 +3541,7 @@ window.__back = () => {
   if (!$('album').hidden) { closeAlbum(); return true; }
   if (!$('wardrobe').hidden) { closeWardrobe(); return true; }
   if (game.screen === 'game') {
+    if (game.mode === 'train' && game.train && game.train.phase === 'draw') { trainBackToPick(); return true; }
     if (!['idle', 'hatch', 'party'].includes(game.mode)) { endMode(); return true; }
     showMenu(); return true;
   }
@@ -3523,6 +3587,10 @@ function onDown(e) {
     st: performance.now(), moved: 0, trail: [{ x: e.clientX, y: e.clientY, t: performance.now() }], ball: false });
   if (game.screen !== 'game' || game.trans < 1) return;
   if (game.mode === 'brush' && game.brush && !game.brush.done) { game.brush.x = e.clientX; game.brush.y = e.clientY; }
+  // 0.8 training: a line starts on the board.
+  if (game.mode === 'train' && game.train && game.train.phase === 'draw' && inTrainBoard(e.clientX, e.clientY)) {
+    game.train.drawing = true; game.train.stroke = [{ x: e.clientX, y: e.clientY }];
+  }
   if (game.mode === 'ball' && game.ball && !game.ball.carried) {
     touch.ball = dist(e.clientX, e.clientY, game.ball.x, ballY()) < 60 * U;
   }
@@ -3541,6 +3609,7 @@ function onMove(e) {
   touch.trail.push({ x: e.clientX, y: e.clientY, t: performance.now() });
   if (touch.trail.length > 8) touch.trail.shift();
   if (game.screen !== 'game' || game.trans < 1 || d === 0) return;
+  if (game.mode === 'train') { const tr = game.train; if (tr && tr.drawing && tr.stroke.length < 600) tr.stroke.push({ x: e.clientX, y: e.clientY }); return; }
   game.rubX = e.clientX; game.rubY = e.clientY;
   if (!hatched()) { if (eggHit(e.clientX, e.clientY)) game.rubbing = 0.25; return; }
   if (asleepNow()) return;
@@ -3561,6 +3630,7 @@ function onUp(e) {
     return;
   }
   if (game.trans < 1) return;
+  if (game.mode === 'train') { if (game.train && game.train.drawing) finishTrace(); return; }
   if (game.mode === 'ball' && touch.ball) {
     // Throw speed from the last ~0.12 s of the finger's movement.
     const tr = touch.trail, last = tr[tr.length - 1];
@@ -4733,6 +4803,253 @@ function devGoHoliday(which) {
   devJump((target - t) / 3600e3);
 }
 
+/* ===== 22-training.js ===== */
+/* 22-training.js – training (0.8): choose a trick, trace its symbol on the board in the upper half,
+ * and he does the trick – or, if the line was not good enough, flops onto his belly (funny, not sad).
+ *   Rolle = circle, Hinterbeine = up-and-down zigzag, Vorderbeine = wave.
+ * Tricks open one after the other: the next one shows "?" until the one before is learned (TRICK_LEARN).
+ * Learned tricks he sometimes does by himself in idle moments (see updateIdle in 08-game.js).
+ * game.train = { phase: 'pick' | 'draw' | 'show', trick, stroke: [{x, y}], drawing, demo } */
+
+const trickLearned = id => S.tricks[id] >= TRICK_LEARN;
+const trickOpen = i => i === 0 || trickLearned(TRICKS[i - 1].id);
+const learnedTricks = () => TRICKS.filter(t => trickLearned(t.id)).map(t => t.id);
+
+/** The board in the upper half of the screen (left of the button column, below the needs). */
+function trainBoard() {
+  const x = 14 * U, y = 74 * U, w = W - x - 66 * U;
+  return { x, y, w, h: Math.max(170 * U, groundY - y + 6 * U) };
+}
+
+/** The dotted line to trace for a shape, as screen points (dense enough to measure against). */
+function trickGuide(shape) {
+  const b = trainBoard(), p = 30 * U, cx = b.x + b.w / 2, cy = b.y + b.h / 2 + 8 * U, pts = [];
+  if (shape === 'circle') {
+    const r = Math.min(b.w, b.h - 16 * U) / 2 - p;
+    for (let i = 0; i <= 64; i++) { const a = -Math.PI / 2 + i / 64 * TAU; pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r }); }
+  } else if (shape === 'zigzag') {
+    const top = b.y + p + 14 * U, bot = b.y + b.h - p, dx = Math.min(b.w * 0.2, 54 * U), n = 5;
+    const corners = Array.from({ length: n + 1 }, (_, i) => ({ x: cx + (i % 2 ? dx : -dx), y: lerp(top, bot, i / n) }));
+    for (let i = 0; i < n; i++) for (let k = 0; k < 12; k++) pts.push({ x: lerp(corners[i].x, corners[i + 1].x, k / 12), y: lerp(corners[i].y, corners[i + 1].y, k / 12) });
+    pts.push(corners[n]);
+  } else {   // wave: one and a half waves from left to right
+    const left = b.x + p, right = b.x + b.w - p, amp = (b.h / 2 - p) * 0.75;
+    for (let i = 0; i <= 64; i++) { const k = i / 64; pts.push({ x: lerp(left, right, k), y: cy - Math.sin(k * TAU * 1.5) * amp }); }
+  }
+  return pts;
+}
+
+/** Points along a finger line every ~4 U (so that fast and slow drawing count the same). */
+function resample(stroke) {
+  const out = [], step = 4 * U;
+  for (let i = 0; i < stroke.length; i++) {
+    if (!i) { out.push(stroke[0]); continue; }
+    const a = stroke[i - 1], b = stroke[i], d = dist(a.x, a.y, b.x, b.y);
+    for (let s = step; s < d; s += step) out.push({ x: lerp(a.x, b.x, s / d), y: lerp(a.y, b.y, s / d) });
+    out.push(b);
+  }
+  return out;
+}
+
+/**
+ * Is the finger line good enough for the shape? Generous for children of 5, but scribbling does not count:
+ *   cover   share of the dotted line the finger came near (within TRACE_TOL)
+ *   onLine  share of the finger line that stayed near the dotted line (within 1.2 x TRACE_TOL)
+ *   order   share of the finger's steps that move along the dotted line in one direction
+ *           (each finger point is matched to the nearest point of the dotted line; for the circle the
+ *           matching wraps around). Start point and direction do not matter.
+ *   len     length of the finger line / length of the dotted line (TRACE_LEN range)
+ */
+function judgeTrace(shape, stroke) {
+  const guide = trickGuide(shape), pts = resample(stroke), tol = TRACE_TOL * U, n = guide.length;
+  const fail = { ok: false, cover: 0, onLine: 0, order: 0, len: 0 };
+  if (pts.length < 8) return fail;
+  const d2 = (a, b) => (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+  const near = (p, list, t) => list.some(q => d2(p, q) < t * t);
+  const cover = guide.filter(g => near(g, pts, tol)).length / n;
+  const onLine = pts.filter(p => near(p, guide, tol * 1.2)).length / pts.length;
+  const lenOf = l => l.reduce((s, p, i) => s + (i ? Math.sqrt(d2(p, l[i - 1])) : 0), 0);
+  const len = lenOf(pts) / lenOf(guide);
+  // Order: nearest guide index for every 3rd finger point, then the direction of the steps between them.
+  const idx = pts.filter((_, i) => i % 3 === 0).map(p => { let best = 0, bd = Infinity; guide.forEach((g, i) => { const v = d2(p, g); if (v < bd) { bd = v; best = i; } }); return best; });
+  let fwd = 0, back = 0;
+  for (let i = 1; i < idx.length; i++) {
+    let dlt = idx[i] - idx[i - 1];
+    if (shape === 'circle') { if (dlt > n / 2) dlt -= n; if (dlt < -n / 2) dlt += n; }
+    if (Math.abs(dlt) > n / 4) { back++; continue; }   // a jump across the shape counts against it
+    if (dlt > 0) fwd++; else if (dlt < 0) back++;
+  }
+  const steps = fwd + back, order = steps ? Math.max(fwd, back) / steps : 0;
+  const ok = cover >= TRACE_COVER && onLine >= TRACE_ON_LINE && order >= TRACE_ORDER && len >= TRACE_LEN[0] && len <= TRACE_LEN[1];
+  return { ok, cover, onLine, order, len };
+}
+
+/* ---------- flow ---------- */
+
+function startTrain() {
+  game.mode = 'train'; game.modeT = 0;
+  game.train = { phase: 'pick', trick: null, stroke: [], drawing: false, demo: 0 };
+  buildTrainPick();
+  refreshUI();
+}
+
+/** A trick tile was tapped (only open ones). */
+function pickTrick(id) {
+  const i = TRICKS.findIndex(t => t.id === id);
+  if (i < 0 || !trickOpen(i) || !game.train) return;
+  sound('tap');
+  Object.assign(game.train, { phase: 'draw', trick: id, stroke: [], drawing: false, demo: 0 });
+  refreshUI();
+}
+
+/** Back from the board to the choice of tricks. */
+function trainBackToPick() {
+  if (!game.train) return;
+  Object.assign(game.train, { phase: 'pick', stroke: [], drawing: false });
+  buildTrainPick();
+  refreshUI();
+}
+
+/** The finger left the board: judge the line, then he does the trick or flops. */
+function finishTrace() {
+  const tr = game.train;
+  tr.drawing = false;
+  const t = TRICKS.find(x => x.id === tr.trick), res = judgeTrace(t.shape, tr.stroke);
+  tr.result = res;
+  tr.phase = 'show';
+  const wasLearned = trickLearned(t.id);
+  if (res.ok) S.tricks[t.id]++;
+  addNeed('fun', res.ok ? TRAIN_FUN_OK : TRAIN_FUN_FAIL);
+  save();
+  startTrick(t.id, res.ok, false);
+  if (res.ok && !wasLearned && trickLearned(t.id)) tr.newlyLearned = true;
+  refreshUI();
+}
+
+/** Starts the trick animation. ok = false: he tries and flops on his belly. idle = he does it by himself. */
+function startTrick(id, ok, idle) {
+  pet.idle = null;
+  pet.trick = { kind: id, ok, idle, t: 0, dur: ok ? (id === 'roll' ? 1.6 : 2.0) : 2.4 };
+}
+
+/** Every frame (from updatePet): trick timing, sounds at the right moments, back to the board after. */
+function updateTrick(dt) {
+  const tr = pet.trick;
+  if (!tr) return;
+  const prev = tr.t;
+  tr.t += dt;
+  const at = s => prev < s && tr.t >= s;
+  if (tr.ok && at(tr.dur * 0.6)) { sound(tr.idle ? 'giggle' : 'applause'); const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U }; for (let i = 0; i < 8; i++) addPart('star', h.x + rnd(-60, 60) * U, h.y + rnd(-40, 40) * U, { size: 8 }); }
+  if (!tr.ok && at(0.55)) {
+    sound('flop');
+    for (let i = 0; i < 12; i++) addPart('dust', W / 2 + pet.x + rnd(-90, 90) * U, standY - rnd(0, 10) * U, { vx: rnd(-50, 50) * U, vy: rnd(-40, -10) * U, size: rnd(7, 13), max: 1.0 });
+  }
+  if (tr.t >= tr.dur) {
+    pet.trick = null;
+    if (game.mode === 'train' && game.train) {
+      if (game.train.newlyLearned) { game.train.newlyLearned = false; sound('fanfare'); confetti(); }
+      Object.assign(game.train, { phase: 'draw', stroke: [], demo: 0 });
+      buildTrainPick();
+      refreshUI();
+    }
+  }
+}
+
+/** Pose and face during a trick (called from stegoLook; the trick wins over everything else). */
+function applyTrickLook(o) {
+  const tr = pet.trick, q = tr.t / tr.dur;
+  const hold = smooth(Math.min(q, 1 - q) / 0.25);   // up, hold, back down
+  const pivotFor = (kind, k) => kind === 'roll' ? { x: 0, y: null, a: TAU * k }
+    : kind === 'stand' ? { x: -34, y: 0, a: -0.85 * k } : { x: 34, y: 0, a: 0.55 * k };
+  // Lift (px) so that no part of him goes into the ground: half his length while rolling, a little for the handstand.
+  const len = game.stegoInfo ? game.stegoInfo.box.w : 200 * U;
+  o.headDown = 0;
+  if (tr.ok) {
+    if (tr.kind === 'roll') { const k = smooth(clamp((q - 0.1) / 0.75, 0, 1)); o.pivot = pivotFor('roll', k); o.jump = Math.sin(Math.PI * clamp((q - 0.1) / 0.75, 0, 1)) * len * 0.42; }
+    else { o.pivot = pivotFor(tr.kind, hold); o.jump = hold * len * (tr.kind === 'hand' ? 0.1 : 0.04); }
+    o.eyes = 'happy'; o.mouth = 'open'; o.brow = 'happy'; o.wag = 1; o.wiggle = q > 0.5 ? 1 : 0;
+    o.squash = 0;
+    return;
+  }
+  // Not good enough: a start of the trick (first 0.5 s), then plop on the belly, lie there, get up.
+  if (tr.t < 0.5) {
+    o.pivot = pivotFor(tr.kind, smooth(tr.t / 0.5) * (tr.kind === 'roll' ? 0.15 : 0.45));
+    o.eyes = 'open'; o.mouth = 'open'; o.brow = 'up';
+  } else if (q < 0.78) {
+    o.pose = 'lie'; o.eyes = 'closed'; o.mouth = 'yawn';
+    o.squash = Math.max(0, 1 - (tr.t - 0.5) / 0.35) * 0.9;
+  } else {
+    o.eyes = 'happy'; o.mouth = 'smile'; o.blush = true;
+    o.dir = Math.sin(tr.t * 30) > 0 ? 1 : -1;   // shakes himself
+  }
+  o.jump = 0;
+}
+
+/* ---------- drawing ---------- */
+
+/** The board with the dotted line, a demo hand at the start, the finger line and the trick's stars. */
+function drawTrainBoard(c) {
+  const tr = game.train;
+  if (!tr || tr.phase !== 'draw') return;
+  const b = trainBoard(), t = TRICKS.find(x => x.id === tr.trick), guide = trickGuide(t.shape);
+  c.save();
+  c.fillStyle = 'rgba(255,255,255,0.88)'; c.strokeStyle = 'rgba(60,90,120,0.25)'; c.lineWidth = 2 * U;
+  c.beginPath(); c.moveTo(b.x + 18 * U, b.y); c.arcTo(b.x + b.w, b.y, b.x + b.w, b.y + b.h, 18 * U); c.arcTo(b.x + b.w, b.y + b.h, b.x, b.y + b.h, 18 * U);
+  c.arcTo(b.x, b.y + b.h, b.x, b.y, 18 * U); c.arcTo(b.x, b.y, b.x + b.w, b.y, 18 * U); c.closePath(); c.fill(); c.stroke();
+  // Stars: how often this trick worked (TRICK_LEARN = learned).
+  for (let i = 0; i < TRICK_LEARN; i++) {
+    const sx = b.x + b.w - 22 * U - i * 24 * U, sy = b.y + 20 * U, on = S.tricks[t.id] > TRICK_LEARN - 1 - i;
+    c.fillStyle = on ? '#ffca28' : 'rgba(0,0,0,0.12)';
+    c.beginPath(); for (let k = 0; k < 10; k++) { const r = k % 2 ? 4.5 * U : 10 * U, a = k * Math.PI / 5 - Math.PI / 2; c.lineTo(sx + Math.cos(a) * r, sy + Math.sin(a) * r); } c.fill();
+  }
+  // The dotted line and a green start point.
+  c.strokeStyle = 'rgba(80,120,170,0.45)'; c.lineWidth = 12 * U; c.lineCap = 'round'; c.lineJoin = 'round';
+  c.setLineDash([2 * U, 18 * U]);
+  c.beginPath(); guide.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y))); c.stroke();
+  c.setLineDash([]);
+  const pulse = 1 + Math.sin(game.t * 5) * 0.15;
+  c.fillStyle = '#5cc15a'; c.beginPath(); c.arc(guide[0].x, guide[0].y, 11 * U * pulse, 0, TAU); c.fill();
+  // The finger line.
+  if (tr.stroke.length > 1) {
+    c.strokeStyle = '#ff7a3d'; c.lineWidth = 9 * U;
+    c.beginPath(); tr.stroke.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y))); c.stroke();
+  }
+  // As long as nothing is drawn: a hand shows the way along the line (every 2.5 s).
+  if (!tr.stroke.length) {
+    const k = (game.t % 2.5) / 2, p = guide[Math.min(guide.length - 1, Math.floor(clamp(k, 0, 1) * (guide.length - 1)))];
+    if (k <= 1) { c.globalAlpha = 0.8; drawHand(c, p.x + 6 * U, p.y + 16 * U, 36 * U); }
+  }
+  c.restore();
+}
+
+/** Small picture of a shape for the trick tiles. */
+function drawShapeIcon(c, shape, w, h) {
+  c.strokeStyle = '#4a7bd0'; c.lineWidth = 6; c.lineCap = 'round'; c.lineJoin = 'round';
+  c.beginPath();
+  if (shape === 'circle') c.arc(w / 2, h / 2, Math.min(w, h) * 0.32, 0, TAU);
+  else if (shape === 'zigzag') { for (let i = 0; i <= 5; i++) { const x = w / 2 + (i % 2 ? 16 : -16), y = lerp(h * 0.15, h * 0.85, i / 5); i ? c.lineTo(x, y) : c.moveTo(x, y); } }
+  else for (let i = 0; i <= 40; i++) { const k = i / 40, x = lerp(w * 0.1, w * 0.9, k), y = h / 2 - Math.sin(k * TAU * 1.5) * h * 0.22; i ? c.lineTo(x, y) : c.moveTo(x, y); }
+  c.stroke();
+}
+
+/** The choice of tricks: open ones with their shape and stars, the others with "?". */
+function buildTrainPick() {
+  const el = $('trainpick');
+  el.innerHTML = TRICKS.map((t, i) => {
+    const open = trickOpen(i), n = Math.min(S.tricks[t.id], TRICK_LEARN);
+    return '<button class="ttile' + (open ? '' : ' locked') + '" id="tt-' + t.id + '" type="button" aria-label="' + (open ? t.name : 'Noch nicht') + '">' +
+      (open ? '<canvas width="120" height="120"></canvas><span class="stars">' + '★'.repeat(n) + '<i>' + '★'.repeat(TRICK_LEARN - n) + '</i></span>' : '<b>?</b>') + '</button>';
+  }).join('');
+  TRICKS.forEach((t, i) => {
+    const b = $('tt-' + t.id);
+    if (trickOpen(i)) drawShapeIcon(b.querySelector('canvas').getContext('2d'), t.shape, 120, 120);
+    b.addEventListener('click', () => { if (trickOpen(i)) pickTrick(t.id); else { sound('refuse'); b.classList.remove('nope'); void b.offsetWidth; b.classList.add('nope'); } });
+  });
+}
+
+/** Is the screen point on the board? */
+function inTrainBoard(x, y) { const b = trainBoard(); return x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h; }
+
 /* ===== 99-debug.js ===== */
 /* 99-debug.js – window.__st: hooks for the tests (tests/*.js). The game itself never uses them.
  * Time travel: __st.setTime('2026-11-20T09:00') or __st.travel(hours) move now() (clock.offset). */
@@ -4757,6 +5074,7 @@ window.__st = {
   cameraTap, ownToday, cameraFull, deletePhoto, showPhoto, get storageOk() { return storageOk; }, checkStorage,
   IDLE_KINDS, FOREGROUND, stegoLook, get groundY() { return groundY; },
   easterSunday, seasonAt, seasonNow, holidayTap, treeHere, holidayHere, xmasState, easterState, xmasBoxPos, eggPos, bunnyPos, devGoHoliday, WEAR_EXTRA,
+  TRICKS, startTrain, pickTrick, trainBackToPick, finishTrace, judgeTrace, trickGuide, trainBoard, startTrick, learnedTricks, trickOpen,
   startWalk, arrive, goPlace, openPlaces, closePlaces, foundToday, walkLimitReached, firefliesNow, placePicture, walkFx,
   enterGame, showMenu, startMode, endMode, goToBed, offerFood, removePoop, tapStego, strokeStego, throwBall,
   eggPhase, eggProgress, eggRub, stageAt: () => stageAt(now()), growth: () => growthAt(now()), lifeDay: () => lifeDay(now()),
@@ -4779,7 +5097,7 @@ window.__st = {
   visible() {
     const v = id => !$(id).hidden;
     return { needs: v('needs'), actions: v('actions'), tray: v('tray'), close: v('close'), bed: v('act-bed'),
-      settings: v('settings'), playtray: v('playtray'), musicpad: v('musicpad'), wardrobe: v('wardrobe'), album: v('album'), photoview: v('photoview'), side: v('side'), devbadge: v('devbadge'), devpanel: v('devpanel'), devopen: v('s-devopen'), confirm: v('confirm'), rest: v('rest'), exit: v('m-exit'), menuGone: $('menu').classList.contains('gone') };
+      settings: v('settings'), playtray: v('playtray'), musicpad: v('musicpad'), wardrobe: v('wardrobe'), album: v('album'), photoview: v('photoview'), trainpick: v('trainpick'), trainback: v('train-back'), side: v('side'), devbadge: v('devbadge'), devpanel: v('devpanel'), devopen: v('s-devopen'), confirm: v('confirm'), rest: v('rest'), exit: v('m-exit'), menuGone: $('menu').classList.contains('gone') };
   },
 };
 

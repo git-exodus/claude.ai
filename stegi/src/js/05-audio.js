@@ -123,6 +123,9 @@ const SOUNDS = {
   drum: i => { if (i) { noise(0.12, { freq: 2500, q: 0.8, vol: 0.3 }); } else { tone(110, 0.35, { f2: 45, vol: 0.4, type: 'sine' }); noise(0.08, { freq: 300, vol: 0.2 }); } },
   // 0.7: a soft firework bang with a little crackle (quiet on purpose).
   firework: () => { noise(0.35, { freq: 400, q: 0.8, vol: 0.12, freq2: 150 }); [0.15, 0.22, 0.3, 0.37].forEach(at => noise(0.05, { at, freq: 3000, q: 1, vol: 0.05 })); },
+  // 0.8 training: applause after a trick, a soft belly flop.
+  applause: () => { for (let i = 0; i < 14; i++) noise(0.05, { at: i * 0.05 + Math.random() * 0.03, freq: 2200 + Math.random() * 1500, q: 1.2, vol: 0.12 }); tone(784, 0.2, { vol: 0.08, type: 'triangle' }); tone(1047, 0.35, { at: 0.18, vol: 0.08, type: 'triangle' }); },
+  flop: () => { noise(0.25, { freq: 160, q: 1, vol: 0.4, type: 'lowpass' }); tone(140, 0.2, { f2: 70, vol: 0.18, type: 'triangle' }); tone(600, 0.25, { at: 0.35, f2: 380, vol: 0.06, vib: 10 }); },
   // Camera click.
   shutter: () => { noise(0.05, { freq: 4000, q: 1, vol: 0.3 }); noise(0.07, { at: 0.08, freq: 3000, q: 1, vol: 0.25 }); },
   // Wrong hiding place: a soft "boing".

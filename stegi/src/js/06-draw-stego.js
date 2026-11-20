@@ -22,7 +22,8 @@ const PLATE_COUNT = [4, 5, 6, 7, 7];
  *           'sad'|'yawn'|'grin'|'closed'), headDown (0..1), wiggle (0..1), dirt (0..1),
  *           jump (px up), wag (0..1), wear ({ head, eyes, neck } item ids, 0.3),
  *           0.6: squash (-1 stretched .. 1 squashed), look ({ x, y } pupil offset in eye radii),
- *           brow ('happy'|'up'), blush (true = red cheeks) }
+ *           brow ('happy'|'up'), blush (true = red cheeks),
+ *           0.8: pivot ({ x, y, a } turn the body for tricks; y null = body middle) }
  * Returns screen positions: mouth {x, y}, head {x, y, r}, box {x, y, w, h} (for touches).
  */
 function drawStego(c, x, y, size, o) {
@@ -54,6 +55,9 @@ function drawStego(c, x, y, size, o) {
   sh.addColorStop(0, 'rgba(20,40,20,0.32)'); sh.addColorStop(1, 'rgba(20,40,20,0)');
   c.fillStyle = sh; c.save(); c.scale(1, 0.12); c.beginPath(); c.arc(8, 16, 100 * (o.jump ? 0.85 : 1), 0, TAU); c.fill(); c.restore();
   c.restore();
+
+  // 0.8 tricks: turn the whole body around a point (o.pivot = { x, y, a } in units; y null = middle of the body).
+  if (o.pivot) { const py = o.pivot.y == null ? cy : o.pivot.y; c.translate(o.pivot.x, py); c.rotate(o.pivot.a); c.translate(-o.pivot.x, -py); }
 
   // ---- tail with spikes ----
   const tailLen = lerp(38, 78, g), wagA = Math.sin(t * (o.wag ? 9 : 2.2)) * (o.wag ? 7 : 3);

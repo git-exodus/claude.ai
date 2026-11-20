@@ -44,6 +44,8 @@ function buildUI() {
   $('play-ball').innerHTML = iconSVG('fun'); $('play-ball').addEventListener('click', () => startMode('ball'));
   $('play-hide').innerHTML = iconSVG('hide'); $('play-hide').addEventListener('click', () => startMode('hide'));
   $('play-music').innerHTML = iconSVG('music'); $('play-music').addEventListener('click', () => startMode('music'));
+  $('play-train').innerHTML = iconSVG('train'); $('play-train').addEventListener('click', () => startMode('train'));
+  $('train-back').addEventListener('click', () => { sound('tap'); trainBackToPick(); });
   buildMusicPad();
   $('pl-close').addEventListener('click', closePlaces);
   $('walkbar').querySelector('.foot').innerHTML = iconSVG('walk');
@@ -76,8 +78,10 @@ function refreshUI() {
   $('act-bed').classList.add('glow');
   $('tray').hidden = !(inGame && game.mode === 'eat');
   $('playtray').hidden = !(inGame && game.mode === 'play');
+  $('trainpick').hidden = !(inGame && game.mode === 'train' && game.train && game.train.phase === 'pick');
+  $('train-back').hidden = !(inGame && game.mode === 'train' && game.train && game.train.phase === 'draw');
   $('musicpad').hidden = !(inGame && game.mode === 'music');
-  $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music'].includes(game.mode));
+  $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music', 'train'].includes(game.mode));
   refreshCamera();
   $('devbadge').hidden = !dev.on;
   if (dev.on) $('devbadge').textContent = 'TEST' + (dev.speed > 1 ? ' · ' + dev.speed + '×' : '');
@@ -218,6 +222,7 @@ window.__back = () => {
   if (!$('album').hidden) { closeAlbum(); return true; }
   if (!$('wardrobe').hidden) { closeWardrobe(); return true; }
   if (game.screen === 'game') {
+    if (game.mode === 'train' && game.train && game.train.phase === 'draw') { trainBackToPick(); return true; }
     if (!['idle', 'hatch', 'party'].includes(game.mode)) { endMode(); return true; }
     showMenu(); return true;
   }

@@ -5,7 +5,7 @@
 /** Screen and activity state.
  *  screen: 'menu' | 'game'.  trans: 0 = menu camera .. 1 = game camera (animated).
  *  mode:   'idle' | 'eat' | 'drink' | 'bath' | 'brush' | 'ball' | 'hatch' | 'party'
- *          | 'play' (menu: ball, hide, music) | 'hide' | 'music' (0.3). */
+ *          | 'play' (menu: ball, hide, music, training) | 'hide' | 'music' (0.3) | 'train' (0.8). */
 const game = {
   screen: 'menu', trans: 0, mode: 'idle', modeT: 0, t: 0,
   flying: null,      // food on its way to the mouth: { id, x, y, sx, sy, k }
@@ -33,6 +33,7 @@ const pet = {
   idle: null, idleNext: 6,   // 0.6: little things he does by himself ({ kind, t, dur }) and when the next one comes
   landT: 0,    // > 0 just after landing from a jump (squash)
   turnT: 0,    // 0.7: > 0 right after turning around (no new turn yet)
+  trick: null, // 0.8: trick being shown { kind, ok, idle, t, dur } (22-training.js)
   depth: 0,    // 0 = in front .. 1 = far back behind a hiding place
 };
 
@@ -120,6 +121,8 @@ function endMode() {
   game.held = null; game.flying = null; game.bath = null; game.brush = null;
   if (game.ball) game.ball = null;
   game.hide = null; pet.depth = 0; pet.danceT = 0;
+  if (game.mode === 'train') pet.trick = null;
+  game.train = null;
   pet.tx = 0;
   refreshUI();
 }
@@ -138,6 +141,7 @@ function startMode(m) {
   if (m === 'bath') game.bath = { phase: 'scrub', t: 0 };
   if (m === 'brush') game.brush = { x: W * 0.75, y: standY - 60 * U, progress: 0, done: false, t: 0, scrubT: 0 };
   if (m === 'hide') { game.mode = 'hide'; startHide(); refreshUI(); return; }
+  if (m === 'train') { startTrain(); return; }
   if (m === 'ball') game.ball = { x: Math.min(W - 40 * U, W / 2 + 140 * U), h: 0, vx: 0, vh: 0, rot: 0, carried: false, thrown: false };
   game.mode = m; game.modeT = 0;
   if (m !== 'ball') pet.tx = 0;
@@ -229,9 +233,12 @@ function updateIdle(dt, low) {
     if (pet.idle.t >= pet.idle.dur) { pet.idle = null; pet.idleNext = game.t + rnd(7, 14); }
     return;
   }
-  const busy = pet.moving || walkingNow() || game.visit || pet.jump > 0 || pet.happyT > 0 || pet.eatT > 0 || pet.yawnT > 0 || pet.giggleT > 0;
+  const busy = !!pet.trick || pet.moving || walkingNow() || game.visit || pet.jump > 0 || pet.happyT > 0 || pet.eatT > 0 || pet.yawnT > 0 || pet.giggleT > 0;
   if (busy || low.value < NEED_SAD || isSleepy(now())) { pet.idleNext = Math.max(pet.idleNext, game.t + 3); return; }
   if (game.t < pet.idleNext) return;
+  // 0.8: now and then a trick he has learned instead.
+  const learned = learnedTricks();
+  if (learned.length && Math.random() < IDLE_TRICK_CHANCE) { startTrick(learned[Math.floor(Math.random() * learned.length)], true, true); pet.idleNext = game.t + rnd(7, 14); return; }
   const kinds = Object.keys(IDLE_KINDS), kind = kinds[Math.floor(Math.random() * kinds.length)];
   pet.idle = { kind, t: 0, dur: IDLE_KINDS[kind] };
   if (kind === 'hop') pet.jumpV = 200 * U;
@@ -307,6 +314,7 @@ function updatePet(dt, sleeping) {
   pet.yawnT = Math.max(0, pet.yawnT - dt);
   pet.wiggle = Math.max(0, pet.wiggle - dt * 1.5);
   pet.danceT = Math.max(0, pet.danceT - dt);
+  updateTrick(dt);
   pet.landT = Math.max(0, pet.landT - dt);
   // Jumping.
   if (pet.jumpV || pet.jump > 0) {
@@ -476,6 +484,7 @@ function stegoLook() {
     eyes: 'open', mouth: 'smile', blink: pet.blink > 0 ? 1 : 0, jump: pet.jump, wiggle: pet.wiggle,
     dirt: clamp((50 - S.needs.clean) / 50, 0, 1), headDown: 0, wag: 0, wear: wearNow() };
   if (sleeping) { o.pose = 'lie'; o.eyes = 'closed'; o.mouth = 'closed'; o.blink = 0; return o; }
+  if (pet.trick) { applyTrickLook(o); return o; }   // 0.8: a trick wins over everything else
   if (pet.moving || walkingNow()) o.pose = 'walk';
   if (game.mode === 'drink') { o.headDown = smooth(Math.min(game.modeT, 2.6 - game.modeT) / 0.4); o.mouth = 'open'; o.eyes = 'happy'; }
   else if (pet.eatT > 0) { o.mouth = 'chew'; o.eyes = 'happy'; }
@@ -564,6 +573,7 @@ function drawWorld() {
   }
   ctx.restore();
 
+  if (game.mode === 'train') drawTrainBoard(ctx);   // 0.8: the board is drawn without the camera
   // A photo shows the picture as it is now (no finger things, no flash).
   if (game.photoPending) capturePhoto();
   if (game.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,' + game.flash.toFixed(2) + ')'; ctx.fillRect(0, 0, W, H); }

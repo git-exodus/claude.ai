@@ -1,7 +1,7 @@
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.7';
+const VERSION = '0.8';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -159,6 +159,23 @@ const MUSIC_FUN = 1.5;
 const WEATHER_SHARES = { sun: 0.45, clouds: 0.25, rain: 0.30 };
 const RAINBOW_FROM = 15 * 60;
 
+/** Training (0.8): draw the symbol, he does the trick. In this order; a trick is open once the one before
+ *  is learned (TRICK_LEARN successes). Learned tricks he sometimes does by himself (IDLE_TRICK_CHANCE of the
+ *  idle moments). shape: 'circle' | 'zigzag' (up and down) | 'wave' (left to right). */
+const TRICKS = [
+  { id: 'roll', shape: 'circle', name: 'Rolle' },
+  { id: 'stand', shape: 'zigzag', name: 'Hinterbeine' },
+  { id: 'hand', shape: 'wave', name: 'Vorderbeine' },
+];
+const TRICK_LEARN = 3;
+const TRAIN_FUN_OK = 8, TRAIN_FUN_FAIL = 3;
+const IDLE_TRICK_CHANCE = 0.2;
+/** Drawing check (generous for small children, but no scribbling): share of the dotted line the finger
+ *  must pass near, share of the finger's line that must stay near the dotted line, share of the finger's
+ *  steps that must go along the line in one direction (no zigzagging back and forth), allowed length of
+ *  the finger's line compared to the dotted line, and the distance that counts as "near" (in U). */
+const TRACE_COVER = 0.72, TRACE_ON_LINE = 0.8, TRACE_ORDER = 0.8, TRACE_LEN = [0.6, 2.2], TRACE_TOL = 28;
+
 /** Seconds the gear button must be held to open the parents' settings. */
 const GEAR_HOLD = 3;
 
@@ -244,6 +261,10 @@ const ICONS = {
     { d: 'M2 8h5l2-3h6l2 3h5v12H2z', fill: '#455a64' },
     { d: 'M8 13.5a4 4 0 1 0 8 0a4 4 0 1 0-8 0z', fill: '#90caf9', stroke: '#ffffff', w: 1.6 },
     { d: 'M18 10h2', stroke: '#ffd54f', w: 2 },
+  ],
+  train: [
+    { d: 'M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z', fill: '#ffca28', stroke: '#e0a800', w: 1.2 },
+    { d: 'M9 12.5l2 2 4-4.5', stroke: '#ffffff', w: 2 },
   ],
   close: [
     { d: 'M6 6l12 12M18 6L6 18', stroke: '#e5533d', w: 3.4 },

@@ -21,6 +21,7 @@ window.__st = {
   cameraTap, ownToday, cameraFull, deletePhoto, showPhoto, get storageOk() { return storageOk; }, checkStorage,
   IDLE_KINDS, FOREGROUND, stegoLook, get groundY() { return groundY; },
   easterSunday, seasonAt, seasonNow, holidayTap, treeHere, holidayHere, xmasState, easterState, xmasBoxPos, eggPos, bunnyPos, devGoHoliday, WEAR_EXTRA,
+  TRICKS, startTrain, pickTrick, trainBackToPick, finishTrace, judgeTrace, trickGuide, trainBoard, startTrick, learnedTricks, trickOpen,
   startWalk, arrive, goPlace, openPlaces, closePlaces, foundToday, walkLimitReached, firefliesNow, placePicture, walkFx,
   enterGame, showMenu, startMode, endMode, goToBed, offerFood, removePoop, tapStego, strokeStego, throwBall,
   eggPhase, eggProgress, eggRub, stageAt: () => stageAt(now()), growth: () => growthAt(now()), lifeDay: () => lifeDay(now()),
@@ -43,7 +44,7 @@ window.__st = {
   visible() {
     const v = id => !$(id).hidden;
     return { needs: v('needs'), actions: v('actions'), tray: v('tray'), close: v('close'), bed: v('act-bed'),
-      settings: v('settings'), playtray: v('playtray'), musicpad: v('musicpad'), wardrobe: v('wardrobe'), album: v('album'), photoview: v('photoview'), side: v('side'), devbadge: v('devbadge'), devpanel: v('devpanel'), devopen: v('s-devopen'), confirm: v('confirm'), rest: v('rest'), exit: v('m-exit'), menuGone: $('menu').classList.contains('gone') };
+      settings: v('settings'), playtray: v('playtray'), musicpad: v('musicpad'), wardrobe: v('wardrobe'), album: v('album'), photoview: v('photoview'), trainpick: v('trainpick'), trainback: v('train-back'), side: v('side'), devbadge: v('devbadge'), devpanel: v('devpanel'), devopen: v('s-devopen'), confirm: v('confirm'), rest: v('rest'), exit: v('m-exit'), menuGone: $('menu').classList.contains('gone') };
   },
 };
 

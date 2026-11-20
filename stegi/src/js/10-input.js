@@ -16,6 +16,10 @@ function onDown(e) {
     st: performance.now(), moved: 0, trail: [{ x: e.clientX, y: e.clientY, t: performance.now() }], ball: false });
   if (game.screen !== 'game' || game.trans < 1) return;
   if (game.mode === 'brush' && game.brush && !game.brush.done) { game.brush.x = e.clientX; game.brush.y = e.clientY; }
+  // 0.8 training: a line starts on the board.
+  if (game.mode === 'train' && game.train && game.train.phase === 'draw' && inTrainBoard(e.clientX, e.clientY)) {
+    game.train.drawing = true; game.train.stroke = [{ x: e.clientX, y: e.clientY }];
+  }
   if (game.mode === 'ball' && game.ball && !game.ball.carried) {
     touch.ball = dist(e.clientX, e.clientY, game.ball.x, ballY()) < 60 * U;
   }
@@ -34,6 +38,7 @@ function onMove(e) {
   touch.trail.push({ x: e.clientX, y: e.clientY, t: performance.now() });
   if (touch.trail.length > 8) touch.trail.shift();
   if (game.screen !== 'game' || game.trans < 1 || d === 0) return;
+  if (game.mode === 'train') { const tr = game.train; if (tr && tr.drawing && tr.stroke.length < 600) tr.stroke.push({ x: e.clientX, y: e.clientY }); return; }
   game.rubX = e.clientX; game.rubY = e.clientY;
   if (!hatched()) { if (eggHit(e.clientX, e.clientY)) game.rubbing = 0.25; return; }
   if (asleepNow()) return;
@@ -54,6 +59,7 @@ function onUp(e) {
     return;
   }
   if (game.trans < 1) return;
+  if (game.mode === 'train') { if (game.train && game.train.drawing) finishTrace(); return; }
   if (game.mode === 'ball' && touch.ball) {
     // Throw speed from the last ~0.12 s of the finger's movement.
     const tr = touch.trail, last = tr[tr.length - 1];

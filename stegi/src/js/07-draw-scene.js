@@ -324,7 +324,7 @@ function drawThought(c, x, y, icon, t) {
 /* ---------- particles ---------- */
 
 const parts = [];
-/** Adds a particle. kind: heart, sparkle, bubble, confetti, zzz, crumb, drop, shell, star, note. */
+/** Adds a particle. kind: heart, sparkle, bubble, confetti, zzz, crumb, drop, shell, star, note, dust. */
 function addPart(kind, x, y, o = {}) {
   if (parts.length > 260) parts.shift();
   parts.push({ kind, x, y, vx: o.vx ?? rnd(-20, 20) * U, vy: o.vy ?? rnd(-60, -30) * U, g: o.g ?? 0, life: 0,
@@ -363,6 +363,8 @@ function drawParts(c) {
       c.fillStyle = p.color; c.strokeStyle = p.color; c.lineWidth = p.size * 0.22;
       c.beginPath(); c.ellipse(0, 0, p.size * 0.55, p.size * 0.42, -0.4, 0, TAU); c.fill();
       c.beginPath(); c.moveTo(p.size * 0.48, -p.size * 0.1); c.lineTo(p.size * 0.48, -p.size * 1.6); c.quadraticCurveTo(p.size * 1.1, -p.size * 1.2, p.size * 1.0, -p.size * 0.7); c.stroke();
+    } else if (p.kind === 'dust') {   // 0.8: a little cloud of dust (belly flop)
+      c.fillStyle = 'rgba(190,160,120,0.55)'; c.beginPath(); c.arc(0, 0, p.size * (0.6 + k * 0.6), 0, TAU); c.fill();
     } else if (p.kind === 'drop') {
       c.fillStyle = '#7fd0ff'; c.beginPath(); c.ellipse(0, 0, p.size * 0.35, p.size * 0.6, 0, 0, TAU); c.fill();
     }

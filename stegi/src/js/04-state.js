@@ -35,6 +35,7 @@ function blankSave(t) {
     xmas: null,              // { year, opened: [3 x bool] }
     easter: null,            // { year, found: [5 x bool], bunny: 'none'|'shown'|'eaten' }
     extraWear: [],           // ids from WEAR_EXTRA he owns
+    tricks: { roll: 0, stand: 0, hand: 0 },   // 0.8: successful tries per trick (TRICK_LEARN = learned)
   };
 }
 
@@ -97,6 +98,7 @@ function sanitizeSave(o, t) {
   b.visitDay = num(o.visitDay, -1, 1e6, -1);
   b.visitAt = num(o.visitAt, 0, 1e14, 0);
   b.visitDone = o.visitDone === true;
+  for (const tr of TRICKS) b.tricks[tr.id] = Math.round(num(o.tricks && o.tricks[tr.id], 0, 999, 0));
   const bools = (a, n) => Array.from({ length: n }, (_, i) => !!(Array.isArray(a) && a[i]));
   b.xmas = o.xmas && typeof o.xmas.year === 'number' ? { year: o.xmas.year, opened: bools(o.xmas.opened, 3) } : null;
   b.easter = o.easter && typeof o.easter.year === 'number' ? { year: o.easter.year, found: bools(o.easter.found, EASTER_EGGS),

@@ -13,7 +13,7 @@
 here="$(cd "$(dirname "$0")" && pwd)"
 python3 "$here/../build.py" || exit 1
 fail=0
-for suite in core ui places extras dev photos apk design holidays; do
+for suite in core ui places extras dev photos apk design holidays training; do
   out="$(node "$here/suite-$suite.js" 2>&1)"
   echo "suite-$suite: $(grep -c '^PASS' <<<"$out") passed, $(grep -c '^FAIL' <<<"$out") failed — $(tail -1 <<<"$out" | cut -c1-200)"
   grep '^FAIL' <<<"$out" | cut -c1-300

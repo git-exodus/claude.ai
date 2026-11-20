@@ -18,8 +18,11 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at } = require(
 
   // ---------- idle moments ----------
   g = await ev(() => {
+    // Start clean: nothing going on, the next idle moment due in 8 s (as after an idle moment).
+    __st.pet.idle = null; __st.pet.trick = null; __st.pet.idleNext = __st.game.t + 8;
     const seen = {}; let first = null;
-    for (let i = 0; i < 30 * 200; i++) { __st.step(1 / 30); for (const k in __st.S.needs) __st.S.needs[k] = 90; const id = __st.pet.idle; if (id) { seen[id.kind] = true; if (first === null) first = i / 30; } }
+    // 600 s, so that all four kinds turn up (they are chosen at random).
+    for (let i = 0; i < 30 * 600; i++) { __st.step(1 / 30); for (const k in __st.S.needs) __st.S.needs[k] = 90; const id = __st.pet.idle; if (id) { seen[id.kind] = true; if (first === null) first = i / 30; } }
     return { kinds: Object.keys(seen).sort().join(), first };
   });
   R.ok(g.kinds === 'happy,hop,look,sniff' && g.first >= 6 && g.first < 20, 'Er macht von selbst etwas: schnuppern, staunen, freuen, hüpfen (erstes nach 6–20 s)', JSON.stringify(g));
