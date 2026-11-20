@@ -69,6 +69,7 @@ function onUp(e) {
     return;
   }
   if (game.mode === 'hide') { const i = hideSpotAt(x, y); if (i >= 0) hideTap(i); return; }
+  if (game.mode === 'idle' && holidayTap(x, y)) return;   // 0.7: Christmas boxes, Easter eggs, chocolate bunny
   if (giftWaiting() && game.mode === 'idle' && !asleepNow() && !S.walk) {
     const gp = giftPos();
     if (dist(x, y, gp.x, gp.y - 25 * U) < 45 * U) { openGift(); return; }

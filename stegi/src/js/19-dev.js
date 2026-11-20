@@ -121,7 +121,8 @@ function buildDev() {
     '<label class="row">Tag <input id="dv-day" type="range" min="1" max="' + GROWN_DAY + '" step="1"><b id="dv-dayval"></b></label>' +
     '<h3>Zeit</h3><p class="info" id="dv-clock"></p><div class="chips">' +
       DEV_SPEEDS.map(x => b('dv-sp-' + x, x + '×')).join('') + '</div><div class="chips">' +
-      b('dv-h1', '+1 Stunde') + b('dv-d1', '+1 Tag') + b('dv-t7', 'Morgen 7:00') + b('dv-t12', 'Mittag') + b('dv-t1945', 'Abend 19:45') + b('dv-t22', 'Nacht 22:00') + '</div>' +
+      b('dv-h1', '+1 Stunde') + b('dv-d1', '+1 Tag') + b('dv-t7', 'Morgen 7:00') + b('dv-t12', 'Mittag') + b('dv-t1945', 'Abend 19:45') + b('dv-t22', 'Nacht 22:00') + '</div><div class="chips">' +
+      b('dv-x18', '18.12.') + b('dv-x24', '24.12.') + b('dv-x31', '31.12.') + b('dv-easter', 'Ostern') + '</div>' +
     '<h3>Helfer</h3><div class="chips">' +
       b('dv-full', 'Alles voll') + b('dv-low', 'Fast leer') + b('dv-arrive', 'Sofort ankommen') + b('dv-places', 'Alle Orte') +
       b('dv-gifts', 'Alle Geschenke') + b('dv-visit', 'Besuch jetzt') + '</div>' +
@@ -135,6 +136,8 @@ function buildDev() {
   DEV_SPEEDS.forEach(x => on('dv-sp-' + x, () => devSpeed(x)));
   on('dv-h1', () => devJump(1)); on('dv-d1', () => devJump(24));
   on('dv-t7', () => devTimeOfDay(7 * 60)); on('dv-t12', () => devTimeOfDay(12 * 60));
+  on('dv-x18', () => devGoHoliday([12, 18])); on('dv-x24', () => devGoHoliday([12, 24]));
+  on('dv-x31', () => devGoHoliday([12, 31])); on('dv-easter', () => devGoHoliday('easter'));
   on('dv-t1945', () => devTimeOfDay(19 * 60 + 45)); on('dv-t22', () => devTimeOfDay(22 * 60));
   on('dv-full', () => devNeeds(100)); on('dv-low', () => devNeeds(15));
   on('dv-arrive', devArrive); on('dv-places', devAllPlaces); on('dv-gifts', devAllGifts); on('dv-visit', devVisit);

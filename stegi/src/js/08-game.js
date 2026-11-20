@@ -32,6 +32,7 @@ const pet = {
   danceT: 0,   // > 0 while he dances to the music
   idle: null, idleNext: 6,   // 0.6: little things he does by himself ({ kind, t, dur }) and when the next one comes
   landT: 0,    // > 0 just after landing from a jump (squash)
+  turnT: 0,    // 0.7: > 0 right after turning around (no new turn yet)
   depth: 0,    // 0 = in front .. 1 = far back behind a hiding place
 };
 
@@ -319,10 +320,17 @@ function updatePet(dt, sleeping) {
   // Walking towards tx.
   const speed = (game.mode === 'ball' || game.mode === 'hide' ? 260 : 120) * U, dx = pet.tx - pet.x;
   pet.moving = Math.abs(dx) > 3 * U && !sleeping;
+  pet.turnT = Math.max(0, pet.turnT - dt);
   if (pet.moving) {
-    pet.x += Math.sign(dx) * Math.min(Math.abs(dx), speed * dt);
-    pet.dir = Math.sign(dx);
-    pet.walk += dt * 12;
+    // He turns around at most every 0.4 s (0.7): before, he could flip every frame while chasing the ball.
+    const want = Math.sign(dx);
+    if (want !== pet.dir && pet.turnT > 0) { /* wait a moment before turning */ }
+    else {
+      if (want !== pet.dir) pet.turnT = 0.4;
+      pet.dir = want;
+      pet.x += want * Math.min(Math.abs(dx), speed * dt);
+      pet.walk += dt * 12;
+    }
   } else if (!['ball', 'hide', 'music'].includes(game.mode) && !(game.visit && game.visit.phase === 'stay') && !sleeping) pet.dir = 1;
   if (walkingNow()) pet.walk += dt * 6;   // slow steps on the way (the landscape scrolls, 13-travel)
   updateTravel(dt, sleeping);
@@ -430,9 +438,11 @@ function updateBall(dt) {
   if (b.x < r) { b.x = r; b.vx = Math.abs(b.vx) * 0.7; sound('boing'); }
   if (b.x > W - r) { b.x = W - r; b.vx = -Math.abs(b.vx) * 0.7; sound('boing'); }
   if (b.thrown) {
-    // Run so that the mouth reaches the ball.
-    const reach = (info.mouth.x - (W / 2 + pet.x));
-    const side = b.x > W / 2 + pet.x ? 1 : -1;
+    // Run so that the mouth reaches the ball. Which side of him the ball is on is decided once per throw
+    // and only changed when the ball is clearly on the other side (0.7: no more flickering left/right).
+    const reach = Math.abs(info.mouth.x - (W / 2 + pet.x)), rel = b.x - (W / 2 + pet.x);
+    if (!b.side || (Math.sign(rel) !== b.side && Math.abs(rel) > reach * 1.3)) b.side = Math.sign(rel) || 1;
+    const side = b.side;
     pet.tx = clamp(b.x - W / 2 - side * Math.abs(reach), -W / 2 + 60 * U, W / 2 - 60 * U);
     const slow = Math.abs(b.vx) < 90 * U && b.h < 25 * U;
     if (slow && Math.abs(info.mouth.x - b.x) < 30 * U) { b.carried = true; sound('happy'); }
@@ -447,6 +457,7 @@ function throwBall(vx, vy) {
   if (sp < 150 * U) { vx = (b.x > W / 2 + pet.x ? 1 : -1) * 260 * U; vy = -320 * U; }
   b.vx = clamp(vx, -900 * U, 900 * U); b.vh = clamp(-vy, 150 * U, 900 * U);
   b.thrown = true;
+  b.side = 0;   // chase side is chosen fresh for this throw
   sound('boing');
 }
 
@@ -521,6 +532,8 @@ function drawWorld() {
     // Hide and seek: far back he is drawn smaller and higher up (behind a hiding place).
     const hd = game.hide, depth = hd ? pet.depth : 0;
     const sy = lerp(standY, groundY + 76 * U, smooth(depth)), ss = stegoSize * lerp(1, hd ? hd.sMin : 1, smooth(depth));
+    const season = seasonNow();
+    if (treeHere()) drawXmasTree(ctx, sky.light, game.t);   // 0.7 holidays (20-holidays.js)
     if (hd && hd.phase === 'found') drawHideSpots(ctx);
     // The present waits where he stops: not shown on the way (it would stand still on the moving ground, 0.6.1).
     if (giftWaiting() && game.mode === 'idle' && !asleepNow() && !S.walk) { const gp = giftPos(); drawGift(ctx, gp.x, gp.y, U, game.t); }
@@ -528,6 +541,8 @@ function drawWorld() {
     game.stegoInfo = drawStego(ctx, sx, sy, ss, look);
     if (hd && hd.phase !== 'found') drawHideSpots(ctx);
     if (game.visit && (game.visit.kind === 'ptero' || game.visit.kind === 'butterflies')) drawVisitor(ctx, game.visit, game.t);
+    if (holidayHere() && season.easter) drawEaster(ctx, game.t);
+    if (treeHere() && season.gifts) drawXmasBoxes(ctx, game.t);
     drawForeground(ctx, placeId, game.t, sky.light, placeId === 'travel' ? walkFx.scroll : 0);   // grass, flowers ... in front of him (0.6; scrolls on the way since 0.6.1)
     drawGroundLife(ctx, placeId, game.t, sky, weather);
     if (game.mode === 'bath') {

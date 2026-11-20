@@ -59,8 +59,15 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   await ev(() => __st.step(0.3));
   g = await ev(() => ({ seen: __st.S.giftSeen, wear: __st.S.wear, waiting: __st.giftWaiting() }));
   R.ok(g.seen === 1 && g.wear.head === 'bow' && !g.waiting, 'Geschenk antippen: Schleife ist an', JSON.stringify(g));
-  g = await ev(() => { __st.S.hatchDay -= 27; __st.S.stageSeen = 4; __st.step(0.2); const n = __st.wearUnlocked(); let opened = 0; while (__st.giftWaiting()) { __st.openGift(); opened++; } return { n, opened, wear: __st.S.wear }; });
-  R.ok(g.n === 12 && g.opened === 11 && g.wear.head === 'wizard' && g.wear.eyes === 'glasses' && g.wear.neck === 'bowtie', 'Tag 28: alle 12 Dinge ausgepackt', JSON.stringify(g));
+  g = await ev(() => {
+    __st.S.hatchDay -= 27; __st.S.stageSeen = 4; __st.step(0.2);
+    const n = __st.wearUnlocked(), sameDay = __st.giftWaiting();
+    let opened = 0;
+    // 0.7: only one present a day – simulate the following days by forgetting which day the last one came.
+    for (let d = 0; d < 20 && __st.S.giftSeen < 12; d++) { __st.S.giftDay = -1; if (__st.giftWaiting()) { __st.openGift(); opened++; } }
+    return { n, sameDay, opened, wear: __st.S.wear };
+  });
+  R.ok(g.n === 12 && !g.sameDay && g.opened === 11 && g.wear.head === 'wizard' && g.wear.eyes === 'glasses' && g.wear.neck === 'bowtie', 'Tag 28: 12 Dinge fällig, aber nur 1 Geschenk pro Tag – nach 11 weiteren Tagen alle ausgepackt', JSON.stringify(g));
   await ev(() => { __st.step(3.5); __st.game.autoPhotoAt = 0; });
   await page.click('#b-wear');
   g = await ev(() => ({ open: __st.visible().wardrobe, tiles: document.querySelectorAll('#wearlist .wtile').length, on: document.querySelectorAll('#wearlist .wtile.on').length, locked: document.querySelectorAll('#wearlist .locked').length }));

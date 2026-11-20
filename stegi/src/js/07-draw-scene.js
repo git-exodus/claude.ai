@@ -73,6 +73,8 @@ function drawBackground(c, sky, time, placeId = 'meadow', weather = 'sun', scrol
   if (weather === 'rainbow' && L > 0.5) drawRainbow(c, W * 0.5, groundY + 10 * U, W * 0.62, 0.55 * (L - 0.5) * 2);
 
   // Clouds drift slowly; more and darker when the weather is bad.
+  // 0.7: fireworks on New Year's Eve (behind clouds and hills; only in the live picture, not in place pictures).
+  if (c === ctx && hatched() && seasonNow().fireworks) drawFireworks(c, time, L);
   if (P.clouds !== false) {
     const n = grey ? 6 : 4, col = grey ? mix('#9aa4ae', '#ffffff', 0.3) : '#ffffff';
     c.fillStyle = col;

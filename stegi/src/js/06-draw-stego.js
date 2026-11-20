@@ -363,6 +363,25 @@ function drawWear(c, w, g) {
     c.quadraticCurveTo(tx, top - S_(4), tx - S_(26), top + S_(4)); c.fill(); c.stroke();
     c.fillStyle = '#ffffff'; c.beginPath(); c.arc(tx, top - S_(9), S_(4), 0, TAU); c.fill();
     c.fillStyle = '#263238'; c.fillRect(tx - S_(2.4), top - S_(9), S_(1.6), S_(1.6)); c.fillRect(tx + S_(0.8), top - S_(9), S_(1.6), S_(1.6));
+  } else if (w.head === 'santa') {   // 0.7 Christmas hat
+    c.save(); c.translate(tx, top + S_(4)); c.rotate(-0.2);
+    c.fillStyle = '#e53935';
+    c.beginPath(); c.moveTo(-S_(17), 0); c.quadraticCurveTo(-S_(10), -S_(30), S_(6), -S_(30)); c.quadraticCurveTo(S_(20), -S_(28), S_(24), -S_(14)); c.lineTo(S_(17), 0); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#ffffff';
+    c.beginPath(); c.ellipse(0, 0, S_(19), S_(5.5), 0, 0, TAU); c.fill(); c.stroke();
+    c.beginPath(); c.arc(S_(24), -S_(13), S_(5), 0, TAU); c.fill(); c.stroke();
+    c.restore();
+  } else if (w.head === 'antlers') {   // 0.7 reindeer antlers with a red nose
+    c.strokeStyle = '#8d6e63'; c.lineWidth = 3.4;
+    for (const sd of [-1, 1]) {
+      const bx = tx + sd * S_(8), by = top + S_(2);
+      c.beginPath(); c.moveTo(bx, by); c.quadraticCurveTo(bx + sd * S_(4), by - S_(16), bx + sd * S_(12), by - S_(26));
+      c.moveTo(bx + sd * S_(3), by - S_(10)); c.lineTo(bx + sd * S_(12), by - S_(12));
+      c.moveTo(bx + sd * S_(8), by - S_(20)); c.lineTo(bx + sd * S_(2), by - S_(28)); c.stroke();
+    }
+    c.fillStyle = '#e53935'; c.strokeStyle = '#2c343b'; c.lineWidth = 2;
+    c.beginPath(); c.arc(hx + S_(32), hy + S_(1), S_(4.5), 0, TAU); c.fill(); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.6)'; c.beginPath(); c.arc(hx + S_(30.5), hy - S_(0.5), S_(1.4), 0, TAU); c.fill();
   } else if (w.head === 'wizard') {
     c.save(); c.translate(tx, top + S_(3)); c.rotate(-0.18);
     c.fillStyle = '#3949ab';

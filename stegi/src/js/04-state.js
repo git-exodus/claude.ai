@@ -29,7 +29,12 @@ function blankSave(t) {
     // 0.3: what he wears per slot (null = nothing), how many presents were opened, today's visit.
     wear: { head: null, eyes: null, neck: null },
     giftSeen: 0,
+    giftDay: -1,             // 0.7: calendar day the last present was opened (one a day)
     visitDay: -1, visitAt: 0, visitDone: false,
+    // 0.7 holidays: Christmas presents of the season, Easter eggs of the year, holiday things to wear.
+    xmas: null,              // { year, opened: [3 x bool] }
+    easter: null,            // { year, found: [5 x bool], bunny: 'none'|'shown'|'eaten' }
+    extraWear: [],           // ids from WEAR_EXTRA he owns
   };
 }
 
@@ -81,14 +86,21 @@ function sanitizeSave(o, t) {
   b.walk = o.walk && typeof o.walk.sec === 'number' ? { sec: num(o.walk.sec, 0, WALK_SECONDS, 0) } : null;
   b.newPlace = b.found.some(f => f.id === o.newPlace) ? o.newPlace : null;
   b.giftSeen = Math.round(num(o.giftSeen, 0, WEAR_ITEMS.length, 0));
-  const opened = WEAR_ITEMS.slice(0, b.giftSeen).map(w => w.id);
+  b.giftDay = num(o.giftDay, -1, 1e6, -1);
+  b.extraWear = Array.isArray(o.extraWear) ? WEAR_EXTRA.map(w => w.id).filter(id => o.extraWear.includes(id)) : [];
+  const opened = WEAR_ITEMS.slice(0, b.giftSeen).map(w => w.id).concat(b.extraWear);
+  const slotOf = id => (WEAR_ITEMS.find(w => w.id === id) || WEAR_EXTRA.find(w => w.id === id) || {}).slot;
   for (const slot of ['head', 'eyes', 'neck']) {
     const id = o.wear && o.wear[slot];
-    b.wear[slot] = opened.includes(id) && wearItem(id).slot === slot ? id : null;
+    b.wear[slot] = opened.includes(id) && slotOf(id) === slot ? id : null;
   }
   b.visitDay = num(o.visitDay, -1, 1e6, -1);
   b.visitAt = num(o.visitAt, 0, 1e14, 0);
   b.visitDone = o.visitDone === true;
+  const bools = (a, n) => Array.from({ length: n }, (_, i) => !!(Array.isArray(a) && a[i]));
+  b.xmas = o.xmas && typeof o.xmas.year === 'number' ? { year: o.xmas.year, opened: bools(o.xmas.opened, 3) } : null;
+  b.easter = o.easter && typeof o.easter.year === 'number' ? { year: o.easter.year, found: bools(o.easter.found, EASTER_EGGS),
+    bunny: ['none', 'shown', 'eaten'].includes(o.easter.bunny) ? o.easter.bunny : 'none' } : null;
   return b;
 }
 

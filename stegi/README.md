@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.6.1.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.7.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **221 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 36, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12).
+Erwartet: **243 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 36, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -70,6 +70,7 @@ stegi/
     ├── suite-photos.js    0.5: Fototagebuch (2 pro Tag), Meilensteine, Löschen, Testalbum, Gerät ohne Speicher
     ├── suite-apk.js       0.5.1: wie in der APK (mit Beenden-Knopf): kein Knopf verdeckt, nur Beenden im Menü schließt
     ├── suite-design.js    0.6: Horizont, Kleinigkeiten (schnuppern, staunen, freuen, hüpfen), Stauchen/Strecken, Vordergrund aller Orte
+    ├── suite-holidays.js  0.7: Ostern-Datum, Baum/Geschenke/Feuerwerk/Eier nach Datum, 1 Geschenk pro Tag, Ball ohne Flackern
     ├── suite-dev.js       0.4: Testmodus (eigener Spielstand, Stufen, Zeitraffer, Sprünge, Helfer, echter Stand bleibt unberührt)
     └── make-icon.js       kein Test: zeichnet das App-Symbol mit dem Spielcode neu
 ```
@@ -144,9 +145,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.6.1';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.6.1` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 8`, `versionName '0.6.1'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.7';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.7` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 9`, `versionName '0.7'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -174,6 +175,7 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 | `16-visit.js` | Besuch planen und ablaufen lassen, die 5 Besucher zeichnen |
 | `17-wardrobe.js` | Geschenke, Kleiderschrank, automatische Kleidung je Ort (`wearNow`) |
 | `18-photos.js` | Kamera (2 pro Tag), Meilenstein-Fotos, Speichern (Fehler behalten das Foto), Album mit zwei Reitern, Löschen durch Halten |
+| `20-holidays.js` | 0.7: Feiertage nach Handy-Datum: Weihnachtsbaum, Weihnachtsgeschenke, Silvester-Feuerwerk, Ostereier, Osterformel |
 | `19-dev.js` | Testmodus für Eltern: Wechsel auf den Test-Spielstand, Zeitraffer, Stufen, Helfer, Test-Fenster |
 | `11-main.js` | `resize`, Bildschleife, Speichern alle 5 s und beim Verlassen, `start()` |
 | `99-debug.js` | `window.__st` für die Tests (wird vom Spiel nicht benutzt), ruft `start()` auf |
@@ -300,6 +302,9 @@ Wolken und Regen wird der Himmel grauer, die Sonne verschwindet.
 | 11 | Sonnenhut | Kopf | | 26 | Piratenhut | Kopf |
 | 13 | Brille | Augen | | 28 | Zauberhut | Kopf |
 
+**Höchstens ein Geschenk pro Kalendertag** (seit 0.7, `S.giftDay`): Sind mehrere fällig (Tage nicht reingeschaut,
+Zeitraffer), kommt jeden Tag eins, bis alle da sind.
+
 Pro Platz ein Teil. Am Strand und in der Wüste trägt er automatisch eine Sonnenbrille, im Schnee und
 im Eisland einen Schal, aber nur wenn der Platz frei ist (eigene Sachen haben Vorrang).
 
@@ -360,6 +365,19 @@ unterbricht es. Beim Streicheln und Kichern zeigt er jetzt auch Bäckchen und Au
 
 Größe: Damit das rundlichere Baby so lang bleibt wie vereinbart (38,5 % der Endgröße), ist `SIZE_MIN` jetzt 0,42.
 
+### 6.15 Feiertage (seit 0.7)
+
+Erkannt an der Uhr des Handys (kein Internet). Ostersonntag rechnet `easterSunday` (Gauß/Meeus) aus.
+
+| Wann | Was |
+|---|---|
+| 18.12. – 6.1. | Geschmückter Tannenbaum links neben ihm (Kugeln leuchten nachts, Stern), überall außer Höhle, Wolke und unterwegs |
+| ab 24.12. (bis 6.1.) | 3 Geschenke unter dem Baum: Weihnachtsmütze und Rentier-Geweih (sofort auf, danach im Kleiderschrank), Zuckerstange (Essen +30). Jedes Jahr neu, die Sachen bleiben |
+| 31.12. ganztags, 1.1. bis 12:00 | Feuerwerk am Himmel (alle 0,6 s eine Rakete, tagsüber etwas zarter); leises Knallen nur im Spiel und wenn er wach ist; er blinzelt beim Knall und staunt manchmal nach oben |
+| Karfreitag – Ostermontag | 5 bunte Eier im Bild versteckt (zum Teil im Gras); alle gefunden = Schokohase, antippen = er frisst ihn (Essen +30). Jedes Jahr neu |
+
+Test-Werkzeuge: Knöpfe „18.12.“, „24.12.“, „31.12.“, „Ostern“ springen mit der Testuhr dorthin (10:00 Uhr).
+
 ---
 
 ## 7. Spielstand
@@ -408,6 +426,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.7 | Höchstens 1 Geschenk pro Tag; Ballspielen ohne Flackern (dreht sich höchstens alle 0,4 s um, Ballseite einmal pro Wurf); Feiertage: Weihnachtsbaum ab 18.12., Geschenke am 24.12. (Mütze, Geweih, Zuckerstange), Silvester-Feuerwerk, Ostereiersuche mit Schokohase |
 | 0.6.1 | Unterwegs wandern Gras und Blumen im Vordergrund mit dem Weg aus dem Bild (standen still); das Geschenk wartet unterwegs unsichtbar und liegt nach dem Ankommen wieder da |
 | 0.6 | Neues Aussehen: Stego mit Licht und Schatten, größere Augen, Augenbrauen, Bäckchen, rundlicheres Baby, Stauchen/Strecken; Kleinigkeiten von selbst (schnuppern, staunen, freuen, hüpfen); höherer Horizont; Sonnenstrahlen, Vögel; Vordergrund für alle 30 Orte; Schmetterlinge und springende Fische |
 | 0.5.1 | Fehler behoben: In der APK lag der unsichtbare Beenden-Knopf über Trinken, Baden, Spielen und Zähneputzen und schloss die App; neuer Test im APK-Modus |
@@ -421,7 +440,7 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Alles bisher Vereinbarte ist gebaut (0.1–0.6). Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
+Alles bisher Vereinbarte ist gebaut (0.1–0.7). Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):
 - Benachrichtigungen am Handy („Stegi hat Hunger“, „Stegi ist angekommen“) – braucht Android-Code.

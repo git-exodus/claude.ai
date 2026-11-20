@@ -4,8 +4,9 @@
 
 /** Number of things whose day has come (by day of life). */
 function wearUnlocked() { const d = lifeDay(now()); return WEAR_ITEMS.filter(w => w.day <= d).length; }
-/** Is a present waiting to be opened? */
-const giftWaiting = () => hatched() && S.giftSeen < wearUnlocked();
+/** Is a present waiting to be opened? At most one a calendar day (0.7): when several are due (days without
+ *  looking in, fast time in test mode), one comes each day until he has them all. */
+const giftWaiting = () => hatched() && S.giftSeen < wearUnlocked() && S.giftDay !== dayIndex(now());
 
 /** Where the present lies on the ground (to the right of him). */
 function giftPos() {
@@ -18,6 +19,7 @@ function openGift() {
   if (!giftWaiting()) return;
   const item = WEAR_ITEMS[S.giftSeen];
   S.giftSeen++;
+  S.giftDay = dayIndex(now());
   S.wear[item.slot] = item.id;
   save();
   sound('fanfare');
@@ -51,13 +53,16 @@ function openWardrobe() {
   if (!hatched()) return;
   sound('tap');
   const list = $('wearlist');
-  list.innerHTML = WEAR_ITEMS.map((w, i) => '<button class="wtile' + (i < S.giftSeen ? '' : ' locked') + (S.wear[w.slot] === w.id ? ' on' : '') +
+  // The 12 presents (not yet opened ones as a box) and, at the end, holiday things he owns (0.7).
+  const items = WEAR_ITEMS.map((w, i) => ({ ...w, owned: i < S.giftSeen }))
+    .concat(WEAR_EXTRA.filter(w => S.extraWear.includes(w.id)).map(w => ({ ...w, owned: true })));
+  list.innerHTML = items.map(w => '<button class="wtile' + (w.owned ? '' : ' locked') + (S.wear[w.slot] === w.id ? ' on' : '') +
     '" id="wt-' + w.id + '" type="button" aria-label="Verkleiden"><canvas width="150" height="120"></canvas></button>').join('');
-  WEAR_ITEMS.forEach((w, i) => {
+  items.forEach(w => {
     const el = $('wt-' + w.id), c = el.querySelector('canvas').getContext('2d');
-    if (i < S.giftSeen) drawWearPreview(c, w, 150, 120); else { c.save(); c.scale(1.2, 1.2); drawGift(c, 62, 92, 1.1, 0); c.restore(); }
+    if (w.owned) drawWearPreview(c, w, 150, 120); else { c.save(); c.scale(1.2, 1.2); drawGift(c, 62, 92, 1.1, 0); c.restore(); }
     el.addEventListener('click', () => {
-      if (i >= S.giftSeen) { sound('refuse'); el.classList.remove('nope'); void el.offsetWidth; el.classList.add('nope'); return; }
+      if (!w.owned) { sound('refuse'); el.classList.remove('nope'); void el.offsetWidth; el.classList.add('nope'); return; }
       S.wear[w.slot] = S.wear[w.slot] === w.id ? null : w.id;   // tap again = take it off
       sound(S.wear[w.slot] ? 'happy' : 'tap');
       save();
