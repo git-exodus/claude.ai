@@ -29,18 +29,27 @@ function updateVisit(dt, sleeping) {
   }
   v.t += dt;
   const box = game.stegoInfo ? game.stegoInfo.box : { x: W * 0.2, w: W * 0.6 };
-  const side = v.side, targetX = side > 0 ? Math.min(W - 45 * U, box.x + box.w + 40 * U) : Math.max(45 * U, box.x - 40 * U);
+  const side = v.side, walking = walkingNow();
+  // 0.8.1: if he sets off on a walk, the friend walks along in front of him, at his hind legs.
+  v.along = walking && v.phase !== 'out';
+  const targetX = v.along ? box.x + box.w * 0.32
+    : side > 0 ? Math.min(W - 45 * U, box.x + box.w + 40 * U) : Math.max(45 * U, box.x - 40 * U);
+  // 0.8.1: a big stego steps a little aside (up to 12 % of the screen when grown), so the friend can be seen.
+  if (game.mode === 'idle' && !sleeping) pet.tx = walking || v.phase === 'out' ? 0 : -side * W * 0.12 * growthAt(now());
   if (v.phase === 'in') {
     v.x += Math.sign(targetX - v.x) * Math.min(Math.abs(targetX - v.x), 110 * U * dt);
     v.walk += dt * 10;
-    if (Math.abs(targetX - v.x) < 2) { v.phase = 'stay'; v.t = 0; sound('hello'); pet.giggleT = 1; }
+    if (Math.abs(targetX - v.x) < 2 * U + 2) { v.phase = 'stay'; v.t = 0; sound('hello'); pet.giggleT = 1; }
   } else if (v.phase === 'stay') {
+    // Stay next to him (or at his hind legs while walking); follow when he moves.
+    v.x += Math.sign(targetX - v.x) * Math.min(Math.abs(targetX - v.x), 160 * U * dt);
+    if (v.along) v.walk += dt * 6;
     // Every 3 seconds both hop and hearts fly.
     if (Math.floor(v.t / 3) !== Math.floor((v.t - dt) / 3)) {
-      v.hop = 0.5; if (pet.jump === 0 && game.mode === 'idle') pet.jumpV = 150 * U;
+      v.hop = 0.5; if (pet.jump === 0 && game.mode === 'idle' && !walking) pet.jumpV = 150 * U;
       addPart('heart', (v.x + W / 2) / 2, standY - 140 * U, { size: 8 });
     }
-    if (game.mode === 'idle' && !sleeping) pet.dir = side;   // he looks at his friend
+    if (game.mode === 'idle' && !sleeping && !walking) pet.dir = side;   // he looks at his friend
     if (v.t >= VISIT_SECONDS || sleeping) {
       v.phase = 'out'; v.t = 0;
       addNeed('love', VISIT_LOVE); addNeed('fun', VISIT_FUN); save();
@@ -63,8 +72,9 @@ function startVisit(kind) {
 /** Draws the visitor (and lets the click on it count as a little hello). */
 function drawVisitor(c, v, time) {
   const hop = v.hop > 0 ? Math.sin(v.hop / 0.5 * Math.PI) * 26 * U : 0;
-  const y = standY - hop, step = Math.sin(v.walk) * 4 * U;
-  c.save(); c.translate(v.x, y); c.scale(v.phase === 'out' ? v.side : -v.side, 1);
+  // Walking along: in front of him (a bit lower = closer), facing the way he walks (right).
+  const y = standY - hop + (v.along ? 12 * U : 0), step = Math.sin(v.walk) * 4 * U;
+  c.save(); c.translate(v.x, y); c.scale(v.along ? 1 : v.phase === 'out' ? v.side : -v.side, 1);
   c.lineWidth = 2.4 * U; c.lineJoin = 'round'; c.lineCap = 'round';
   const s = U;
   const eye = (x, yy, r) => { c.fillStyle = '#fff'; c.beginPath(); c.arc(x, yy, r, 0, TAU); c.fill(); c.stroke(); c.fillStyle = '#222'; c.beginPath(); c.arc(x + r * 0.25, yy, r * 0.55, 0, TAU); c.fill(); };

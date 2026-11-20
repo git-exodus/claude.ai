@@ -134,6 +134,21 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   g = await ev(() => { const out = []; for (const k of __st.VISITORS) { __st.game.visit = null; __st.startVisit(k); __st.step(4); out.push(k + ':' + __st.game.visit.phase); } __st.game.visit = null; return out.join(); });
   R.ok(!/in$|in,/.test(g), 'Alle 5 Besucher (T-Rex, Flugsaurier, Triceratops, Schildkröte, Schmetterlinge) kommen an', g);
 
+  // ---------- 0.8.1: a big stego steps aside, the friend walks along ----------
+  g = await ev(() => {
+    const keep = __st.S.hatchDay; __st.S.hatchDay = __st.dayIndex(__st.now()) - 29; __st.S.stageSeen = 4; __st.step(0.3);
+    __st.game.visit = null; __st.startVisit('trex'); __st.game.visit.side = 1; __st.step(6);
+    const shifted = __st.pet.x, W = __st.pos().W;
+    __st.startWalk(); __st.step(3);
+    const v = __st.game.visit, box = __st.pos().box, hind = box.x + box.w * 0.32;
+    const r = { shifted: shifted / W, along: v.along, nearHind: Math.abs(v.x - hind) < 12, back: __st.pet.x };
+    __st.step(2); r.stillNear = Math.abs(__st.game.visit.x - (__st.pos().box.x + __st.pos().box.w * 0.32)) < 12;
+    __st.S.walk = null; __st.game.visit = null; __st.S.hatchDay = keep; __st.S.stageSeen = __st.stageAt(); __st.step(3);
+    return r;
+  });
+  R.ok(g.shifted < -0.1 && g.shifted > -0.13, 'Großer Stego rückt beim Besuch ein Stück zur Seite (12 %)', JSON.stringify(g));
+  R.ok(g.along && g.nearHind && g.stillNear && Math.abs(g.back) < 2, 'Er wandert los: der Besuch läuft vor ihm an den Hinterbeinen mit', JSON.stringify(g));
+
   // ---------- play menu ----------
   await ev(() => __st.step(0.6));
   await page.click('#act-play');

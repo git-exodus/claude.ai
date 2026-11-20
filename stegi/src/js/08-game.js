@@ -546,10 +546,9 @@ function drawWorld() {
     if (hd && hd.phase === 'found') drawHideSpots(ctx);
     // The present waits where he stops: not shown on the way (it would stand still on the moving ground, 0.6.1).
     if (giftWaiting() && game.mode === 'idle' && !asleepNow() && !S.walk) { const gp = giftPos(); drawGift(ctx, gp.x, gp.y, U, game.t); }
-    if (game.visit && game.visit.kind !== 'ptero' && game.visit.kind !== 'butterflies') drawVisitor(ctx, game.visit, game.t);
     game.stegoInfo = drawStego(ctx, sx, sy, ss, look);
     if (hd && hd.phase !== 'found') drawHideSpots(ctx);
-    if (game.visit && (game.visit.kind === 'ptero' || game.visit.kind === 'butterflies')) drawVisitor(ctx, game.visit, game.t);
+    if (game.visit) drawVisitor(ctx, game.visit, game.t);   // 0.8.1: every visitor in front of him
     if (holidayHere() && season.easter) drawEaster(ctx, game.t);
     if (treeHere() && season.gifts) drawXmasBoxes(ctx, game.t);
     drawForeground(ctx, placeId, game.t, sky.light, placeId === 'travel' ? walkFx.scroll : 0);   // grass, flowers ... in front of him (0.6; scrolls on the way since 0.6.1)
