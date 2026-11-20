@@ -244,7 +244,7 @@ svg { display: block; width: 100%; height: 100%; }
       <button class="big alt" id="s-devopen" type="button" hidden>Test-Werkzeuge öffnen</button>
       <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
       <button class="big" id="s-close" type="button">Schließen</button>
-      <p id="credit">@made by Brownii (Claude.ai) · v0.12.2</p>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.12.3</p>
     </div>
   </div>
   <div id="confirm" class="ov" hidden>
@@ -369,7 +369,7 @@ function mix(c1, c2, k) {
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.12.2';
+const VERSION = '0.12.3';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -1151,7 +1151,8 @@ const SOUNDS = {
   tap: () => { tone(660, 0.08, { vol: 0.06, type: 'triangle' }); },
   // 0.3: xylophone bar i (0..5) and drum i (0 = big boom, 1 = small tap) for the music game.
   xylo: i => { const f = midi([72, 74, 76, 79, 81, 84][i] || 72); tone(f, 0.9, { vol: 0.16 }); tone(f * 4, 0.25, { vol: 0.04 }); },
-  drum: i => { if (i) { noise(0.12, { freq: 2500, q: 0.8, vol: 0.3 }); } else { tone(110, 0.35, { f2: 45, vol: 0.4, type: 'sine' }); noise(0.08, { freq: 300, vol: 0.2 }); } },
+  // 0.12.3: big drum 50 % louder (tone 0.4 -> 0.6, noise 0.2 -> 0.3); it was hard to hear.
+  drum: i => { if (i) { noise(0.12, { freq: 2500, q: 0.8, vol: 0.3 }); } else { tone(110, 0.35, { f2: 45, vol: 0.6, type: 'sine' }); noise(0.08, { freq: 300, vol: 0.3 }); } },
   // 0.7: a soft firework bang with a little crackle (quiet on purpose).
   firework: () => { noise(0.35, { freq: 400, q: 0.8, vol: 0.12, freq2: 150 }); [0.15, 0.22, 0.3, 0.37].forEach(at => noise(0.05, { at, freq: 3000, q: 1, vol: 0.05 })); },
   // 0.8 training: applause after a trick, a soft belly flop.
@@ -3518,7 +3519,7 @@ function buildUI() {
   $('play-bubbles').innerHTML = iconSVG('bubbles'); $('play-bubbles').addEventListener('click', () => startMode('bubbles'));
   $('play-kite').innerHTML = iconSVG('kite'); $('play-kite').addEventListener('click', () => startMode('kite'));
   $('play-castle').innerHTML = iconSVG('castle'); $('play-castle').addEventListener('click', () => startMode('castle'));
-  $('mel-btn').innerHTML = iconSVG('melody'); $('mel-btn').addEventListener('click', () => { sound('tap'); startMelody(2); });
+  $('mel-btn').innerHTML = iconSVG('melody'); $('mel-btn').addEventListener('click', () => { sound('tap'); startMelody(MELODY_START); });
   $('play-train').innerHTML = iconSVG('train'); $('play-train').addEventListener('click', () => startMode('train'));
   $('train-back').addEventListener('click', () => { sound('tap'); trainBackToPick(); });
   buildMusicPad();
@@ -3555,6 +3556,8 @@ function refreshUI() {
   $('playtray').hidden = !(inGame && game.mode === 'play');
   $('play-kite').hidden = !kiteOk(); $('play-castle').hidden = !castleOk();   // 0.10: kite in good weather, castle on sand
   $('mel-btn').hidden = !(inGame && game.mode === 'music');
+  // 0.12.3: the melody button stands right above the big drum (was in the middle of the screen).
+  if (!$('mel-btn').hidden) { const r = $('mk-6').getBoundingClientRect(); if (r.width) $('mel-btn').style.left = Math.max(34, r.left + r.width / 2) + 'px'; }
   $('mel-btn').classList.toggle('glow', !!(game.melody && game.melody.phase === 'play'));
   $('trainpick').hidden = !(inGame && game.mode === 'train' && game.train && game.train.phase === 'pick');
   $('train-back').hidden = !(inGame && game.mode === 'train' && game.train && game.train.phase === 'draw');
@@ -5654,6 +5657,9 @@ function drawToys(c, time) {
 }
 
 /* ---------- melody game (in the music game) ---------- */
+
+/** Notes of the first melody (0.12.3: 3, was 2); each one solved adds a note, up to 6. */
+const MELODY_START = 3;
 
 /** Starts (or restarts) the melody game: he plays `len` notes, then it is the child's turn. */
 function startMelody(len) {

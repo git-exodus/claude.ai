@@ -88,16 +88,18 @@ const { chromium, createReport, openPage, loadClean, hatchQuick } = require('./l
   // ---------- melody game ----------
   await page.click('#act-play'); await page.click('#play-music'); await ev(() => __st.step(0.3));
   R.ok(await ev(() => !document.getElementById('mel-btn').hidden), 'Musik: Knopf „Melodie nachspielen“');
+  g = await ev(() => { const a = document.getElementById('mel-btn').getBoundingClientRect(), d = document.getElementById('mk-6').getBoundingClientRect(); return { dx: Math.abs((a.left + a.width / 2) - (d.left + d.width / 2)), above: a.bottom <= d.top }; });
+  R.ok(g.dx < 3 && g.above, 'Melodie-Knopf steht über der großen Trommel', JSON.stringify(g));
   await page.click('#mel-btn');
-  g = await ev(() => { __st.soundLog.length = 0; __st.step(2.5); return { phase: __st.game.melody.phase, seq: __st.game.melody.seq, heard: __st.soundLog.filter(s => s.name === 'xylo').length }; });
-  R.ok(g.phase === 'play' && g.seq.length === 2 && g.heard === 2, 'Er spielt 2 Töne vor, dann ist man dran', JSON.stringify(g));
+  g = await ev(() => { __st.soundLog.length = 0; __st.step(3.2); return { phase: __st.game.melody.phase, seq: __st.game.melody.seq, heard: __st.soundLog.filter(s => s.name === 'xylo').length }; });
+  R.ok(g.phase === 'play' && g.seq.length === 3 && g.heard === 3, 'Er spielt 3 Töne vor, dann ist man dran', JSON.stringify(g));
   for (const k of g.seq) await page.click('#mk-' + k);
   g = await ev(() => { const a = __st.game.melody.phase; return a; });
   R.ok(g === 'done', 'Richtig nachgespielt: Applaus', g);
   await page.waitForTimeout(1600);
   g = await ev(() => __st.game.melody.len);
-  R.ok(g === 3, 'Danach eine Melodie mit 3 Tönen', g);
-  await ev(() => __st.step(3.3));   // 3 notes are played first
+  R.ok(g === 4, 'Danach eine Melodie mit 4 Tönen', g);
+  await ev(() => __st.step(3.9));   // 4 notes are played first
   const wrong = await ev(() => (__st.game.melody.seq[0] + 1) % 6);
   await page.click('#mk-' + wrong);
   g = await ev(() => __st.game.melody.phase);

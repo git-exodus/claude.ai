@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.12.2.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.12.3.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -151,9 +151,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12.2';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12.2` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 18`, `versionName '0.12.2'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12.3';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12.3` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 19`, `versionName '0.12.3'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -430,7 +430,7 @@ Test-Werkzeuge: Knöpfe „18.12.“, „24.12.“, „31.12.“, „Ostern“ s
   **Drachen** (mit dem Finger am Himmel führen, Spaß +1 alle 2 s; nicht bei Regen/Schnee, nicht in der Höhle),
   **Sandburg** (nur Strand, Insel, Lagune, Schatzinsel, Wüste: 4-mal antippen = fertig, Spaß +10; Stego antippen
   = er springt drauf, Spaß +3, neu bauen).
-- **Melodie nachspielen** (Knopf über dem Xylophon): er spielt 2 Töne vor, man spielt sie nach; richtig = Applaus,
+- **Melodie nachspielen** (Knopf über der großen Trommel, seit 0.12.3): er spielt 3 Töne vor (seit 0.12.3, vorher 2), man spielt sie nach; richtig = Applaus,
   Spaß +5, nächste Melodie einen Ton länger (bis 6); falsch = „mm-mm“ und er spielt sie nochmal vor.
 - **Wünsche** (alle 10–20 Spielminuten, wenn Essen unter 80): Gedankenblase mit z. B. 3 Beeren (gegessene werden
   blass) oder einem Farbklecks (Rot = Apfel/Melone, Lila = Beeren, Grün = Farn/Blatt). Erfüllt = Tanz, Sterne,
@@ -516,6 +516,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.12.3 | Melodie-Knopf über der großen Trommel, große Trommel 50 % lauter, Melodie nachspielen beginnt mit 3 Tönen |
 | 0.12.2 | Nest geschlossen: kein grüner Spalt mehr zwischen hinterer und vorderer Nesthälfte (beide Nester) |
 | 0.12.1 | Risse im Ei (eigenes und Geschwister-Ei) etwas tiefer und weiter innen, ragen nicht mehr über den Rand |
 | 0.12 | Familie: Geschwister-Ei zwei Tage nach „Ganz groß“, streicheln wie das eigene Ei, kleines Geschwisterchen ohne eigene Bedürfnisse (folgt, wandert mit, hüpft, kichert, schläft, wächst bis 75 %) |
@@ -539,7 +540,7 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Gebaut bis 0.12.2. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
+Gebaut bis 0.12.3. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):
 - Fotos aufs Handy speichern (heute nur im Spiel ansehen).

@@ -238,6 +238,9 @@ function drawToys(c, time) {
 
 /* ---------- melody game (in the music game) ---------- */
 
+/** Notes of the first melody (0.12.3: 3, was 2); each one solved adds a note, up to 6. */
+const MELODY_START = 3;
+
 /** Starts (or restarts) the melody game: he plays `len` notes, then it is the child's turn. */
 function startMelody(len) {
   const seq = Array.from({ length: len }, () => Math.floor(Math.random() * 6));

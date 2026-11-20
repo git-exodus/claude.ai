@@ -52,7 +52,7 @@ function buildUI() {
   $('play-bubbles').innerHTML = iconSVG('bubbles'); $('play-bubbles').addEventListener('click', () => startMode('bubbles'));
   $('play-kite').innerHTML = iconSVG('kite'); $('play-kite').addEventListener('click', () => startMode('kite'));
   $('play-castle').innerHTML = iconSVG('castle'); $('play-castle').addEventListener('click', () => startMode('castle'));
-  $('mel-btn').innerHTML = iconSVG('melody'); $('mel-btn').addEventListener('click', () => { sound('tap'); startMelody(2); });
+  $('mel-btn').innerHTML = iconSVG('melody'); $('mel-btn').addEventListener('click', () => { sound('tap'); startMelody(MELODY_START); });
   $('play-train').innerHTML = iconSVG('train'); $('play-train').addEventListener('click', () => startMode('train'));
   $('train-back').addEventListener('click', () => { sound('tap'); trainBackToPick(); });
   buildMusicPad();
@@ -89,6 +89,8 @@ function refreshUI() {
   $('playtray').hidden = !(inGame && game.mode === 'play');
   $('play-kite').hidden = !kiteOk(); $('play-castle').hidden = !castleOk();   // 0.10: kite in good weather, castle on sand
   $('mel-btn').hidden = !(inGame && game.mode === 'music');
+  // 0.12.3: the melody button stands right above the big drum (was in the middle of the screen).
+  if (!$('mel-btn').hidden) { const r = $('mk-6').getBoundingClientRect(); if (r.width) $('mel-btn').style.left = Math.max(34, r.left + r.width / 2) + 'px'; }
   $('mel-btn').classList.toggle('glow', !!(game.melody && game.melody.phase === 'play'));
   $('trainpick').hidden = !(inGame && game.mode === 'train' && game.train && game.train.phase === 'pick');
   $('train-back').hidden = !(inGame && game.mode === 'train' && game.train && game.train.phase === 'draw');

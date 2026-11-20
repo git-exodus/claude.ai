@@ -120,7 +120,8 @@ const SOUNDS = {
   tap: () => { tone(660, 0.08, { vol: 0.06, type: 'triangle' }); },
   // 0.3: xylophone bar i (0..5) and drum i (0 = big boom, 1 = small tap) for the music game.
   xylo: i => { const f = midi([72, 74, 76, 79, 81, 84][i] || 72); tone(f, 0.9, { vol: 0.16 }); tone(f * 4, 0.25, { vol: 0.04 }); },
-  drum: i => { if (i) { noise(0.12, { freq: 2500, q: 0.8, vol: 0.3 }); } else { tone(110, 0.35, { f2: 45, vol: 0.4, type: 'sine' }); noise(0.08, { freq: 300, vol: 0.2 }); } },
+  // 0.12.3: big drum 50 % louder (tone 0.4 -> 0.6, noise 0.2 -> 0.3); it was hard to hear.
+  drum: i => { if (i) { noise(0.12, { freq: 2500, q: 0.8, vol: 0.3 }); } else { tone(110, 0.35, { f2: 45, vol: 0.6, type: 'sine' }); noise(0.08, { freq: 300, vol: 0.3 }); } },
   // 0.7: a soft firework bang with a little crackle (quiet on purpose).
   firework: () => { noise(0.35, { freq: 400, q: 0.8, vol: 0.12, freq2: 150 }); [0.15, 0.22, 0.3, 0.37].forEach(at => noise(0.05, { at, freq: 3000, q: 1, vol: 0.05 })); },
   // 0.8 training: applause after a trick, a soft belly flop.
