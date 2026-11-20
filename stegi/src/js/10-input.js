@@ -20,6 +20,7 @@ function onDown(e) {
   if (game.mode === 'train' && game.train && game.train.phase === 'draw' && inTrainBoard(e.clientX, e.clientY)) {
     game.train.drawing = true; game.train.stroke = [{ x: e.clientX, y: e.clientY }];
   }
+  if (kiteDrag(e.clientX, e.clientY)) return;   // 0.10: kite follows the finger
   if (game.mode === 'ball' && game.ball && !game.ball.carried) {
     touch.ball = dist(e.clientX, e.clientY, game.ball.x, ballY()) < 60 * U;
   }
@@ -44,7 +45,8 @@ function onMove(e) {
   if (asleepNow()) return;
   if (game.mode === 'brush' && game.brush && !game.brush.done) { game.brush.x = e.clientX; game.brush.y = e.clientY; game.rubbing = 0.25; return; }
   if (game.mode === 'bath') { game.rubbing = 0.25; return; }
-  if (['ball', 'hide', 'music'].includes(game.mode)) return;
+  if (game.mode === 'kite') { kiteDrag(e.clientX, e.clientY); return; }
+  if (['ball', 'hide', 'music', 'bubbles', 'castle'].includes(game.mode)) return;
   if ((game.mode === 'idle' || game.mode === 'eat' || game.mode === 'play') && game.stegoInfo && inBox(e.clientX, e.clientY, game.stegoInfo.box)) strokeStego(d);
 }
 
@@ -75,14 +77,16 @@ function onUp(e) {
     return;
   }
   if (game.mode === 'hide') { const i = hideSpotAt(x, y); if (i >= 0) hideTap(i); return; }
-  if (game.mode === 'idle' && (cakeTap(x, y) || holidayTap(x, y))) return;   // 0.9 cake, 0.7 holidays   // 0.7: Christmas boxes, Easter eggs, chocolate bunny
-  if (giftWaiting() && game.mode === 'idle' && !asleepNow() && !S.walk) {
-    const gp = giftPos();
-    if (dist(x, y, gp.x, gp.y - 25 * U) < 45 * U) { openGift(); return; }
-  }
+  if (['bubbles', 'castle'].includes(game.mode) && toyTap(x, y)) return;   // 0.10 toys
+  // Poop first (0.10): it may lie next to a puddle or leaf pile, and taking it away matters more.
   for (let i = 0; i < S.poops.length; i++) {
     const p = poopPos(i);
     if (dist(x, y, p.x, p.y - 15 * U) < 38 * U) { removePoop(i); return; }
+  }
+  if (game.mode === 'idle' && (weatherGameTap(x, y) || cakeTap(x, y) || holidayTap(x, y))) return;   // 0.9 cake, 0.7 holidays   // 0.7: Christmas boxes, Easter eggs, chocolate bunny
+  if (giftWaiting() && game.mode === 'idle' && !asleepNow() && !S.walk) {
+    const gp = giftPos();
+    if (dist(x, y, gp.x, gp.y - 25 * U) < 45 * U) { openGift(); return; }
   }
   if ((game.mode === 'idle' || game.mode === 'eat') && game.stegoInfo && inBox(x, y, game.stegoInfo.box)) tapStego();
 }

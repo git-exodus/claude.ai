@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.9.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.10.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **283 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 20, suite-celebrate 17).
+Erwartet: **308 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 20, suite-celebrate 17, suite-fun 25).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -73,6 +73,7 @@ stegi/
     ├── suite-holidays.js  0.7: Ostern-Datum, Baum/Geschenke/Feuerwerk/Eier nach Datum, 1 Geschenk pro Tag, Ball ohne Flackern
     ├── suite-training.js  0.8: Malprüfung, Trick-Auswahl mit „?“, Malen mit der Maus, Bauchplatscher, Lernen, Tricks von selbst
     ├── suite-celebrate.js 0.9: 7 Tricks nacheinander, Geburtstag (Daten, Kuchen, Kerzen, Hut), Gute-Nacht-Ritual
+    ├── suite-fun.js       0.10: Jahreszeiten, Pfützen, Schneemann, Laubhaufen, Seifenblasen, Drachen, Sandburg, Melodie, Wünsche
     ├── suite-dev.js       0.4: Testmodus (eigener Spielstand, Stufen, Zeitraffer, Sprünge, Helfer, echter Stand bleibt unberührt)
     └── make-icon.js       kein Test: zeichnet das App-Symbol mit dem Spielcode neu
 ```
@@ -148,9 +149,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.9';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.9` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 13`, `versionName '0.9'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.10';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.10` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 14`, `versionName '0.10'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -181,6 +182,7 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 | `20-holidays.js` | 0.7: Feiertage nach Handy-Datum: Weihnachtsbaum, Weihnachtsgeschenke, Silvester-Feuerwerk, Ostereier, Osterformel |
 | `22-training.js` | 0.8: Training: Trick-Auswahl, Tafel mit Symbol, Malprüfung `judgeTrace`, Trick- und Bauchplatscher-Animation |
 | `23-celebrate.js` | 0.9: monatlicher Geburtstag (Kuchen, Kerzen, Luftballons) und Gute-Nacht-Ritual (Schlaflied, Kuscheltier, dunkler) |
+| `24-fun.js` | 0.10: Jahreszeiten, Wetter-Spiele, Spielzeug (Seifenblasen, Drachen, Sandburg), Melodie nachspielen, Wünsche |
 | `19-dev.js` | Testmodus für Eltern: Wechsel auf den Test-Spielstand, Zeitraffer, Stufen, Helfer, Test-Fenster |
 | `11-main.js` | `resize`, Bildschleife, Speichern alle 5 s und beim Verlassen, `start()` |
 | `99-debug.js` | `window.__st` für die Tests (wird vom Spiel nicht benutzt), ruft `start()` auf |
@@ -412,6 +414,24 @@ Test-Werkzeuge: Knöpfe „18.12.“, „24.12.“, „31.12.“, „Ostern“ s
 - **Gute Nacht:** Schläft er ein, während man zuschaut (Licht aus oder Schlafenszeit), spielt einmal pro Nacht ein
   Schlaflied von der Spieluhr, ein rosa Kuschel-Dino liegt neben seinem Kopf, und das Bild wird in 5 s etwas dunkler.
 
+### 6.18 Mehr zu tun (seit 0.10)
+
+- **Jahreszeiten** (Orte mit Gras und unterwegs): Frühling (März–Mai) fallen Blüten, Herbst (Sept.–Nov.) goldener
+  Boden und fallende Blätter, Winter (Dez.–Feb.) Raureif mit Glitzern; Sommer wie bisher.
+- **Wetter-Spiele** (nicht nachts, nicht unterwegs): Regen = 3 Pfützen, antippen = er rennt hin und springt rein
+  (Spaß +5, Sauberkeit −8). Schnee = Schneehaufen, 3-mal antippen = Schneemann mit Hut und Möhre (Spaß +10, bleibt
+  bis Mitternacht). Herbst auf Gras = 2 Laubhaufen zum Reinspringen (Spaß +5, wachsen nach 10 s nach).
+  Kacka antippen hat Vorrang, falls sie daneben liegt.
+- **Spielzeug** im Spielmenü (jetzt zwei Reihen): **Seifenblasen** (antippen = plopp, er schnappt, Spaß +2),
+  **Drachen** (mit dem Finger am Himmel führen, Spaß +1 alle 2 s; nicht bei Regen/Schnee, nicht in der Höhle),
+  **Sandburg** (nur Strand, Insel, Lagune, Schatzinsel, Wüste: 4-mal antippen = fertig, Spaß +10; Stego antippen
+  = er springt drauf, Spaß +3, neu bauen).
+- **Melodie nachspielen** (Knopf über dem Xylophon): er spielt 2 Töne vor, man spielt sie nach; richtig = Applaus,
+  Spaß +5, nächste Melodie einen Ton länger (bis 6); falsch = „mm-mm“ und er spielt sie nochmal vor.
+- **Wünsche** (alle 10–20 Spielminuten, wenn Essen unter 80): Gedankenblase mit z. B. 3 Beeren (gegessene werden
+  blass) oder einem Farbklecks (Rot = Apfel/Melone, Lila = Beeren, Grün = Farn/Blatt). Erfüllt = Tanz, Sterne,
+  Liebe +10, Spaß +5. Verschwindet nach 8 Minuten.
+
 ---
 
 ## 7. Spielstand
@@ -460,6 +480,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.10 | Jahreszeiten, Wetter-Spiele (Pfützen, Schneemann, Laubhaufen), Seifenblasen, Drachen, Sandburg, Melodie nachspielen, Wünsche (Zählen und Farben) |
 | 0.9 | 4 neue Tricks (Sitz, Drehen, Küsschen, Pirouette), genauere Malprüfung für 7 Symbole, monatlicher Geburtstag mit Kuchen und Kerzen, Gute-Nacht-Ritual |
 | 0.8.2 | Fehler behoben: Stand der Besuch links, lief er beim Losgehen rückwärts (schaute weiter den Besuch an); jetzt dreht er sich beim Wandern immer nach rechts, in allen Stufen geprüft |
 | 0.8.1 | Besuch steht vor dem Stego, ein großer Stego rückt dafür etwas zur Seite; beim Wandern läuft der Besuch an den Hinterbeinen mit |
@@ -478,8 +499,7 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Gebaut bis 0.9. Vereinbart und noch offen: 0.10 Wetter-Spiele, Jahreszeiten, Spielzeug, Melodie nachspielen,
-Zähl-/Farbspiele; 0.11 Sterne, Höhle, Laden, Sticker-Heft, Freundschaft; 0.12 Familie (Geschwister ohne eigene
+Gebaut bis 0.10. Vereinbart und noch offen: 0.11 Sterne, Höhle, Laden, Sticker-Heft, Freundschaft; 0.12 Familie (Geschwister ohne eigene
 Bedürfnisse). Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):

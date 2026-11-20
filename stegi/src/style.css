@@ -168,3 +168,6 @@ svg { display: block; width: 100%; height: 100%; }
 /* 0.8: four buttons in the play menu (ball, hide, music, training) must fit on a 360 px phone. */
 #playtray { gap: 8px; }
 #playtray .round { width: 56px; height: 56px; padding: 12px; }
+/* 0.10: up to seven toys in the play menu (two rows), melody button above the music pad. */
+#playtray { flex-wrap: wrap; row-gap: 10px; max-width: 290px; margin: 0 auto; left: 0; right: 0; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 74px); }
+#mel-btn { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 112px); width: 56px; height: 56px; padding: 6px; }

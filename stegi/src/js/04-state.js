@@ -36,7 +36,10 @@ function blankSave(t) {
     easter: null,            // { year, found: [5 x bool], bunny: 'none'|'shown'|'eaten' }
     extraWear: [],           // ids from WEAR_EXTRA he owns
     bday: null,              // 0.9: this birthday's cake { key, out (candles blown out), eaten, sung }
-    lullabyDay: -1,          // 0.9: day the lullaby was played last (once a night)
+    lullabyDay: -1,
+    snowman: null,           // 0.10: today's snowman { day, stage 0..3 }
+    wish: null,              // 0.10: wish in the thought bubble (not kept between app starts)
+          // 0.9: day the lullaby was played last (once a night)
     tricks: Object.fromEntries(TRICKS.map(t => [t.id, 0])),   // 0.8: successful tries per trick (TRICK_LEARN = learned)
   };
 }
@@ -102,6 +105,7 @@ function sanitizeSave(o, t) {
   b.visitDone = o.visitDone === true;
   b.bday = o.bday && typeof o.bday.key === 'string' ? { key: o.bday.key, out: Math.round(num(o.bday.out, 0, 12, 0)), eaten: o.bday.eaten === true, sung: o.bday.sung === true } : null;
   b.lullabyDay = num(o.lullabyDay, -1, 1e6, -1);
+  b.snowman = o.snowman && typeof o.snowman.day === 'number' ? { day: o.snowman.day, stage: Math.round(num(o.snowman.stage, 0, 3, 0)) } : null;
   for (const tr of TRICKS) b.tricks[tr.id] = Math.round(num(o.tricks && o.tricks[tr.id], 0, 999, 0));
   const bools = (a, n) => Array.from({ length: n }, (_, i) => !!(Array.isArray(a) && a[i]));
   b.xmas = o.xmas && typeof o.xmas.year === 'number' ? { year: o.xmas.year, opened: bools(o.xmas.opened, 3) } : null;

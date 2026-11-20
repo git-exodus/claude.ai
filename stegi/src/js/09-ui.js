@@ -44,6 +44,10 @@ function buildUI() {
   $('play-ball').innerHTML = iconSVG('fun'); $('play-ball').addEventListener('click', () => startMode('ball'));
   $('play-hide').innerHTML = iconSVG('hide'); $('play-hide').addEventListener('click', () => startMode('hide'));
   $('play-music').innerHTML = iconSVG('music'); $('play-music').addEventListener('click', () => startMode('music'));
+  $('play-bubbles').innerHTML = iconSVG('bubbles'); $('play-bubbles').addEventListener('click', () => startMode('bubbles'));
+  $('play-kite').innerHTML = iconSVG('kite'); $('play-kite').addEventListener('click', () => startMode('kite'));
+  $('play-castle').innerHTML = iconSVG('castle'); $('play-castle').addEventListener('click', () => startMode('castle'));
+  $('mel-btn').innerHTML = iconSVG('melody'); $('mel-btn').addEventListener('click', () => { sound('tap'); startMelody(2); });
   $('play-train').innerHTML = iconSVG('train'); $('play-train').addEventListener('click', () => startMode('train'));
   $('train-back').addEventListener('click', () => { sound('tap'); trainBackToPick(); });
   buildMusicPad();
@@ -78,10 +82,13 @@ function refreshUI() {
   $('act-bed').classList.add('glow');
   $('tray').hidden = !(inGame && game.mode === 'eat');
   $('playtray').hidden = !(inGame && game.mode === 'play');
+  $('play-kite').hidden = !kiteOk(); $('play-castle').hidden = !castleOk();   // 0.10: kite in good weather, castle on sand
+  $('mel-btn').hidden = !(inGame && game.mode === 'music');
+  $('mel-btn').classList.toggle('glow', !!(game.melody && game.melody.phase === 'play'));
   $('trainpick').hidden = !(inGame && game.mode === 'train' && game.train && game.train.phase === 'pick');
   $('train-back').hidden = !(inGame && game.mode === 'train' && game.train && game.train.phase === 'draw');
   $('musicpad').hidden = !(inGame && game.mode === 'music');
-  $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music', 'train'].includes(game.mode));
+  $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music', 'train', 'bubbles', 'kite', 'castle'].includes(game.mode));
   refreshCamera();
   $('devbadge').hidden = !dev.on;
   if (dev.on) $('devbadge').textContent = 'TEST' + (dev.speed > 1 ? ' · ' + dev.speed + '×' : '');
@@ -245,6 +252,6 @@ function buildMusicPad() {
     '<button class="drum small" id="mk-7" type="button" aria-label="kleine Trommel" style="background:#fff3e0"></button>';
   for (let i = 0; i < 8; i++) {
     const el = $('mk-' + i);
-    el.addEventListener('pointerdown', e => { e.preventDefault(); unlockAudio(); playKey(i); el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 120); });
+    el.addEventListener('pointerdown', e => { e.preventDefault(); unlockAudio(); playKey(i); melodyKey(i); el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 120); });
   }
 }

@@ -5,7 +5,8 @@
 /** Screen and activity state.
  *  screen: 'menu' | 'game'.  trans: 0 = menu camera .. 1 = game camera (animated).
  *  mode:   'idle' | 'eat' | 'drink' | 'bath' | 'brush' | 'ball' | 'hatch' | 'party'
- *          | 'play' (menu: ball, hide, music, training) | 'hide' | 'music' (0.3) | 'train' (0.8). */
+ *          | 'play' (menu: ball, hide, music, training, toys) | 'hide' | 'music' (0.3) | 'train' (0.8)
+ *          | 'bubbles' | 'kite' | 'castle' (0.10). */
 const game = {
   screen: 'menu', trans: 0, mode: 'idle', modeT: 0, t: 0,
   flying: null,      // food on its way to the mouth: { id, x, y, sx, sy, k }
@@ -121,6 +122,7 @@ function endMode() {
   game.held = null; game.flying = null; game.bath = null; game.brush = null;
   if (game.ball) game.ball = null;
   game.hide = null; pet.depth = 0; pet.danceT = 0;
+  game.bubbles = null; game.kite = null; game.castle = null; game.melody = null;
   if (game.mode === 'train') pet.trick = null;
   game.train = null;
   pet.tx = 0;
@@ -142,6 +144,7 @@ function startMode(m) {
   if (m === 'brush') game.brush = { x: W * 0.75, y: standY - 60 * U, progress: 0, done: false, t: 0, scrubT: 0 };
   if (m === 'hide') { game.mode = 'hide'; startHide(); refreshUI(); return; }
   if (m === 'train') { startTrain(); return; }
+  if (m === 'bubbles' || m === 'kite' || m === 'castle') { startToy(m); return; }
   if (m === 'ball') game.ball = { x: Math.min(W - 40 * U, W / 2 + 140 * U), h: 0, vx: 0, vh: 0, rot: 0, carried: false, thrown: false };
   game.mode = m; game.modeT = 0;
   if (m !== 'ball') pet.tx = 0;
@@ -176,6 +179,7 @@ function eat(id) {
   addNeed('food', f.value);
   addNeed('love', 1);
   countMeal();
+  wishEat(id);   // 0.10: was it what he wished for?
   pet.eatT = 1.3;
   sound('munch');
   const m = game.stegoInfo.mouth;
@@ -316,6 +320,7 @@ function updatePet(dt, sleeping) {
   pet.wiggle = Math.max(0, pet.wiggle - dt * 1.5);
   pet.danceT = Math.max(0, pet.danceT - dt);
   updateTrick(dt);
+  updateWeatherGame(dt); updateToys(dt); updateCastle(dt); updateMelody(dt); updateWish();   // 0.10 (24-fun.js)
   pet.landT = Math.max(0, pet.landT - dt);
   // Jumping.
   if (pet.jumpV || pet.jump > 0) {
@@ -496,6 +501,7 @@ function stegoLook() {
   else if (game.mode === 'brush') { o.mouth = game.brush.done ? 'smile' : 'grin'; o.eyes = game.brush.done ? 'happy' : 'open'; }
   else if (game.mode === 'eat') { o.mouth = 'open'; }
   else if (pet.yawnT > 0) { o.mouth = 'yawn'; o.eyes = 'closed'; }
+  else if (game.mode === 'kite') { o.look = { x: 0.3, y: -0.4 }; o.mouth = 'open'; o.brow = 'happy'; }
   else if (pet.danceT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; o.wiggle = 1; o.brow = 'happy'; }
   else if (pet.giggleT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; o.brow = 'happy'; o.blush = true; }
   else if (pet.happyT > 0) { o.eyes = 'happy'; o.wag = 1; o.blush = true; }
@@ -537,6 +543,8 @@ function drawWorld() {
     drawEggScene(sky);
     drawForeground(ctx, 'meadow', game.t, sky.light);
   } else {
+    drawSeasonGround(ctx, placeId, sky.light);   // 0.10: golden autumn, frosty winter
+    drawWeatherGame(ctx, game.t);                 // 0.10: puddles, leaf piles, snowman
     S.poops.forEach((p, i) => { const pp = poopPos(i); drawPoop(ctx, pp.x, pp.y, 1.1 * U, game.t + i); });
     const sx = W / 2 + pet.x, look = stegoLook();
     const tubW = game.stegoInfo ? game.stegoInfo.box.w * 0.8 : stegoSize * 0.6;
@@ -557,7 +565,9 @@ function drawWorld() {
     if (asleepNow() && game.goodnight) drawTeddy(ctx);
     if (holidayHere() && season.easter) drawEaster(ctx, game.t);
     if (treeHere() && season.gifts) drawXmasBoxes(ctx, game.t);
-    drawForeground(ctx, placeId, game.t, sky.light, placeId === 'travel' ? walkFx.scroll : 0);   // grass, flowers ... in front of him (0.6; scrolls on the way since 0.6.1)
+    drawToys(ctx, game.t);   // 0.10: bubbles, kite, sandcastle
+    drawForeground(ctx, placeId, game.t, sky.light, placeId === 'travel' ? walkFx.scroll : 0);
+    drawSeasonAir(ctx, placeId, game.t, sky.light);   // grass, flowers ... in front of him (0.6; scrolls on the way since 0.6.1)
     drawGroundLife(ctx, placeId, game.t, sky, weather);
     if (game.mode === 'bath') {
       drawTub(ctx, W / 2 + 6 * U, standY + 6 * U, tubW, 'front');
@@ -574,9 +584,10 @@ function drawWorld() {
   drawParts(ctx);
 
   // Thought bubble with what he needs most (awake, idle, in the game).
-  if (hatched() && !asleepNow() && game.mode === 'idle' && game.trans >= 1 && game.stegoInfo) {
+  if (hatched() && !asleepNow() && (game.mode === 'idle' || (game.mode === 'eat' && S.wish)) && game.trans >= 1 && game.stegoInfo) {
     const low = lowestNeed();
     if (low.value < NEED_LOW) { const h = game.stegoInfo.head; drawThought(ctx, h.x + 10 * U, h.y - 60 * U, low.need, game.t); }
+    else if (S.wish) { const h = game.stegoInfo.head; drawThought(ctx, h.x + 10 * U, h.y - 60 * U, wishBubbleIcon, game.t); }
   }
   ctx.restore();
 

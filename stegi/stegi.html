@@ -172,6 +172,9 @@ svg { display: block; width: 100%; height: 100%; }
 /* 0.8: four buttons in the play menu (ball, hide, music, training) must fit on a 360 px phone. */
 #playtray { gap: 8px; }
 #playtray .round { width: 56px; height: 56px; padding: 12px; }
+/* 0.10: up to seven toys in the play menu (two rows), melody button above the music pad. */
+#playtray { flex-wrap: wrap; row-gap: 10px; max-width: 290px; margin: 0 auto; left: 0; right: 0; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 74px); }
+#mel-btn { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 112px); width: 56px; height: 56px; padding: 6px; }
 </style>
 
 <div id="game">
@@ -193,10 +196,14 @@ svg { display: block; width: 100%; height: 100%; }
     <button class="round" id="play-hide" type="button" aria-label="Verstecken"></button>
     <button class="round" id="play-music" type="button" aria-label="Musik machen"></button>
     <button class="round" id="play-train" type="button" aria-label="Tricks üben"></button>
+    <button class="round" id="play-bubbles" type="button" aria-label="Seifenblasen"></button>
+    <button class="round" id="play-kite" type="button" aria-label="Drachen steigen lassen"></button>
+    <button class="round" id="play-castle" type="button" aria-label="Sandburg bauen"></button>
   </div>
   <div id="trainpick" hidden></div>
   <button id="train-back" class="mini" type="button" aria-label="Anderen Trick wählen" hidden>◀</button>
   <div id="musicpad" hidden></div>
+  <button id="mel-btn" class="round" type="button" aria-label="Melodie nachspielen" hidden></button>
   <button id="close" class="round" type="button" aria-label="Fertig" hidden></button>
   <div id="menu">
     <h1 id="m-title">Stegi</h1>
@@ -217,7 +224,7 @@ svg { display: block; width: 100%; height: 100%; }
       <button class="big alt" id="s-devopen" type="button" hidden>Test-Werkzeuge öffnen</button>
       <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
       <button class="big" id="s-close" type="button">Schließen</button>
-      <p id="credit">@made by Brownii (Claude.ai) · v0.9</p>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.10</p>
     </div>
   </div>
   <div id="confirm" class="ov" hidden>
@@ -326,7 +333,7 @@ function mix(c1, c2, k) {
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.9';
+const VERSION = '0.10';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -600,6 +607,26 @@ const ICONS = {
     { d: 'M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z', fill: '#ffca28', stroke: '#e0a800', w: 1.2 },
     { d: 'M9 12.5l2 2 4-4.5', stroke: '#ffffff', w: 2 },
   ],
+  bubbles: [
+    { d: 'M3 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0z', fill: '#bfe6ff', stroke: '#7fc4f0', w: 1.4 },
+    { d: 'M14 6a4 4 0 1 0 8 0a4 4 0 1 0-8 0zM15 17a3 3 0 1 0 6 0a3 3 0 1 0-6 0z', fill: '#ffd6ef', stroke: '#f48fb1', w: 1.2 },
+    { d: 'M6 10a3 3 0 0 1 2.5-2.5', stroke: '#ffffff', w: 1.6 },
+  ],
+  kite: [
+    { d: 'M12 2l7 8-7 9-7-9z', fill: '#e53935' },
+    { d: 'M12 2v17M5 10h14', stroke: '#ffca28', w: 1.6 },
+    { d: 'M12 19c-2 1-1 3-3 4', stroke: '#555', w: 1.4 },
+  ],
+  castle: [
+    { d: 'M3 21V11h3V8h3v3h6V8h3v3h3v10z', fill: '#e2be72', stroke: '#b8914a', w: 1.2 },
+    { d: 'M10 21v-5h4v5', fill: '#b8914a' },
+    { d: 'M16.5 8V3l4 1.5-4 1.5', fill: '#e53935', stroke: '#6d4c41', w: 1 },
+  ],
+  melody: [
+    { d: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0z', fill: '#7e57c2' },
+    { d: 'M10 16V7l6-1v8', stroke: '#ffffff', w: 1.8 },
+    { d: 'M7 16a2.5 2 0 1 0 5 0a2.5 2 0 1 0-5 0zM13 14a2.5 2 0 1 0 5 0a2.5 2 0 1 0-5 0z', fill: '#ffffff' },
+  ],
   close: [
     { d: 'M6 6l12 12M18 6L6 18', stroke: '#e5533d', w: 3.4 },
   ],
@@ -757,7 +784,10 @@ function blankSave(t) {
     easter: null,            // { year, found: [5 x bool], bunny: 'none'|'shown'|'eaten' }
     extraWear: [],           // ids from WEAR_EXTRA he owns
     bday: null,              // 0.9: this birthday's cake { key, out (candles blown out), eaten, sung }
-    lullabyDay: -1,          // 0.9: day the lullaby was played last (once a night)
+    lullabyDay: -1,
+    snowman: null,           // 0.10: today's snowman { day, stage 0..3 }
+    wish: null,              // 0.10: wish in the thought bubble (not kept between app starts)
+          // 0.9: day the lullaby was played last (once a night)
     tricks: Object.fromEntries(TRICKS.map(t => [t.id, 0])),   // 0.8: successful tries per trick (TRICK_LEARN = learned)
   };
 }
@@ -823,6 +853,7 @@ function sanitizeSave(o, t) {
   b.visitDone = o.visitDone === true;
   b.bday = o.bday && typeof o.bday.key === 'string' ? { key: o.bday.key, out: Math.round(num(o.bday.out, 0, 12, 0)), eaten: o.bday.eaten === true, sung: o.bday.sung === true } : null;
   b.lullabyDay = num(o.lullabyDay, -1, 1e6, -1);
+  b.snowman = o.snowman && typeof o.snowman.day === 'number' ? { day: o.snowman.day, stage: Math.round(num(o.snowman.stage, 0, 3, 0)) } : null;
   for (const tr of TRICKS) b.tricks[tr.id] = Math.round(num(o.tricks && o.tricks[tr.id], 0, 999, 0));
   const bools = (a, n) => Array.from({ length: n }, (_, i) => !!(Array.isArray(a) && a[i]));
   b.xmas = o.xmas && typeof o.xmas.year === 'number' ? { year: o.xmas.year, opened: bools(o.xmas.opened, 3) } : null;
@@ -1838,7 +1869,8 @@ function drawThought(c, x, y, icon, t) {
   c.beginPath(); c.arc(x - 18 * U, y + 22 * U + bob, 5 * U, 0, TAU); c.fill(); c.stroke();
   c.beginPath(); c.arc(x - 8 * U, y + 10 * U + bob, 8 * U, 0, TAU); c.fill(); c.stroke();
   c.beginPath(); c.arc(x + 14 * U, y - 18 * U + bob, r, 0, TAU); c.fill(); c.stroke();
-  drawIcon(c, icon, x + 14 * U, y - 18 * U + bob, r * 1.25);
+  if (typeof icon === 'function') icon(c, x + 14 * U, y - 18 * U + bob, r);   // 0.10: a wish draws its own picture
+  else drawIcon(c, icon, x + 14 * U, y - 18 * U + bob, r * 1.25);
   c.restore();
 }
 
@@ -2691,7 +2723,8 @@ function drawGroundLife(c, placeId, time, sky, weather) {
 /** Screen and activity state.
  *  screen: 'menu' | 'game'.  trans: 0 = menu camera .. 1 = game camera (animated).
  *  mode:   'idle' | 'eat' | 'drink' | 'bath' | 'brush' | 'ball' | 'hatch' | 'party'
- *          | 'play' (menu: ball, hide, music, training) | 'hide' | 'music' (0.3) | 'train' (0.8). */
+ *          | 'play' (menu: ball, hide, music, training, toys) | 'hide' | 'music' (0.3) | 'train' (0.8)
+ *          | 'bubbles' | 'kite' | 'castle' (0.10). */
 const game = {
   screen: 'menu', trans: 0, mode: 'idle', modeT: 0, t: 0,
   flying: null,      // food on its way to the mouth: { id, x, y, sx, sy, k }
@@ -2807,6 +2840,7 @@ function endMode() {
   game.held = null; game.flying = null; game.bath = null; game.brush = null;
   if (game.ball) game.ball = null;
   game.hide = null; pet.depth = 0; pet.danceT = 0;
+  game.bubbles = null; game.kite = null; game.castle = null; game.melody = null;
   if (game.mode === 'train') pet.trick = null;
   game.train = null;
   pet.tx = 0;
@@ -2828,6 +2862,7 @@ function startMode(m) {
   if (m === 'brush') game.brush = { x: W * 0.75, y: standY - 60 * U, progress: 0, done: false, t: 0, scrubT: 0 };
   if (m === 'hide') { game.mode = 'hide'; startHide(); refreshUI(); return; }
   if (m === 'train') { startTrain(); return; }
+  if (m === 'bubbles' || m === 'kite' || m === 'castle') { startToy(m); return; }
   if (m === 'ball') game.ball = { x: Math.min(W - 40 * U, W / 2 + 140 * U), h: 0, vx: 0, vh: 0, rot: 0, carried: false, thrown: false };
   game.mode = m; game.modeT = 0;
   if (m !== 'ball') pet.tx = 0;
@@ -2862,6 +2897,7 @@ function eat(id) {
   addNeed('food', f.value);
   addNeed('love', 1);
   countMeal();
+  wishEat(id);   // 0.10: was it what he wished for?
   pet.eatT = 1.3;
   sound('munch');
   const m = game.stegoInfo.mouth;
@@ -3002,6 +3038,7 @@ function updatePet(dt, sleeping) {
   pet.wiggle = Math.max(0, pet.wiggle - dt * 1.5);
   pet.danceT = Math.max(0, pet.danceT - dt);
   updateTrick(dt);
+  updateWeatherGame(dt); updateToys(dt); updateCastle(dt); updateMelody(dt); updateWish();   // 0.10 (24-fun.js)
   pet.landT = Math.max(0, pet.landT - dt);
   // Jumping.
   if (pet.jumpV || pet.jump > 0) {
@@ -3182,6 +3219,7 @@ function stegoLook() {
   else if (game.mode === 'brush') { o.mouth = game.brush.done ? 'smile' : 'grin'; o.eyes = game.brush.done ? 'happy' : 'open'; }
   else if (game.mode === 'eat') { o.mouth = 'open'; }
   else if (pet.yawnT > 0) { o.mouth = 'yawn'; o.eyes = 'closed'; }
+  else if (game.mode === 'kite') { o.look = { x: 0.3, y: -0.4 }; o.mouth = 'open'; o.brow = 'happy'; }
   else if (pet.danceT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; o.wiggle = 1; o.brow = 'happy'; }
   else if (pet.giggleT > 0) { o.mouth = 'open'; o.eyes = 'happy'; o.wag = 1; o.brow = 'happy'; o.blush = true; }
   else if (pet.happyT > 0) { o.eyes = 'happy'; o.wag = 1; o.blush = true; }
@@ -3223,6 +3261,8 @@ function drawWorld() {
     drawEggScene(sky);
     drawForeground(ctx, 'meadow', game.t, sky.light);
   } else {
+    drawSeasonGround(ctx, placeId, sky.light);   // 0.10: golden autumn, frosty winter
+    drawWeatherGame(ctx, game.t);                 // 0.10: puddles, leaf piles, snowman
     S.poops.forEach((p, i) => { const pp = poopPos(i); drawPoop(ctx, pp.x, pp.y, 1.1 * U, game.t + i); });
     const sx = W / 2 + pet.x, look = stegoLook();
     const tubW = game.stegoInfo ? game.stegoInfo.box.w * 0.8 : stegoSize * 0.6;
@@ -3243,7 +3283,9 @@ function drawWorld() {
     if (asleepNow() && game.goodnight) drawTeddy(ctx);
     if (holidayHere() && season.easter) drawEaster(ctx, game.t);
     if (treeHere() && season.gifts) drawXmasBoxes(ctx, game.t);
-    drawForeground(ctx, placeId, game.t, sky.light, placeId === 'travel' ? walkFx.scroll : 0);   // grass, flowers ... in front of him (0.6; scrolls on the way since 0.6.1)
+    drawToys(ctx, game.t);   // 0.10: bubbles, kite, sandcastle
+    drawForeground(ctx, placeId, game.t, sky.light, placeId === 'travel' ? walkFx.scroll : 0);
+    drawSeasonAir(ctx, placeId, game.t, sky.light);   // grass, flowers ... in front of him (0.6; scrolls on the way since 0.6.1)
     drawGroundLife(ctx, placeId, game.t, sky, weather);
     if (game.mode === 'bath') {
       drawTub(ctx, W / 2 + 6 * U, standY + 6 * U, tubW, 'front');
@@ -3260,9 +3302,10 @@ function drawWorld() {
   drawParts(ctx);
 
   // Thought bubble with what he needs most (awake, idle, in the game).
-  if (hatched() && !asleepNow() && game.mode === 'idle' && game.trans >= 1 && game.stegoInfo) {
+  if (hatched() && !asleepNow() && (game.mode === 'idle' || (game.mode === 'eat' && S.wish)) && game.trans >= 1 && game.stegoInfo) {
     const low = lowestNeed();
     if (low.value < NEED_LOW) { const h = game.stegoInfo.head; drawThought(ctx, h.x + 10 * U, h.y - 60 * U, low.need, game.t); }
+    else if (S.wish) { const h = game.stegoInfo.head; drawThought(ctx, h.x + 10 * U, h.y - 60 * U, wishBubbleIcon, game.t); }
   }
   ctx.restore();
 
@@ -3386,6 +3429,10 @@ function buildUI() {
   $('play-ball').innerHTML = iconSVG('fun'); $('play-ball').addEventListener('click', () => startMode('ball'));
   $('play-hide').innerHTML = iconSVG('hide'); $('play-hide').addEventListener('click', () => startMode('hide'));
   $('play-music').innerHTML = iconSVG('music'); $('play-music').addEventListener('click', () => startMode('music'));
+  $('play-bubbles').innerHTML = iconSVG('bubbles'); $('play-bubbles').addEventListener('click', () => startMode('bubbles'));
+  $('play-kite').innerHTML = iconSVG('kite'); $('play-kite').addEventListener('click', () => startMode('kite'));
+  $('play-castle').innerHTML = iconSVG('castle'); $('play-castle').addEventListener('click', () => startMode('castle'));
+  $('mel-btn').innerHTML = iconSVG('melody'); $('mel-btn').addEventListener('click', () => { sound('tap'); startMelody(2); });
   $('play-train').innerHTML = iconSVG('train'); $('play-train').addEventListener('click', () => startMode('train'));
   $('train-back').addEventListener('click', () => { sound('tap'); trainBackToPick(); });
   buildMusicPad();
@@ -3420,10 +3467,13 @@ function refreshUI() {
   $('act-bed').classList.add('glow');
   $('tray').hidden = !(inGame && game.mode === 'eat');
   $('playtray').hidden = !(inGame && game.mode === 'play');
+  $('play-kite').hidden = !kiteOk(); $('play-castle').hidden = !castleOk();   // 0.10: kite in good weather, castle on sand
+  $('mel-btn').hidden = !(inGame && game.mode === 'music');
+  $('mel-btn').classList.toggle('glow', !!(game.melody && game.melody.phase === 'play'));
   $('trainpick').hidden = !(inGame && game.mode === 'train' && game.train && game.train.phase === 'pick');
   $('train-back').hidden = !(inGame && game.mode === 'train' && game.train && game.train.phase === 'draw');
   $('musicpad').hidden = !(inGame && game.mode === 'music');
-  $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music', 'train'].includes(game.mode));
+  $('close').hidden = !(inGame && ['eat', 'bath', 'brush', 'ball', 'play', 'hide', 'music', 'train', 'bubbles', 'kite', 'castle'].includes(game.mode));
   refreshCamera();
   $('devbadge').hidden = !dev.on;
   if (dev.on) $('devbadge').textContent = 'TEST' + (dev.speed > 1 ? ' · ' + dev.speed + '×' : '');
@@ -3587,7 +3637,7 @@ function buildMusicPad() {
     '<button class="drum small" id="mk-7" type="button" aria-label="kleine Trommel" style="background:#fff3e0"></button>';
   for (let i = 0; i < 8; i++) {
     const el = $('mk-' + i);
-    el.addEventListener('pointerdown', e => { e.preventDefault(); unlockAudio(); playKey(i); el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 120); });
+    el.addEventListener('pointerdown', e => { e.preventDefault(); unlockAudio(); playKey(i); melodyKey(i); el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 120); });
   }
 }
 
@@ -3614,6 +3664,7 @@ function onDown(e) {
   if (game.mode === 'train' && game.train && game.train.phase === 'draw' && inTrainBoard(e.clientX, e.clientY)) {
     game.train.drawing = true; game.train.stroke = [{ x: e.clientX, y: e.clientY }];
   }
+  if (kiteDrag(e.clientX, e.clientY)) return;   // 0.10: kite follows the finger
   if (game.mode === 'ball' && game.ball && !game.ball.carried) {
     touch.ball = dist(e.clientX, e.clientY, game.ball.x, ballY()) < 60 * U;
   }
@@ -3638,7 +3689,8 @@ function onMove(e) {
   if (asleepNow()) return;
   if (game.mode === 'brush' && game.brush && !game.brush.done) { game.brush.x = e.clientX; game.brush.y = e.clientY; game.rubbing = 0.25; return; }
   if (game.mode === 'bath') { game.rubbing = 0.25; return; }
-  if (['ball', 'hide', 'music'].includes(game.mode)) return;
+  if (game.mode === 'kite') { kiteDrag(e.clientX, e.clientY); return; }
+  if (['ball', 'hide', 'music', 'bubbles', 'castle'].includes(game.mode)) return;
   if ((game.mode === 'idle' || game.mode === 'eat' || game.mode === 'play') && game.stegoInfo && inBox(e.clientX, e.clientY, game.stegoInfo.box)) strokeStego(d);
 }
 
@@ -3669,14 +3721,16 @@ function onUp(e) {
     return;
   }
   if (game.mode === 'hide') { const i = hideSpotAt(x, y); if (i >= 0) hideTap(i); return; }
-  if (game.mode === 'idle' && (cakeTap(x, y) || holidayTap(x, y))) return;   // 0.9 cake, 0.7 holidays   // 0.7: Christmas boxes, Easter eggs, chocolate bunny
-  if (giftWaiting() && game.mode === 'idle' && !asleepNow() && !S.walk) {
-    const gp = giftPos();
-    if (dist(x, y, gp.x, gp.y - 25 * U) < 45 * U) { openGift(); return; }
-  }
+  if (['bubbles', 'castle'].includes(game.mode) && toyTap(x, y)) return;   // 0.10 toys
+  // Poop first (0.10): it may lie next to a puddle or leaf pile, and taking it away matters more.
   for (let i = 0; i < S.poops.length; i++) {
     const p = poopPos(i);
     if (dist(x, y, p.x, p.y - 15 * U) < 38 * U) { removePoop(i); return; }
+  }
+  if (game.mode === 'idle' && (weatherGameTap(x, y) || cakeTap(x, y) || holidayTap(x, y))) return;   // 0.9 cake, 0.7 holidays   // 0.7: Christmas boxes, Easter eggs, chocolate bunny
+  if (giftWaiting() && game.mode === 'idle' && !asleepNow() && !S.walk) {
+    const gp = giftPos();
+    if (dist(x, y, gp.x, gp.y - 25 * U) < 45 * U) { openGift(); return; }
   }
   if ((game.mode === 'idle' || game.mode === 'eat') && game.stegoInfo && inBox(x, y, game.stegoInfo.box)) tapStego();
 }
@@ -5249,6 +5303,336 @@ function drawTeddy(c) {
   c.restore();
 }
 
+/* ===== 24-fun.js ===== */
+/* 24-fun.js – more to do (0.10):
+ *   Weather games  rain: puddles to jump into (fun, but muddy); snow: build a snowman (tap 3 times);
+ *                  autumn (Sep–Nov) on grass: leaf piles to jump into.
+ *   Seasons        grass places change with the month: spring blossoms fall, autumn leaves fall and the grass
+ *                  turns golden, winter frost; summer as before.
+ *   Toys           play menu: soap bubbles (tap them, he snaps), kite (drag it in the sky; not in rain/snow or
+ *                  the cave), sandcastle (only on sand: tap 4 times to build, tap him and he stomps on it).
+ *   Melody game    in the music game: he plays a few notes, the child plays them back; one note longer each time.
+ *   Wishes         now and then he wishes for "3 berries" or "something red" (thought bubble); give exactly that. */
+
+/* ---------- seasons ---------- */
+
+/** 'spring' (Mar–May), 'summer' (Jun–Aug), 'autumn' (Sep–Nov), 'winter' (Dec–Feb). */
+function seasonKind(t) { const m = new Date(t).getMonth(); return m >= 2 && m <= 4 ? 'spring' : m >= 5 && m <= 7 ? 'summer' : m >= 8 && m <= 10 ? 'autumn' : 'winter'; }
+/** Places with grass are the ones that change with the seasons (and the way). */
+const grassyPlace = id => fgOf(id).kind === 'grass';
+
+/** Tint of the ground: golden in autumn, frosty in winter (drawn over the place's ground). */
+function drawSeasonGround(c, placeId, L) {
+  if (!grassyPlace(placeId)) return;
+  const s = seasonKind(now());
+  if (s === 'autumn') { c.fillStyle = 'rgba(214,150,50,0.2)'; c.fillRect(0, groundY, W, H - groundY); }
+  else if (s === 'winter') { c.fillStyle = 'rgba(236,244,255,' + (0.3 * clamp(L + 0.3, 0, 1)).toFixed(2) + ')'; c.fillRect(0, groundY, W, H - groundY); }
+}
+
+/** In the air and on the grass: falling blossoms (spring), falling leaves (autumn), glittering frost (winter). */
+function drawSeasonAir(c, placeId, time, L) {
+  if (!grassyPlace(placeId)) return;
+  const s = seasonKind(now()), e = { d: k => mix('#1d2a4a', k, clamp(L * 1.1, 0.25, 1)), L };
+  if (s === 'spring') pFalling(c, e, '#f8bbd0', 14, time, 3.5, 18, 131);
+  else if (s === 'autumn') { pFalling(c, e, '#ef6c00', 8, time, 5, 22, 132); pFalling(c, e, '#fbc02d', 6, time, 5, 18, 133); }
+  else if (s === 'winter') {
+    const r = mulberry(134);
+    for (let i = 0; i < 30; i++) {
+      const x = r() * W, y = groundY + 10 * U + r() * (H - groundY - 20 * U), a = 0.4 + 0.6 * Math.max(0, Math.sin(time * 2 + i));
+      c.fillStyle = 'rgba(255,255,255,' + (a * 0.9).toFixed(2) + ')'; c.beginPath(); c.arc(x, y, 1.6 * U, 0, TAU); c.fill();
+    }
+  }
+}
+
+/* ---------- weather games ---------- */
+
+/** Which weather game is on here and now: 'puddles' | 'snowman' | 'leaves' | null. */
+function weatherGame() {
+  if (!holidayHere() || asleepNow()) return null;
+  const w = currentWeather();
+  if (w === 'rain') return 'puddles';
+  if (w === 'snow') return 'snowman';
+  if (seasonKind(now()) === 'autumn' && grassyPlace(S.place)) return 'leaves';
+  return null;
+}
+const puddlePos = i => [{ x: W * 0.12, y: standY + 36 * U }, { x: W * 0.88, y: standY + 30 * U }, { x: W * 0.68, y: standY + 58 * U }][i];
+const leafPos = i => [{ x: W * 0.1, y: standY + 34 * U }, { x: W * 0.9, y: standY + 30 * U }][i];
+const snowPos = () => ({ x: W * 0.84, y: standY + 26 * U });
+
+/** The snowman of today (kept in the save): stage 0 = a pile of snow .. 3 = finished with hat and carrot. */
+function snowmanState() { const d = dayIndex(now()); if (!S.snowman || S.snowman.day !== d) S.snowman = { day: d, stage: 0 }; return S.snowman; }
+
+/** Tap on a puddle, a leaf pile or the snow. Returns true if it was one. */
+function weatherGameTap(x, y) {
+  const g = weatherGame();
+  if (!g || game.jumpTo) return false;
+  if (g === 'puddles' || g === 'leaves') {
+    const n = g === 'puddles' ? 3 : 2;
+    for (let i = 0; i < n; i++) {
+      const p = g === 'puddles' ? puddlePos(i) : leafPos(i);
+      if (g === 'leaves' && game.leafGone && game.leafGone[i] > game.t) continue;
+      if (dist(x, y, p.x, p.y) < 44 * U) { game.jumpTo = { kind: g, i, p }; pet.tx = clamp(p.x - W / 2, -W / 2 + 60 * U, W / 2 - 60 * U); sound('happy'); return true; }
+    }
+  } else if (g === 'snowman') {
+    const p = snowPos(), st = snowmanState();
+    if (st.stage < 3 && dist(x, y, p.x, p.y - 30 * U) < 50 * U) {
+      st.stage++;
+      sound(st.stage === 3 ? 'fanfare' : 'pop');
+      for (let i = 0; i < 8; i++) addPart('sparkle', p.x + rnd(-30, 30) * U, p.y - rnd(0, 70) * U, { size: 7 });
+      if (st.stage === 3) { addNeed('fun', 10); pet.jumpV = 200 * U; pet.giggleT = 1.2; }
+      save();
+      return true;
+    }
+  }
+  return false;
+}
+
+/** He reached the puddle / leaf pile: jump in! Then back to the middle. */
+function updateWeatherGame(dt) {
+  const j = game.jumpTo;
+  if (!j) return;
+  if (pet.moving) return;
+  if (!j.jumped) {
+    j.jumped = true; j.t = 0;
+    pet.jumpV = 230 * U; pet.giggleT = 1;
+    addNeed('fun', 5);
+    if (j.kind === 'puddles') {
+      sound('splash'); addNeed('clean', -8);   // muddy – a reason for a bath
+      for (let i = 0; i < 16; i++) addPart('drop', j.p.x + rnd(-30, 30) * U, j.p.y - 6 * U, { vx: rnd(-150, 150) * U, vy: rnd(-260, -120) * U, g: 700, size: 7, max: 0.9 });
+    } else {
+      sound('scrub');
+      for (let i = 0; i < 20; i++) addPart('crumb', j.p.x + rnd(-30, 30) * U, j.p.y - 10 * U, { vx: rnd(-160, 160) * U, vy: rnd(-280, -120) * U, g: 300, color: ['#ef6c00', '#fbc02d', '#d84315'][i % 3], size: 6, max: 1.6 });
+      game.leafGone = game.leafGone || []; game.leafGone[j.i] = game.t + 10;   // the pile grows back after 10 s
+    }
+    save();
+    return;
+  }
+  j.t += dt;
+  if (j.t > 1.4) { game.jumpTo = null; pet.tx = 0; }
+}
+
+function drawWeatherGame(c, time) {
+  const g = weatherGame();
+  if (!g) return;
+  if (g === 'puddles') for (let i = 0; i < 3; i++) {
+    const p = puddlePos(i);
+    c.fillStyle = 'rgba(70,120,170,0.75)'; c.beginPath(); c.ellipse(p.x, p.y, 40 * U, 11 * U, 0, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1.5 * U;
+    const k = (time * 0.8 + i * 0.37) % 1; c.beginPath(); c.ellipse(p.x + (i - 1) * 8 * U, p.y, 6 * U + k * 20 * U, (2 + k * 5) * U, 0, 0, TAU); c.globalAlpha = 1 - k; c.stroke(); c.globalAlpha = 1;
+  }
+  if (g === 'leaves') for (let i = 0; i < 2; i++) {
+    if (game.leafGone && game.leafGone[i] > game.t) continue;
+    const p = leafPos(i), r = mulberry(140 + i);
+    c.fillStyle = '#b5651d'; c.beginPath(); c.ellipse(p.x, p.y, 38 * U, 18 * U, 0, Math.PI, TAU); c.fill();
+    for (let k = 0; k < 26; k++) { c.fillStyle = ['#ef6c00', '#fbc02d', '#d84315', '#a1887f'][k % 4]; c.beginPath(); c.ellipse(p.x + (r() - 0.5) * 70 * U, p.y - r() * 16 * U, 6 * U, 3 * U, r() * 3, 0, TAU); c.fill(); }
+  }
+  if (g === 'snowman') {
+    const p = snowPos(), st = snowmanState();
+    c.fillStyle = '#ffffff'; c.strokeStyle = 'rgba(120,150,190,0.5)'; c.lineWidth = 1.5 * U;
+    if (st.stage === 0) { c.beginPath(); c.ellipse(p.x, p.y, 34 * U, 14 * U, 0, Math.PI, TAU); c.fill(); c.stroke(); }
+    const balls = [[0, -16, 22], [0, -48, 16], [0, -72, 11]];
+    for (let i = 0; i < st.stage; i++) { const [ox, oy, r] = balls[i]; c.beginPath(); c.arc(p.x + ox * U, p.y + oy * U, r * U, 0, TAU); c.fill(); c.stroke(); }
+    if (st.stage >= 3) {
+      c.fillStyle = '#ff7043'; c.beginPath(); c.moveTo(p.x, p.y - 72 * U); c.lineTo(p.x - 16 * U, p.y - 70 * U); c.lineTo(p.x, p.y - 68 * U); c.fill();
+      c.fillStyle = '#263238'; for (const ox of [-4, 4]) { c.beginPath(); c.arc(p.x + ox * U, p.y - 76 * U, 1.8 * U, 0, TAU); c.fill(); }
+      c.fillRect(p.x - 10 * U, p.y - 84 * U, 20 * U, 3 * U); c.fillRect(p.x - 6 * U, p.y - 98 * U, 12 * U, 14 * U);
+      c.strokeStyle = '#6d4c41'; c.lineWidth = 2.5 * U; c.beginPath(); c.moveTo(p.x - 14 * U, p.y - 50 * U); c.lineTo(p.x - 32 * U, p.y - 62 * U); c.moveTo(p.x + 14 * U, p.y - 50 * U); c.lineTo(p.x + 32 * U, p.y - 64 * U); c.stroke();
+    }
+  }
+}
+
+/* ---------- toys ---------- */
+
+const SAND_PLACES = ['beach', 'island', 'lagoon', 'treasure', 'desert'];
+const kiteOk = () => { const w = currentWeather(); return (w === 'sun' || w === 'clouds' || w === 'rainbow') && !placeById(S.walk ? 'meadow' : S.place).indoor; };
+const castleOk = () => !S.walk && SAND_PLACES.includes(S.place);
+
+function startToy(kind) {
+  game.mode = kind; game.modeT = 0;
+  if (kind === 'bubbles') game.bubbles = { list: [], next: 0 };
+  if (kind === 'kite') game.kite = { x: W * 0.7, y: groundY * 0.4, tx: W * 0.7, ty: groundY * 0.4, fun: 0 };
+  if (kind === 'castle') game.castle = { stage: 0 };
+  refreshUI();
+}
+
+function updateToys(dt) {
+  if (game.mode === 'bubbles') {
+    const b = game.bubbles;
+    b.next -= dt;
+    if (b.next <= 0 && b.list.length < 8) { b.next = 0.8; b.list.push({ x: rnd(0.1, 0.9) * W, y: H - 120 * U, r: rnd(14, 24) * U, vy: -rnd(30, 55) * U, ph: rnd(0, 6) }); }
+    for (const q of b.list) { q.y += q.vy * dt; q.x += Math.sin(game.t * 2 + q.ph) * 18 * U * dt; }
+    b.list = b.list.filter(q => q.y > 40 * U);
+  } else if (game.mode === 'kite') {
+    const k = game.kite;
+    k.x = lerp(k.x, k.tx, Math.min(1, dt * 3)) + Math.sin(game.t * 2.3) * 0.6 * U;
+    k.y = lerp(k.y, k.ty, Math.min(1, dt * 3)) + Math.cos(game.t * 1.7) * 0.5 * U;
+    k.fun += dt;
+    if (k.fun >= 2) { k.fun = 0; addNeed('fun', 1); }
+  }
+}
+
+/** Taps for the toys. Returns true if used. */
+function toyTap(x, y) {
+  if (game.mode === 'bubbles') {
+    const b = game.bubbles, i = b.list.findIndex(q => dist(x, y, q.x, q.y) < q.r + 12 * U);
+    if (i < 0) return true;
+    const q = b.list.splice(i, 1)[0];
+    sound('pop'); addNeed('fun', 2);
+    pet.giggleT = 0.6; if (pet.jump === 0) pet.jumpV = 160 * U;
+    pet.dir = q.x < W / 2 + pet.x ? -1 : 1;
+    for (let k = 0; k < 8; k++) addPart('bubble', q.x, q.y, { vx: rnd(-80, 80) * U, vy: rnd(-80, 80) * U, size: 4, max: 0.5 });
+    return true;
+  }
+  if (game.mode === 'castle') {
+    const c = game.castle, p = { x: W * 0.8, y: standY + 34 * U };
+    if (c.stage < 4 && dist(x, y, p.x, p.y - 30 * U) < 55 * U) {
+      c.stage++; sound(c.stage === 4 ? 'fanfare' : 'scrub');
+      for (let k = 0; k < 8; k++) addPart('crumb', p.x + rnd(-30, 30) * U, p.y - rnd(0, 40) * U, { vx: rnd(-60, 60) * U, vy: rnd(-120, -40) * U, g: 400, color: '#e2be72', size: 4, max: 0.7 });
+      if (c.stage === 4) { addNeed('fun', 10); pet.giggleT = 1; }
+      return true;
+    }
+    if (c.stage === 4 && game.stegoInfo && inBox(x, y, game.stegoInfo.box)) {
+      // He stomps on the finished castle – the best part.
+      pet.tx = clamp(p.x - W / 2 - 60 * U, -W / 2 + 60 * U, W / 2 - 60 * U); pet.jumpV = 260 * U; c.stomp = 0.8;
+      return true;
+    }
+  }
+  return false;
+}
+
+/** The castle is flattened when he lands next to it after the stomp. */
+function updateCastle(dt) {
+  const c = game.castle;
+  if (!c || !c.stomp) return;
+  c.stomp -= dt;
+  if (c.stomp <= 0) {
+    c.stomp = 0; c.stage = 0; sound('flop'); addNeed('fun', 3); pet.giggleT = 1.2; pet.tx = 0;
+    for (let k = 0; k < 18; k++) addPart('dust', W * 0.8 + rnd(-40, 40) * U, standY + 20 * U, { vx: rnd(-90, 90) * U, vy: rnd(-90, -20) * U, size: rnd(6, 11), max: 1 });
+  }
+}
+
+/** The kite follows the finger in the upper part of the screen. */
+function kiteDrag(x, y) { if (game.mode !== 'kite') return false; game.kite.tx = clamp(x, 30 * U, W - 30 * U); game.kite.ty = clamp(y, 70 * U, groundY + 20 * U); return true; }
+
+function drawToys(c, time) {
+  if (game.mode === 'bubbles') for (const q of game.bubbles.list) {
+    const g = c.createRadialGradient(q.x - q.r * 0.3, q.y - q.r * 0.3, q.r * 0.1, q.x, q.y, q.r);
+    g.addColorStop(0, 'rgba(255,255,255,0.7)'); g.addColorStop(0.7, 'rgba(180,220,255,0.25)'); g.addColorStop(1, 'rgba(255,170,230,0.6)');
+    c.fillStyle = g; c.beginPath(); c.arc(q.x, q.y, q.r, 0, TAU); c.fill();
+  }
+  if (game.mode === 'kite') {
+    const k = game.kite, m = game.stegoInfo ? game.stegoInfo.mouth : { x: W / 2, y: standY - 80 * U };
+    c.strokeStyle = 'rgba(60,60,60,0.7)'; c.lineWidth = 1.2 * U;
+    c.beginPath(); c.moveTo(m.x, m.y); c.quadraticCurveTo((m.x + k.x) / 2, Math.max(m.y, k.y) + 30 * U, k.x, k.y + 24 * U); c.stroke();
+    c.save(); c.translate(k.x, k.y); c.rotate(Math.sin(time * 2) * 0.15);
+    const cols = ['#e53935', '#ffca28', '#1e88e5', '#43a047'];
+    const pts = [[0, -30], [22, 0], [0, 24], [-22, 0]];
+    for (let i = 0; i < 4; i++) { c.fillStyle = cols[i]; c.beginPath(); c.moveTo(0, 0); c.lineTo(pts[i][0] * U, pts[i][1] * U); c.lineTo(pts[(i + 1) % 4][0] * U, pts[(i + 1) % 4][1] * U); c.fill(); }
+    c.strokeStyle = '#555'; c.lineWidth = 1.5 * U; c.beginPath(); c.moveTo(0, 24 * U); for (let i = 1; i <= 4; i++) c.lineTo(Math.sin(time * 4 + i) * 6 * U, (24 + i * 12) * U); c.stroke();
+    c.restore();
+  }
+  if (game.mode === 'castle') {
+    const st = game.castle.stage, x = W * 0.8, y = standY + 34 * U;
+    c.fillStyle = '#e2be72'; c.strokeStyle = '#b8914a'; c.lineWidth = 1.5 * U;
+    if (st === 0) { c.beginPath(); c.ellipse(x, y, 34 * U, 10 * U, 0, Math.PI, TAU); c.fill(); }
+    if (st >= 1) { c.fillRect(x - 32 * U, y - 22 * U, 64 * U, 22 * U); c.strokeRect(x - 32 * U, y - 22 * U, 64 * U, 22 * U); }
+    if (st >= 2) for (let i = 0; i < 4; i++) c.fillRect(x - 32 * U + i * 18 * U, y - 30 * U, 10 * U, 8 * U);
+    if (st >= 3) for (const ox of [-26, 26]) { c.fillRect(x + ox * U - 9 * U, y - 52 * U, 18 * U, 30 * U); c.strokeRect(x + ox * U - 9 * U, y - 52 * U, 18 * U, 30 * U); c.fillStyle = '#c9a25c'; c.beginPath(); c.moveTo(x + ox * U - 11 * U, y - 52 * U); c.lineTo(x + ox * U, y - 66 * U); c.lineTo(x + ox * U + 11 * U, y - 52 * U); c.fill(); c.fillStyle = '#e2be72'; }
+    if (st >= 4) { c.strokeStyle = '#6d4c41'; c.beginPath(); c.moveTo(x + 26 * U, y - 66 * U); c.lineTo(x + 26 * U, y - 86 * U); c.stroke(); c.fillStyle = '#e53935'; c.beginPath(); c.moveTo(x + 26 * U, y - 86 * U); c.lineTo(x + 40 * U + Math.sin(time * 6) * 2 * U, y - 81 * U); c.lineTo(x + 26 * U, y - 76 * U); c.fill(); }
+  }
+}
+
+/* ---------- melody game (in the music game) ---------- */
+
+/** Starts (or restarts) the melody game: he plays `len` notes, then it is the child's turn. */
+function startMelody(len) {
+  const seq = Array.from({ length: len }, () => Math.floor(Math.random() * 6));
+  game.melody = { seq, len, phase: 'listen', i: 0, t: -0.6, pos: 0 };
+  refreshUI();
+}
+
+function updateMelody(dt) {
+  const m = game.melody;
+  if (!m || game.mode !== 'music') { game.melody = null; return; }
+  if (m.phase !== 'listen') return;
+  m.t += dt;
+  // A note every 0.65 s; after the last one the child may play 0.35 s later.
+  if (m.t >= (m.i >= m.seq.length ? 0.35 : 0.65)) {
+    m.t = 0;
+    if (m.i < m.seq.length) {
+      const k = m.seq[m.i++], el = $('mk-' + k);
+      sound('xylo', k); pet.danceT = 0.5;
+      if (el) { el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 300); }
+    } else { m.phase = 'play'; m.pos = 0; refreshUI(); }
+  }
+}
+
+/** A key pressed while the melody game waits for the child. */
+function melodyKey(i) {
+  const m = game.melody;
+  if (!m || m.phase !== 'play' || i > 5) return;
+  if (i === m.seq[m.pos]) {
+    m.pos++;
+    if (m.pos >= m.len) {
+      m.phase = 'done'; sound('applause'); addNeed('fun', 5); pet.danceT = 1.5;
+      setTimeout(() => { if (game.melody === m) startMelody(Math.min(6, m.len + 1)); }, 1400);
+    }
+  } else {
+    m.phase = 'wrong'; sound('refuse');
+    setTimeout(() => { if (game.melody === m) Object.assign(m, { phase: 'listen', i: 0, t: -0.4, pos: 0 }); }, 1000);
+  }
+}
+
+/* ---------- wishes ---------- */
+
+const FOOD_COLOR = { fern: 'green', leaf: 'green', berry: 'purple', apple: 'red', melon: 'red' };
+const WISH_COLORS = { green: '#4caf50', purple: '#7b3fb0', red: '#e53935' };
+
+/** Now and then (every 10–20 minutes of playing, when he is not full) a wish appears; it goes after 8 minutes. */
+function updateWish() {
+  if (!hatched() || asleepNow()) { S.wish = null; return; }
+  if (S.wish && game.t > S.wish.until) S.wish = null;
+  if (S.wish || game.mode !== 'idle' || game.screen !== 'game' || game.trans < 1) return;
+  if (game.nextWish === undefined) game.nextWish = game.t + rnd(60, 180);
+  if (game.t < game.nextWish || S.needs.food >= 80) return;
+  game.nextWish = game.t + rnd(600, 1200);
+  const f = FOODS[Math.floor(Math.random() * FOODS.length)], room = Math.floor((100 - S.needs.food) / f.value);
+  if (Math.random() < 0.5 && room >= 2) S.wish = { type: 'count', food: f.id, n: Math.min(4, room), got: 0, until: game.t + 480 };
+  else S.wish = { type: 'color', color: Object.keys(WISH_COLORS)[Math.floor(Math.random() * 3)], until: game.t + 480 };
+}
+
+/** Called when he eats something (from eat()): does it fulfil the wish? */
+function wishEat(id) {
+  const w = S.wish;
+  if (!w) return;
+  if (w.type === 'count' && id === w.food) w.got++;
+  if ((w.type === 'count' && w.got >= w.n) || (w.type === 'color' && FOOD_COLOR[id] === w.color)) {
+    S.wish = null;
+    addNeed('love', 10); addNeed('fun', 5);
+    pet.danceT = 1.6; sound('applause');
+    const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U };
+    for (let i = 0; i < 14; i++) addPart('star', h.x + rnd(-80, 80) * U, h.y + rnd(-60, 40) * U, { size: 9 });
+  }
+}
+
+/** Thought bubble content: the wished food n times (eaten ones faded), or a coloured blob. */
+function wishBubbleIcon(c, x, y, r) {
+  const w = S.wish;
+  if (w.type === 'count') {
+    const n = w.n, s = r * (n > 3 ? 0.62 : 0.85);
+    for (let i = 0; i < n; i++) {
+      const ox = (i - (n - 1) / 2) * s * 0.85;
+      c.globalAlpha = i < w.got ? 0.25 : 1;
+      drawFood(c, w.food, x + ox, y, s);
+    }
+    c.globalAlpha = 1;
+  } else {
+    c.fillStyle = WISH_COLORS[w.color];
+    c.beginPath(); for (let i = 0; i < 12; i++) { const a = i * TAU / 12, rr = r * (0.5 + (i % 2) * 0.08); c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.arc(x - r * 0.18, y - r * 0.18, r * 0.12, 0, TAU); c.fill();
+  }
+}
+
 /* ===== 99-debug.js ===== */
 /* 99-debug.js – window.__st: hooks for the tests (tests/*.js). The game itself never uses them.
  * Time travel: __st.setTime('2026-11-20T09:00') or __st.travel(hours) move now() (clock.offset). */
@@ -5275,6 +5659,7 @@ window.__st = {
   easterSunday, seasonAt, seasonNow, holidayTap, treeHere, holidayHere, xmasState, easterState, xmasBoxPos, eggPos, bunnyPos, devGoHoliday, WEAR_EXTRA,
   TRICKS, startTrain, pickTrick, trainBackToPick, finishTrace, judgeTrace, trickGuide, trainBoard, startTrick, learnedTricks, trickOpen,
   birthdayAt, birthdayNow, bdayState, cakeTap, cakePos, candlePos, goodnightDim, devGoBirthday, shapeUnit,
+  seasonKind, weatherGame, weatherGameTap, puddlePos, leafPos, snowPos, snowmanState, startToy, toyTap, kiteDrag, kiteOk, castleOk, startMelody, melodyKey, wishEat, updateWish, FOOD_COLOR,
   startWalk, arrive, goPlace, openPlaces, closePlaces, foundToday, walkLimitReached, firefliesNow, placePicture, walkFx,
   enterGame, showMenu, startMode, endMode, goToBed, offerFood, removePoop, tapStego, strokeStego, throwBall,
   eggPhase, eggProgress, eggRub, stageAt: () => stageAt(now()), growth: () => growthAt(now()), lifeDay: () => lifeDay(now()),

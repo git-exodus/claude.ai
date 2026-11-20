@@ -1,7 +1,7 @@
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.9';
+const VERSION = '0.10';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -274,6 +274,26 @@ const ICONS = {
   train: [
     { d: 'M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z', fill: '#ffca28', stroke: '#e0a800', w: 1.2 },
     { d: 'M9 12.5l2 2 4-4.5', stroke: '#ffffff', w: 2 },
+  ],
+  bubbles: [
+    { d: 'M3 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0z', fill: '#bfe6ff', stroke: '#7fc4f0', w: 1.4 },
+    { d: 'M14 6a4 4 0 1 0 8 0a4 4 0 1 0-8 0zM15 17a3 3 0 1 0 6 0a3 3 0 1 0-6 0z', fill: '#ffd6ef', stroke: '#f48fb1', w: 1.2 },
+    { d: 'M6 10a3 3 0 0 1 2.5-2.5', stroke: '#ffffff', w: 1.6 },
+  ],
+  kite: [
+    { d: 'M12 2l7 8-7 9-7-9z', fill: '#e53935' },
+    { d: 'M12 2v17M5 10h14', stroke: '#ffca28', w: 1.6 },
+    { d: 'M12 19c-2 1-1 3-3 4', stroke: '#555', w: 1.4 },
+  ],
+  castle: [
+    { d: 'M3 21V11h3V8h3v3h6V8h3v3h3v10z', fill: '#e2be72', stroke: '#b8914a', w: 1.2 },
+    { d: 'M10 21v-5h4v5', fill: '#b8914a' },
+    { d: 'M16.5 8V3l4 1.5-4 1.5', fill: '#e53935', stroke: '#6d4c41', w: 1 },
+  ],
+  melody: [
+    { d: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0z', fill: '#7e57c2' },
+    { d: 'M10 16V7l6-1v8', stroke: '#ffffff', w: 1.8 },
+    { d: 'M7 16a2.5 2 0 1 0 5 0a2.5 2 0 1 0-5 0zM13 14a2.5 2 0 1 0 5 0a2.5 2 0 1 0-5 0z', fill: '#ffffff' },
   ],
   close: [
     { d: 'M6 6l12 12M18 6L6 18', stroke: '#e5533d', w: 3.4 },

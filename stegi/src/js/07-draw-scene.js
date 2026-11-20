@@ -317,7 +317,8 @@ function drawThought(c, x, y, icon, t) {
   c.beginPath(); c.arc(x - 18 * U, y + 22 * U + bob, 5 * U, 0, TAU); c.fill(); c.stroke();
   c.beginPath(); c.arc(x - 8 * U, y + 10 * U + bob, 8 * U, 0, TAU); c.fill(); c.stroke();
   c.beginPath(); c.arc(x + 14 * U, y - 18 * U + bob, r, 0, TAU); c.fill(); c.stroke();
-  drawIcon(c, icon, x + 14 * U, y - 18 * U + bob, r * 1.25);
+  if (typeof icon === 'function') icon(c, x + 14 * U, y - 18 * U + bob, r);   // 0.10: a wish draws its own picture
+  else drawIcon(c, icon, x + 14 * U, y - 18 * U + bob, r * 1.25);
   c.restore();
 }
 
