@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.12.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.12.1.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -151,9 +151,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 16`, `versionName '0.12'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12.1';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12.1` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 17`, `versionName '0.12.1'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -516,6 +516,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.12.1 | Risse im Ei (eigenes und Geschwister-Ei) etwas tiefer und weiter innen, ragen nicht mehr über den Rand |
 | 0.12 | Familie: Geschwister-Ei zwei Tage nach „Ganz groß“, streicheln wie das eigene Ei, kleines Geschwisterchen ohne eigene Bedürfnisse (folgt, wandert mit, hüpft, kichert, schläft, wächst bis 75 %) |
 | 0.11 | Sterne, Zuhause (Höhle) in der Orte-Liste, Laden mit 12 Möbeln, Sticker-Heft mit 24 Stickern, Freundschaft mit Herzen und Geschenken fürs Zuhause |
 | 0.10 | Jahreszeiten, Wetter-Spiele (Pfützen, Schneemann, Laubhaufen), Seifenblasen, Drachen, Sandburg, Melodie nachspielen, Wünsche (Zählen und Farben) |
@@ -537,7 +538,7 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Gebaut bis 0.12. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
+Gebaut bis 0.12.1. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):
 - Fotos aufs Handy speichern (heute nur im Spiel ansehen).

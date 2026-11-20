@@ -174,13 +174,16 @@ function drawEgg(c, x, y, h, cracks, glow, wobble, t) {
   c.beginPath(); c.ellipse(16, -30, 18, 40, 0.1, 0, TAU); c.fill();
   c.restore();
   c.lineWidth = 3; c.strokeStyle = '#b89b6a'; shape(); c.stroke();
-  // Cracks: dark zigzag lines, each stage adds one more.
+  // Cracks: dark zigzag lines, each stage adds one more. 0.12.1: a bit lower and narrower (x 0.78, y +10)
+  // and clipped to the egg, so no line sticks out over the edge.
+  c.save(); shape(); c.clip();
   c.strokeStyle = '#5b4630'; c.lineWidth = 2.6; c.lineJoin = 'round';
   for (let i = 0; i < cracks; i++) {
     c.beginPath();
-    EGG_CRACKS[i].forEach(([px, py], j) => (j ? c.lineTo(px, py) : c.moveTo(px, py)));
+    EGG_CRACKS[i].forEach(([px, py], j) => (j ? c.lineTo(px * 0.78, py + 10) : c.moveTo(px * 0.78, py + 10)));
     c.stroke();
   }
+  c.restore();
   c.restore();
 }
 
