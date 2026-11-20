@@ -122,7 +122,7 @@ function buildDev() {
     '<h3>Zeit</h3><p class="info" id="dv-clock"></p><div class="chips">' +
       DEV_SPEEDS.map(x => b('dv-sp-' + x, x + '×')).join('') + '</div><div class="chips">' +
       b('dv-h1', '+1 Stunde') + b('dv-d1', '+1 Tag') + b('dv-t7', 'Morgen 7:00') + b('dv-t12', 'Mittag') + b('dv-t1945', 'Abend 19:45') + b('dv-t22', 'Nacht 22:00') + '</div><div class="chips">' +
-      b('dv-x18', '18.12.') + b('dv-x24', '24.12.') + b('dv-x31', '31.12.') + b('dv-easter', 'Ostern') + '</div>' +
+      b('dv-x18', '18.12.') + b('dv-x24', '24.12.') + b('dv-x31', '31.12.') + b('dv-easter', 'Ostern') + b('dv-bday', 'Geburtstag') + '</div>' +
     '<h3>Helfer</h3><div class="chips">' +
       b('dv-full', 'Alles voll') + b('dv-low', 'Fast leer') + b('dv-arrive', 'Sofort ankommen') + b('dv-places', 'Alle Orte') +
       b('dv-gifts', 'Alle Geschenke') + b('dv-visit', 'Besuch jetzt') + '</div>' +
@@ -138,6 +138,7 @@ function buildDev() {
   on('dv-t7', () => devTimeOfDay(7 * 60)); on('dv-t12', () => devTimeOfDay(12 * 60));
   on('dv-x18', () => devGoHoliday([12, 18])); on('dv-x24', () => devGoHoliday([12, 24]));
   on('dv-x31', () => devGoHoliday([12, 31])); on('dv-easter', () => devGoHoliday('easter'));
+  on('dv-bday', devGoBirthday);
   on('dv-t1945', () => devTimeOfDay(19 * 60 + 45)); on('dv-t22', () => devTimeOfDay(22 * 60));
   on('dv-full', () => devNeeds(100)); on('dv-low', () => devNeeds(15));
   on('dv-arrive', devArrive); on('dv-places', devAllPlaces); on('dv-gifts', devAllGifts); on('dv-visit', devVisit);
@@ -176,3 +177,13 @@ function openDev() {
   devClockTimer = setInterval(() => { if ($('devpanel').hidden) clearInterval(devClockTimer); else fillDev(); }, 500);
 }
 function closeDev() { $('devpanel').hidden = true; refreshUI(); }
+
+/** 0.9: jumps the test clock forward to his next monthly birthday at 10:00 (hatches him first if needed). */
+function devGoBirthday() {
+  if (!hatched()) devDay(1);
+  const start = new Date(now());
+  for (let i = 1; i <= 62; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i, 10, 0, 0);
+    if (birthdayAt(d.getTime())) { devJump((d.getTime() - now()) / 3600e3); S.stageSeen = stageAt(now()); return; }
+  }
+}

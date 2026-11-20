@@ -44,6 +44,7 @@ function drawGift(c, x, y, s, t) {
 function wearNow() {
   const w = { ...S.wear }, pl = placeById(S.walk ? 'meadow' : S.place);
   if (pl.wear) for (const slot in pl.wear) if (!w[slot]) w[slot] = pl.wear[slot];
+  if (!w.head && birthdayNow()) w.head = 'party';   // 0.9: party hat on his birthday
   return w;
 }
 

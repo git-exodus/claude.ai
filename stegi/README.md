@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.8.2.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.9.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **266 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 20).
+Erwartet: **283 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 20, suite-celebrate 17).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -72,6 +72,7 @@ stegi/
     ├── suite-design.js    0.6: Horizont, Kleinigkeiten (schnuppern, staunen, freuen, hüpfen), Stauchen/Strecken, Vordergrund aller Orte
     ├── suite-holidays.js  0.7: Ostern-Datum, Baum/Geschenke/Feuerwerk/Eier nach Datum, 1 Geschenk pro Tag, Ball ohne Flackern
     ├── suite-training.js  0.8: Malprüfung, Trick-Auswahl mit „?“, Malen mit der Maus, Bauchplatscher, Lernen, Tricks von selbst
+    ├── suite-celebrate.js 0.9: 7 Tricks nacheinander, Geburtstag (Daten, Kuchen, Kerzen, Hut), Gute-Nacht-Ritual
     ├── suite-dev.js       0.4: Testmodus (eigener Spielstand, Stufen, Zeitraffer, Sprünge, Helfer, echter Stand bleibt unberührt)
     └── make-icon.js       kein Test: zeichnet das App-Symbol mit dem Spielcode neu
 ```
@@ -147,9 +148,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.8.2';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.8.2` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 12`, `versionName '0.8.2'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.9';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.9` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 13`, `versionName '0.9'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -179,6 +180,7 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 | `18-photos.js` | Kamera (2 pro Tag), Meilenstein-Fotos, Speichern (Fehler behalten das Foto), Album mit zwei Reitern, Löschen durch Halten |
 | `20-holidays.js` | 0.7: Feiertage nach Handy-Datum: Weihnachtsbaum, Weihnachtsgeschenke, Silvester-Feuerwerk, Ostereier, Osterformel |
 | `22-training.js` | 0.8: Training: Trick-Auswahl, Tafel mit Symbol, Malprüfung `judgeTrace`, Trick- und Bauchplatscher-Animation |
+| `23-celebrate.js` | 0.9: monatlicher Geburtstag (Kuchen, Kerzen, Luftballons) und Gute-Nacht-Ritual (Schlaflied, Kuscheltier, dunkler) |
 | `19-dev.js` | Testmodus für Eltern: Wechsel auf den Test-Spielstand, Zeitraffer, Stufen, Helfer, Test-Fenster |
 | `11-main.js` | `resize`, Bildschleife, Speichern alle 5 s und beim Verlassen, `start()` |
 | `99-debug.js` | `window.__st` für die Tests (wird vom Spiel nicht benutzt), ruft `start()` auf |
@@ -387,16 +389,28 @@ Test-Werkzeuge: Knöpfe „18.12.“, „24.12.“, „31.12.“, „Ostern“ s
 
 ### 6.16 Training (seit 0.8)
 
-- Spielen-Menü → Stern: Auswahl der Tricks. Offen ist zuerst nur die **Rolle**; **Hinterbeine** öffnen sich, wenn
-  die Rolle gelernt ist, **Vorderbeine**, wenn die Hinterbeine gelernt sind. Gesperrte zeigen „?“.
+- Spielen-Menü → Stern: Auswahl der 7 Tricks, die nacheinander frei werden (der nächste, sobald der vorige gelernt
+  ist; gesperrte zeigen „?“): **Rolle** (Kreis), **Hinterbeine** (Zickzack), **Vorderbeine** (Welle), seit 0.9
+  **Sitz** (Dreieck), **Drehen** (Spirale), **Küsschen** (Herz, mit Herzchen), **Pirouette** (Stern, hoher Sprung).
 - Oben erscheint eine Tafel mit dem Symbol als gepunktete Linie (grüner Startpunkt, eine Hand fährt es alle 2,5 s vor).
   Rolle = Kreis, Hinterbeine = senkrechter Zickzack, Vorderbeine = waagerechte Welle (1,5 Wellen).
 - **Prüfung** (`judgeTrace`, großzügig, aber kein Gekritzel): mindestens 72 % der Linie berührt (Abstand 28 U),
   80 % der Fingerlinie nah an der Linie, 80 % der Schritte in eine Richtung entlang der Linie, Länge 0,6–2,2-mal
-  die Linie. Startpunkt und Richtung egal. Geprüfte Fälle stehen in suite-training.js.
+  die Linie, seit 0.9 außerdem durchschnittlicher Abstand in beide Richtungen ≤ 11 U und 90 % der Fingerlinie ≤ 20 U
+  (Kinderhand-Wackeln liegt unter 10, ein anderes der 7 Symbole bei 12 oder mehr – für jedes Paar gemessen).
+  Startpunkt und Richtung egal. Geprüfte Fälle stehen in suite-training.js.
 - Geschafft: Trick, Applaus, Sterne, Spaß +8. Nicht geschafft: Ansatz, dann Bauchplatscher mit Staub, Spaß +3.
 - **3-mal geschafft = gelernt** (Fanfare). Gelernte Tricks macht er bei etwa jeder 5. Kleinigkeit von selbst
   (nur gelungene Tricks, kein Bauchplatscher). Nicht nachts, nicht unterwegs.
+
+### 6.17 Geburtstag und Gute-Nacht-Ritual (seit 0.9)
+
+- **Geburtstag** jeden Monat am Schlüpf-Datum (hat der Monat den Tag nicht, am letzten Tag), ab dem ersten Monat:
+  Geburtstagslied (einmal), Partyhut (wenn der Kopf frei ist), drei Luftballons, Kuchen vorne links mit einer Kerze
+  je Monat (ab dem ersten Jahr: je Jahr). Kuchen antippen = eine Kerze aus; alle aus = Fanfare, er frisst den
+  Kuchen (Essen +30, Liebe +10). Test-Werkzeuge: Knopf „Geburtstag“.
+- **Gute Nacht:** Schläft er ein, während man zuschaut (Licht aus oder Schlafenszeit), spielt einmal pro Nacht ein
+  Schlaflied von der Spieluhr, ein rosa Kuschel-Dino liegt neben seinem Kopf, und das Bild wird in 5 s etwas dunkler.
 
 ---
 
@@ -446,6 +460,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.9 | 4 neue Tricks (Sitz, Drehen, Küsschen, Pirouette), genauere Malprüfung für 7 Symbole, monatlicher Geburtstag mit Kuchen und Kerzen, Gute-Nacht-Ritual |
 | 0.8.2 | Fehler behoben: Stand der Besuch links, lief er beim Losgehen rückwärts (schaute weiter den Besuch an); jetzt dreht er sich beim Wandern immer nach rechts, in allen Stufen geprüft |
 | 0.8.1 | Besuch steht vor dem Stego, ein großer Stego rückt dafür etwas zur Seite; beim Wandern läuft der Besuch an den Hinterbeinen mit |
 | 0.8 | Training: Tricks durch Nachmalen (Rolle/Kreis, Hinterbeine/Zickzack, Vorderbeine/Welle), freischalten nacheinander, Bauchplatscher bei Fehlversuch, gelernte Tricks von selbst |
@@ -463,7 +478,9 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Alles bisher Vereinbarte ist gebaut (0.1–0.8). Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
+Gebaut bis 0.9. Vereinbart und noch offen: 0.10 Wetter-Spiele, Jahreszeiten, Spielzeug, Melodie nachspielen,
+Zähl-/Farbspiele; 0.11 Sterne, Höhle, Laden, Sticker-Heft, Freundschaft; 0.12 Familie (Geschwister ohne eigene
+Bedürfnisse). Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):
 - Benachrichtigungen am Handy („Stegi hat Hunger“, „Stegi ist angekommen“) – braucht Android-Code.

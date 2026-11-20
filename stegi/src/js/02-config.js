@@ -1,7 +1,7 @@
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.8.2';
+const VERSION = '0.9';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -159,13 +159,18 @@ const MUSIC_FUN = 1.5;
 const WEATHER_SHARES = { sun: 0.45, clouds: 0.25, rain: 0.30 };
 const RAINBOW_FROM = 15 * 60;
 
-/** Training (0.8): draw the symbol, he does the trick. In this order; a trick is open once the one before
+/** Training (0.8, 7 tricks since 0.9): draw the symbol, he does the trick. In this order; a trick is open once the one before
  *  is learned (TRICK_LEARN successes). Learned tricks he sometimes does by himself (IDLE_TRICK_CHANCE of the
- *  idle moments). shape: 'circle' | 'zigzag' (up and down) | 'wave' (left to right). */
+ *  idle moments). shape: 'circle' | 'zigzag' (up and down) | 'wave' (left to right) | 'triangle' | 'spiral' | 'heart' | 'star'. */
 const TRICKS = [
   { id: 'roll', shape: 'circle', name: 'Rolle' },
   { id: 'stand', shape: 'zigzag', name: 'Hinterbeine' },
   { id: 'hand', shape: 'wave', name: 'Vorderbeine' },
+  // 0.9: four more, opened one after the other.
+  { id: 'sit', shape: 'triangle', name: 'Sitz' },
+  { id: 'spin', shape: 'spiral', name: 'Drehen' },
+  { id: 'kiss', shape: 'heart', name: 'Küsschen' },
+  { id: 'pirouette', shape: 'star', name: 'Pirouette' },
 ];
 const TRICK_LEARN = 3;
 const TRAIN_FUN_OK = 8, TRAIN_FUN_FAIL = 3;
@@ -175,6 +180,10 @@ const IDLE_TRICK_CHANCE = 0.2;
  *  steps that must go along the line in one direction (no zigzagging back and forth), allowed length of
  *  the finger's line compared to the dotted line, and the distance that counts as "near" (in U). */
 const TRACE_COVER = 0.72, TRACE_ON_LINE = 0.8, TRACE_ORDER = 0.8, TRACE_LEN = [0.6, 2.2], TRACE_TOL = 28;
+/** 0.9 (7 similar shapes): average distance (U) from the dotted line to the finger line and back must be at
+ *  most TRACE_MEAN, and 90 % of the finger line within TRACE_P90. A child's wobble stays below 10, a different
+ *  shape is 12 or more (measured for every pair of shapes, see README 6.16). */
+const TRACE_MEAN = 11, TRACE_P90 = 20;
 
 /** Seconds the gear button must be held to open the parents' settings. */
 const GEAR_HOLD = 3;

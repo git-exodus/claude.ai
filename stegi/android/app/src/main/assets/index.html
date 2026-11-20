@@ -158,14 +158,14 @@ svg { display: block; width: 100%; height: 100%; }
 #dv-day { flex: 1; max-width: none; }
 #dv-dayval { min-width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; }
 /* Training (0.8): choice of tricks in the upper half, back button on the board. */
-#trainpick { position: absolute; left: 14px; right: 66px; top: calc(max(10px, env(safe-area-inset-top)) + 70px); display: flex; gap: 10px; justify-content: center; }
-.ttile { flex: 1 1 0; max-width: 110px; aspect-ratio: 3 / 4; border-radius: 18px; background: rgba(255, 255, 255, .92); padding: 6px;
+#trainpick { position: absolute; left: 14px; right: 66px; top: calc(max(10px, env(safe-area-inset-top)) + 70px); display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.ttile { flex: 0 0 calc(25% - 6px); max-width: 84px; aspect-ratio: 3 / 4; border-radius: 18px; background: rgba(255, 255, 255, .92); padding: 6px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 4px 0 rgba(0, 0, 0, .12); }
 .ttile canvas { width: 100%; aspect-ratio: 1; }
-.ttile .stars { color: #ffca28; font-size: 20px; letter-spacing: 1px; }
+.ttile .stars { color: #ffca28; font-size: 14px; letter-spacing: 0; }
 .ttile .stars i { font-style: normal; color: rgba(0, 0, 0, .15); }
 .ttile.locked { background: rgba(225, 232, 240, .92); }
-.ttile.locked b { font-family: 'Lilita One', 'Nunito', sans-serif; font-weight: 400; font-size: 48px; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .15); }
+.ttile.locked b { font-family: 'Lilita One', 'Nunito', sans-serif; font-weight: 400; font-size: 36px; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .15); }
 .ttile.nope { animation: wobble .4s; }
 #train-back { position: absolute; left: 20px; top: calc(max(10px, env(safe-area-inset-top)) + 80px); font-size: 20px; color: #4a7bd0; padding: 0; }
 [hidden] { display: none !important; }
@@ -218,7 +218,7 @@ svg { display: block; width: 100%; height: 100%; }
       <button class="big alt" id="s-devopen" type="button" hidden>Test-Werkzeuge öffnen</button>
       <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
       <button class="big" id="s-close" type="button">Schließen</button>
-      <p id="credit">@made by Brownii (Claude.ai) · v0.8.2</p>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.9</p>
     </div>
   </div>
   <div id="confirm" class="ov" hidden>
@@ -327,7 +327,7 @@ function mix(c1, c2, k) {
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.8.2';
+const VERSION = '0.9';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -485,13 +485,18 @@ const MUSIC_FUN = 1.5;
 const WEATHER_SHARES = { sun: 0.45, clouds: 0.25, rain: 0.30 };
 const RAINBOW_FROM = 15 * 60;
 
-/** Training (0.8): draw the symbol, he does the trick. In this order; a trick is open once the one before
+/** Training (0.8, 7 tricks since 0.9): draw the symbol, he does the trick. In this order; a trick is open once the one before
  *  is learned (TRICK_LEARN successes). Learned tricks he sometimes does by himself (IDLE_TRICK_CHANCE of the
- *  idle moments). shape: 'circle' | 'zigzag' (up and down) | 'wave' (left to right). */
+ *  idle moments). shape: 'circle' | 'zigzag' (up and down) | 'wave' (left to right) | 'triangle' | 'spiral' | 'heart' | 'star'. */
 const TRICKS = [
   { id: 'roll', shape: 'circle', name: 'Rolle' },
   { id: 'stand', shape: 'zigzag', name: 'Hinterbeine' },
   { id: 'hand', shape: 'wave', name: 'Vorderbeine' },
+  // 0.9: four more, opened one after the other.
+  { id: 'sit', shape: 'triangle', name: 'Sitz' },
+  { id: 'spin', shape: 'spiral', name: 'Drehen' },
+  { id: 'kiss', shape: 'heart', name: 'Küsschen' },
+  { id: 'pirouette', shape: 'star', name: 'Pirouette' },
 ];
 const TRICK_LEARN = 3;
 const TRAIN_FUN_OK = 8, TRAIN_FUN_FAIL = 3;
@@ -501,6 +506,10 @@ const IDLE_TRICK_CHANCE = 0.2;
  *  steps that must go along the line in one direction (no zigzagging back and forth), allowed length of
  *  the finger's line compared to the dotted line, and the distance that counts as "near" (in U). */
 const TRACE_COVER = 0.72, TRACE_ON_LINE = 0.8, TRACE_ORDER = 0.8, TRACE_LEN = [0.6, 2.2], TRACE_TOL = 28;
+/** 0.9 (7 similar shapes): average distance (U) from the dotted line to the finger line and back must be at
+ *  most TRACE_MEAN, and 90 % of the finger line within TRACE_P90. A child's wobble stays below 10, a different
+ *  shape is 12 or more (measured for every pair of shapes, see README 6.16). */
+const TRACE_MEAN = 11, TRACE_P90 = 20;
 
 /** Seconds the gear button must be held to open the parents' settings. */
 const GEAR_HOLD = 3;
@@ -748,7 +757,9 @@ function blankSave(t) {
     xmas: null,              // { year, opened: [3 x bool] }
     easter: null,            // { year, found: [5 x bool], bunny: 'none'|'shown'|'eaten' }
     extraWear: [],           // ids from WEAR_EXTRA he owns
-    tricks: { roll: 0, stand: 0, hand: 0 },   // 0.8: successful tries per trick (TRICK_LEARN = learned)
+    bday: null,              // 0.9: this birthday's cake { key, out (candles blown out), eaten, sung }
+    lullabyDay: -1,          // 0.9: day the lullaby was played last (once a night)
+    tricks: Object.fromEntries(TRICKS.map(t => [t.id, 0])),   // 0.8: successful tries per trick (TRICK_LEARN = learned)
   };
 }
 
@@ -811,6 +822,8 @@ function sanitizeSave(o, t) {
   b.visitDay = num(o.visitDay, -1, 1e6, -1);
   b.visitAt = num(o.visitAt, 0, 1e14, 0);
   b.visitDone = o.visitDone === true;
+  b.bday = o.bday && typeof o.bday.key === 'string' ? { key: o.bday.key, out: Math.round(num(o.bday.out, 0, 12, 0)), eaten: o.bday.eaten === true, sung: o.bday.sung === true } : null;
+  b.lullabyDay = num(o.lullabyDay, -1, 1e6, -1);
   for (const tr of TRICKS) b.tricks[tr.id] = Math.round(num(o.tricks && o.tricks[tr.id], 0, 999, 0));
   const bools = (a, n) => Array.from({ length: n }, (_, i) => !!(Array.isArray(a) && a[i]));
   b.xmas = o.xmas && typeof o.xmas.year === 'number' ? { year: o.xmas.year, opened: bools(o.xmas.opened, 3) } : null;
@@ -1047,6 +1060,10 @@ const SOUNDS = {
   // 0.8 training: applause after a trick, a soft belly flop.
   applause: () => { for (let i = 0; i < 14; i++) noise(0.05, { at: i * 0.05 + Math.random() * 0.03, freq: 2200 + Math.random() * 1500, q: 1.2, vol: 0.12 }); tone(784, 0.2, { vol: 0.08, type: 'triangle' }); tone(1047, 0.35, { at: 0.18, vol: 0.08, type: 'triangle' }); },
   flop: () => { noise(0.25, { freq: 160, q: 1, vol: 0.4, type: 'lowpass' }); tone(140, 0.2, { f2: 70, vol: 0.18, type: 'triangle' }); tone(600, 0.25, { at: 0.35, f2: 380, vol: 0.06, vib: 10 }); },
+  // 0.9: lullaby (music box, soft and slow) and a short birthday tune.
+  lullaby: () => { [[64, 0], [64, 0.5], [67, 1.0], [64, 2.0], [64, 2.5], [67, 3.0], [64, 4.0], [67, 4.5], [72, 5.0], [71, 6.0], [69, 6.5], [69, 7.0], [67, 8.0]]
+    .forEach(([n, at]) => tone(midi(n), 1.4, { at, vol: 0.07 })); },
+  bday: () => { [[60, 0], [60, 0.3], [62, 0.45], [60, 0.9], [65, 1.35], [64, 1.8]].forEach(([n, at]) => tone(midi(n), 0.5, { at, vol: 0.1, type: 'triangle' })); },
   // Camera click.
   shutter: () => { noise(0.05, { freq: 4000, q: 1, vol: 0.3 }); noise(0.07, { at: 0.08, freq: 3000, q: 1, vol: 0.25 }); },
   // Wrong hiding place: a soft "boing".
@@ -2927,6 +2944,7 @@ function startParty() {
 
 function update(dt) {
   updateDev(dt);   // test mode: fast time (19-dev.js)
+  if (hatched()) { updateBirthday(); updateGoodnight(dt); }   // 0.9 (23-celebrate.js)
   const t = now();
   game.t += dt;
   tick(t);
@@ -3222,6 +3240,8 @@ function drawWorld() {
     game.stegoInfo = drawStego(ctx, sx, sy, ss, look);
     if (hd && hd.phase !== 'found') drawHideSpots(ctx);
     if (game.visit) drawVisitor(ctx, game.visit, game.t);   // 0.8.1: every visitor in front of him
+    if (holidayHere()) drawBirthday(ctx, game.t);   // 0.9: cake and balloons
+    if (asleepNow() && game.goodnight) drawTeddy(ctx);
     if (holidayHere() && season.easter) drawEaster(ctx, game.t);
     if (treeHere() && season.gifts) drawXmasBoxes(ctx, game.t);
     drawForeground(ctx, placeId, game.t, sky.light, placeId === 'travel' ? walkFx.scroll : 0);   // grass, flowers ... in front of him (0.6; scrolls on the way since 0.6.1)
@@ -3235,6 +3255,8 @@ function drawWorld() {
   }
   drawWeather(ctx, weather, game.t);
   drawNightShade(ctx, sky);
+  const gd = goodnightDim();   // 0.9: slowly darker while he falls asleep
+  if (gd > 0) { ctx.fillStyle = 'rgba(8,10,30,' + gd.toFixed(3) + ')'; ctx.fillRect(-W, -H, W * 3, H * 3); }
   if (firefliesNow(t, placeId === 'travel' ? 'meadow' : placeId, weather)) drawFireflies(ctx, game.t);
   drawParts(ctx);
 
@@ -3648,7 +3670,7 @@ function onUp(e) {
     return;
   }
   if (game.mode === 'hide') { const i = hideSpotAt(x, y); if (i >= 0) hideTap(i); return; }
-  if (game.mode === 'idle' && holidayTap(x, y)) return;   // 0.7: Christmas boxes, Easter eggs, chocolate bunny
+  if (game.mode === 'idle' && (cakeTap(x, y) || holidayTap(x, y))) return;   // 0.9 cake, 0.7 holidays   // 0.7: Christmas boxes, Easter eggs, chocolate bunny
   if (giftWaiting() && game.mode === 'idle' && !asleepNow() && !S.walk) {
     const gp = giftPos();
     if (dist(x, y, gp.x, gp.y - 25 * U) < 45 * U) { openGift(); return; }
@@ -4184,6 +4206,7 @@ function drawGift(c, x, y, s, t) {
 function wearNow() {
   const w = { ...S.wear }, pl = placeById(S.walk ? 'meadow' : S.place);
   if (pl.wear) for (const slot in pl.wear) if (!w[slot]) w[slot] = pl.wear[slot];
+  if (!w.head && birthdayNow()) w.head = 'party';   // 0.9: party hat on his birthday
   return w;
 }
 
@@ -4510,7 +4533,7 @@ function buildDev() {
     '<h3>Zeit</h3><p class="info" id="dv-clock"></p><div class="chips">' +
       DEV_SPEEDS.map(x => b('dv-sp-' + x, x + '×')).join('') + '</div><div class="chips">' +
       b('dv-h1', '+1 Stunde') + b('dv-d1', '+1 Tag') + b('dv-t7', 'Morgen 7:00') + b('dv-t12', 'Mittag') + b('dv-t1945', 'Abend 19:45') + b('dv-t22', 'Nacht 22:00') + '</div><div class="chips">' +
-      b('dv-x18', '18.12.') + b('dv-x24', '24.12.') + b('dv-x31', '31.12.') + b('dv-easter', 'Ostern') + '</div>' +
+      b('dv-x18', '18.12.') + b('dv-x24', '24.12.') + b('dv-x31', '31.12.') + b('dv-easter', 'Ostern') + b('dv-bday', 'Geburtstag') + '</div>' +
     '<h3>Helfer</h3><div class="chips">' +
       b('dv-full', 'Alles voll') + b('dv-low', 'Fast leer') + b('dv-arrive', 'Sofort ankommen') + b('dv-places', 'Alle Orte') +
       b('dv-gifts', 'Alle Geschenke') + b('dv-visit', 'Besuch jetzt') + '</div>' +
@@ -4526,6 +4549,7 @@ function buildDev() {
   on('dv-t7', () => devTimeOfDay(7 * 60)); on('dv-t12', () => devTimeOfDay(12 * 60));
   on('dv-x18', () => devGoHoliday([12, 18])); on('dv-x24', () => devGoHoliday([12, 24]));
   on('dv-x31', () => devGoHoliday([12, 31])); on('dv-easter', () => devGoHoliday('easter'));
+  on('dv-bday', devGoBirthday);
   on('dv-t1945', () => devTimeOfDay(19 * 60 + 45)); on('dv-t22', () => devTimeOfDay(22 * 60));
   on('dv-full', () => devNeeds(100)); on('dv-low', () => devNeeds(15));
   on('dv-arrive', devArrive); on('dv-places', devAllPlaces); on('dv-gifts', devAllGifts); on('dv-visit', devVisit);
@@ -4564,6 +4588,16 @@ function openDev() {
   devClockTimer = setInterval(() => { if ($('devpanel').hidden) clearInterval(devClockTimer); else fillDev(); }, 500);
 }
 function closeDev() { $('devpanel').hidden = true; refreshUI(); }
+
+/** 0.9: jumps the test clock forward to his next monthly birthday at 10:00 (hatches him first if needed). */
+function devGoBirthday() {
+  if (!hatched()) devDay(1);
+  const start = new Date(now());
+  for (let i = 1; i <= 62; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i, 10, 0, 0);
+    if (birthdayAt(d.getTime())) { devJump((d.getTime() - now()) / 3600e3); S.stageSeen = stageAt(now()); return; }
+  }
+}
 
 /* ===== 20-holidays.js ===== */
 /* 20-holidays.js – holidays by the phone's date (0.7), no internet needed:
@@ -4834,22 +4868,30 @@ function trainBoard() {
   return { x, y, w, h: Math.max(170 * U, groundY - y + 6 * U) };
 }
 
-/** The dotted line to trace for a shape, as screen points (dense enough to measure against). */
-function trickGuide(shape) {
-  const b = trainBoard(), p = 30 * U, cx = b.x + b.w / 2, cy = b.y + b.h / 2 + 8 * U, pts = [];
-  if (shape === 'circle') {
-    const r = Math.min(b.w, b.h - 16 * U) / 2 - p;
-    for (let i = 0; i <= 64; i++) { const a = -Math.PI / 2 + i / 64 * TAU; pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r }); }
-  } else if (shape === 'zigzag') {
-    const top = b.y + p + 14 * U, bot = b.y + b.h - p, dx = Math.min(b.w * 0.2, 54 * U), n = 5;
-    const corners = Array.from({ length: n + 1 }, (_, i) => ({ x: cx + (i % 2 ? dx : -dx), y: lerp(top, bot, i / n) }));
-    for (let i = 0; i < n; i++) for (let k = 0; k < 12; k++) pts.push({ x: lerp(corners[i].x, corners[i + 1].x, k / 12), y: lerp(corners[i].y, corners[i + 1].y, k / 12) });
-    pts.push(corners[n]);
-  } else {   // wave: one and a half waves from left to right
-    const left = b.x + p, right = b.x + b.w - p, amp = (b.h / 2 - p) * 0.75;
-    for (let i = 0; i <= 64; i++) { const k = i / 64; pts.push({ x: lerp(left, right, k), y: cy - Math.sin(k * TAU * 1.5) * amp }); }
-  }
+/** Shapes whose line ends where it starts (the order check wraps around for them). */
+const CLOSED_SHAPES = ['circle', 'triangle', 'heart', 'star'];
+
+/** A shape as points in a box from -1 to 1 (y down). Lines with corners are filled in every 1/12 of a side. */
+function shapeUnit(shape) {
+  const pts = [], fill = corners => { for (let i = 0; i + 1 < corners.length; i++) for (let k = 0; k < 12; k++) pts.push({ x: lerp(corners[i].x, corners[i + 1].x, k / 12), y: lerp(corners[i].y, corners[i + 1].y, k / 12) }); pts.push(corners[corners.length - 1]); };
+  if (shape === 'circle') for (let i = 0; i <= 64; i++) { const a = -Math.PI / 2 + i / 64 * TAU; pts.push({ x: Math.cos(a), y: Math.sin(a) }); }
+  else if (shape === 'zigzag') fill(Array.from({ length: 6 }, (_, i) => ({ x: i % 2 ? 1 : -1, y: lerp(-1, 1, i / 5) })));
+  else if (shape === 'wave') for (let i = 0; i <= 64; i++) { const k = i / 64; pts.push({ x: lerp(-1, 1, k), y: -Math.sin(k * TAU * 1.5) }); }
+  else if (shape === 'triangle') fill([{ x: 0, y: -1 }, { x: 0.95, y: 0.8 }, { x: -0.95, y: 0.8 }, { x: 0, y: -1 }]);
+  else if (shape === 'spiral') for (let i = 0; i <= 80; i++) { const k = i / 80, r = 0.14 + 0.86 * k, a = k * TAU * 2; pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r }); }
+  else if (shape === 'heart') for (let i = 0; i <= 64; i++) { const t = i / 64 * TAU; pts.push({ x: 16 * Math.sin(t) ** 3 / 17, y: -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) / 17 + 0.1 }); }
+  else if (shape === 'star') fill(Array.from({ length: 11 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 0.42 : 1; return { x: Math.cos(a) * r, y: Math.sin(a) * r * 0.95 + 0.05 }; }));
   return pts;
+}
+
+/** The dotted line to trace for a shape, as screen points on the board. Round shapes keep their
+ *  proportions; the zigzag is narrow and tall, the wave wide and flat. */
+function trickGuide(shape) {
+  const b = trainBoard(), p = 30 * U, cx = b.x + b.w / 2, cy = b.y + b.h / 2 + 8 * U;
+  const hx = b.w / 2 - p, hy = (b.h - 16 * U) / 2 - p, s = Math.min(hx, hy);
+  const sx = shape === 'zigzag' ? Math.min(b.w * 0.2, 54 * U) : shape === 'wave' ? hx : s;
+  const sy = shape === 'zigzag' ? hy - 7 * U : shape === 'wave' ? hy * 0.75 : s;
+  return shapeUnit(shape).map(q => ({ x: cx + q.x * sx, y: cy + q.y * sy }));
 }
 
 /** Points along a finger line every ~4 U (so that fast and slow drawing count the same). */
@@ -4888,13 +4930,19 @@ function judgeTrace(shape, stroke) {
   let fwd = 0, back = 0;
   for (let i = 1; i < idx.length; i++) {
     let dlt = idx[i] - idx[i - 1];
-    if (shape === 'circle') { if (dlt > n / 2) dlt -= n; if (dlt < -n / 2) dlt += n; }
+    if (CLOSED_SHAPES.includes(shape)) { if (dlt > n / 2) dlt -= n; if (dlt < -n / 2) dlt += n; }
     if (Math.abs(dlt) > n / 4) { back++; continue; }   // a jump across the shape counts against it
     if (dlt > 0) fwd++; else if (dlt < 0) back++;
   }
   const steps = fwd + back, order = steps ? Math.max(fwd, back) / steps : 0;
-  const ok = cover >= TRACE_COVER && onLine >= TRACE_ON_LINE && order >= TRACE_ORDER && len >= TRACE_LEN[0] && len <= TRACE_LEN[1];
-  return { ok, cover, onLine, order, len };
+  // 0.9: how far apart the two lines are on average (both ways) – tells similar shapes apart.
+  const nearest = (p, list) => { let m = Infinity; for (const q of list) m = Math.min(m, d2(p, q)); return Math.sqrt(m); };
+  const g2s = guide.map(g => nearest(g, pts)), s2g = pts.map(p => nearest(p, guide));
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length / U;
+  const meanG = mean(g2s), meanS = mean(s2g), p90 = s2g.slice().sort((x, y) => x - y)[Math.floor(s2g.length * 0.9)] / U;
+  const ok = cover >= TRACE_COVER && onLine >= TRACE_ON_LINE && order >= TRACE_ORDER && len >= TRACE_LEN[0] && len <= TRACE_LEN[1]
+    && meanG <= TRACE_MEAN && meanS <= TRACE_MEAN && p90 <= TRACE_P90;
+  return { ok, cover, onLine, order, len, meanG, meanS, p90 };
 }
 
 /* ---------- flow ---------- */
@@ -4952,6 +5000,9 @@ function updateTrick(dt) {
   const prev = tr.t;
   tr.t += dt;
   const at = s => prev < s && tr.t >= s;
+  // 0.9: hearts for the kiss, sparkles for the pirouette.
+  if (tr.ok && tr.kind === 'kiss' && at(tr.dur * 0.45)) { const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U }; for (let i = 0; i < 6; i++) addPart('heart', h.x + rnd(-20, 40) * U, h.y - 10 * U, { size: 9, vy: -70 * U }); sound('happy'); }
+  if (tr.ok && tr.kind === 'pirouette' && at(tr.dur * 0.4)) { const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U }; for (let i = 0; i < 14; i++) addPart('sparkle', h.x + rnd(-120, 60) * U, h.y + rnd(-60, 60) * U, { size: 9 }); }
   if (tr.ok && at(tr.dur * 0.6)) { sound(tr.idle ? 'giggle' : 'applause'); const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U }; for (let i = 0; i < 8; i++) addPart('star', h.x + rnd(-60, 60) * U, h.y + rnd(-40, 40) * U, { size: 8 }); }
   if (!tr.ok && at(0.55)) {
     sound('flop');
@@ -4973,15 +5024,20 @@ function applyTrickLook(o) {
   const tr = pet.trick, q = tr.t / tr.dur;
   const hold = smooth(Math.min(q, 1 - q) / 0.25);   // up, hold, back down
   const pivotFor = (kind, k) => kind === 'roll' ? { x: 0, y: null, a: TAU * k }
-    : kind === 'stand' ? { x: -34, y: 0, a: -0.85 * k } : { x: 34, y: 0, a: 0.55 * k };
+    : kind === 'stand' ? { x: -34, y: 0, a: -0.85 * k } : kind === 'hand' ? { x: 34, y: 0, a: 0.55 * k }
+    : kind === 'sit' ? { x: -34, y: 0, a: -0.35 * k } : kind === 'kiss' ? { x: 34, y: 0, a: 0.16 * k } : { x: 0, y: null, a: 0.12 * k };
   // Lift (px) so that no part of him goes into the ground: half his length while rolling, a little for the handstand.
   const len = game.stegoInfo ? game.stegoInfo.box.w : 200 * U;
   o.headDown = 0;
   if (tr.ok) {
-    if (tr.kind === 'roll') { const k = smooth(clamp((q - 0.1) / 0.75, 0, 1)); o.pivot = pivotFor('roll', k); o.jump = Math.sin(Math.PI * clamp((q - 0.1) / 0.75, 0, 1)) * len * 0.42; }
-    else { o.pivot = pivotFor(tr.kind, hold); o.jump = hold * len * (tr.kind === 'hand' ? 0.1 : 0.04); }
     o.eyes = 'happy'; o.mouth = 'open'; o.brow = 'happy'; o.wag = 1; o.wiggle = q > 0.5 ? 1 : 0;
     o.squash = 0;
+    if (tr.kind === 'roll') { const k = smooth(clamp((q - 0.1) / 0.75, 0, 1)); o.pivot = pivotFor('roll', k); o.jump = Math.sin(Math.PI * clamp((q - 0.1) / 0.75, 0, 1)) * len * 0.42; }
+    else if (tr.kind === 'sit') { o.pivot = pivotFor('sit', hold); o.squash = hold * 0.25; o.jump = 0; o.mouth = 'smile'; }
+    else if (tr.kind === 'spin') { o.dir = Math.floor(q * 8) % 2 ? -1 : 1; o.jump = Math.abs(Math.sin(q * Math.PI * 4)) * len * 0.05; }
+    else if (tr.kind === 'kiss') { o.pivot = pivotFor('kiss', hold); o.eyes = 'closed'; o.mouth = 'closed'; o.blush = true; o.jump = 0; }
+    else if (tr.kind === 'pirouette') { o.dir = Math.floor(q * 12) % 2 ? -1 : 1; o.jump = Math.sin(Math.PI * q) * len * 0.3; o.squash = -Math.sin(Math.PI * q) * 0.5; }
+    else { o.pivot = pivotFor(tr.kind, hold); o.jump = hold * len * (tr.kind === 'hand' ? 0.1 : 0.04); }
     return;
   }
   // Not good enough: a start of the trick (first 0.5 s), then plop on the belly, lie there, get up.
@@ -5038,10 +5094,9 @@ function drawTrainBoard(c) {
 /** Small picture of a shape for the trick tiles. */
 function drawShapeIcon(c, shape, w, h) {
   c.strokeStyle = '#4a7bd0'; c.lineWidth = 6; c.lineCap = 'round'; c.lineJoin = 'round';
+  const r = Math.min(w, h) * 0.34, sx = shape === 'zigzag' ? r * 0.45 : r, sy = shape === 'wave' ? r * 0.55 : r;
   c.beginPath();
-  if (shape === 'circle') c.arc(w / 2, h / 2, Math.min(w, h) * 0.32, 0, TAU);
-  else if (shape === 'zigzag') { for (let i = 0; i <= 5; i++) { const x = w / 2 + (i % 2 ? 16 : -16), y = lerp(h * 0.15, h * 0.85, i / 5); i ? c.lineTo(x, y) : c.moveTo(x, y); } }
-  else for (let i = 0; i <= 40; i++) { const k = i / 40, x = lerp(w * 0.1, w * 0.9, k), y = h / 2 - Math.sin(k * TAU * 1.5) * h * 0.22; i ? c.lineTo(x, y) : c.moveTo(x, y); }
+  shapeUnit(shape).forEach((q, i) => { const x = w / 2 + q.x * sx, y = h / 2 + q.y * sy; i ? c.lineTo(x, y) : c.moveTo(x, y); });
   c.stroke();
 }
 
@@ -5062,6 +5117,138 @@ function buildTrainPick() {
 
 /** Is the screen point on the board? */
 function inTrainBoard(x, y) { const b = trainBoard(); return x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h; }
+
+/* ===== 23-celebrate.js ===== */
+/* 23-celebrate.js – birthday and good-night ritual (0.9).
+ *   Birthday  every month on the day of the month he hatched (the last day of a shorter month if needed),
+ *             from the first month on: cake with one candle per month (per year from the first birthday
+ *             on), balloons, party hat. Tap the cake: one candle goes out; all out = he eats the cake.
+ *   Good night when he falls asleep in front of the child (lights out or bedtime): a lullaby from the music
+ *             box (once a night), a cuddly toy dino next to him, and the picture slowly gets darker. */
+
+const BDAY_FOOD = 30, BDAY_LOVE = 10;
+
+/** Birthday at time t: { months, years, candles, key } or null. */
+function birthdayAt(t) {
+  if (!hatched()) return null;
+  const h = new Date(S.hatchDay * 864e5), hy = h.getUTCFullYear(), hm = h.getUTCMonth(), hd = h.getUTCDate();
+  const d = new Date(t), y = d.getFullYear(), m = d.getMonth();
+  const months = (y - hy) * 12 + (m - hm);
+  const last = new Date(y, m + 1, 0).getDate();
+  if (months < 1 || d.getDate() !== Math.min(hd, last)) return null;
+  const years = Math.floor(months / 12);
+  return { months, years, candles: years >= 1 ? years : months, key: y + '-' + (m + 1) };
+}
+const birthdayNow = () => birthdayAt(now());
+
+/** This birthday's cake: candles blown out, eaten (kept in the save, new for every birthday). */
+function bdayState() {
+  const b = birthdayNow();
+  if (!b) return null;
+  if (!S.bday || S.bday.key !== b.key) S.bday = { key: b.key, out: 0, eaten: false };
+  return S.bday;
+}
+
+const cakePos = () => ({ x: W * 0.2, y: standY + 30 * U });
+/** Candle positions on the cake (screen), n candles. */
+function candlePos(i, n) { const c = cakePos(), w = Math.min(80, 18 * n) * U; return { x: c.x - w / 2 + (n === 1 ? w / 2 : i * w / (n - 1)), y: c.y - 58 * U }; }
+
+/** Tap on the cake: the next candle goes out; when all are out he eats the cake. Returns true if it was the cake. */
+function cakeTap(x, y) {
+  const b = birthdayNow(), st = bdayState();
+  if (!b || !st || st.eaten || asleepNow() || S.walk) return false;
+  const c = cakePos();
+  if (Math.abs(x - c.x) > 62 * U || y < c.y - 90 * U || y > c.y + 10 * U) return false;
+  const n = Math.min(b.candles, 12);
+  if (st.out < n) {
+    const p = candlePos(st.out, n);
+    st.out++;
+    sound('pop');
+    for (let i = 0; i < 4; i++) addPart('dust', p.x, p.y - 8 * U, { vx: rnd(-10, 10) * U, vy: rnd(-50, -30) * U, size: 5, max: 1.2 });
+    if (st.out >= n) { sound('fanfare'); confetti(); pet.jumpV = 220 * U; pet.giggleT = 1.4; game.cakeEatAt = game.t + 1.6; }
+  }
+  save();
+  return true;
+}
+
+/** Called every frame: after the candles are out, he eats the cake. */
+function updateBirthday() {
+  const b = birthdayNow();
+  if (b && game.screen === 'game' && game.trans >= 1 && !asleepNow()) { const st = bdayState(); if (!st.sung) { st.sung = true; sound('bday'); save(); } }
+  if (game.cakeEatAt && game.t >= game.cakeEatAt) {
+    game.cakeEatAt = 0;
+    const st = bdayState();
+    if (st && !st.eaten) { st.eaten = true; addNeed('food', BDAY_FOOD); addNeed('love', BDAY_LOVE); pet.eatT = 1.3; sound('munch'); save(); }
+  }
+}
+
+/** Cake with candles (lit ones flicker), and three balloons floating above it. */
+function drawBirthday(c, time) {
+  const b = birthdayNow(), st = bdayState();
+  if (!b) return;
+  const cp = cakePos();
+  // Balloons (all day, even after the cake).
+  [['#ff5c8a', -38, 0], ['#3fa9f5', 0, 0.8], ['#ffcc33', 38, 1.6]].forEach(([col, ox, ph]) => {
+    const bx = cp.x + ox * U + Math.sin(time * 1.2 + ph) * 6 * U, by = groundY - 40 * U + Math.sin(time * 1.6 + ph) * 5 * U;   // above his back
+    c.strokeStyle = 'rgba(80,80,80,0.6)'; c.lineWidth = 1.2 * U;
+    c.beginPath(); c.moveTo(bx, by + 22 * U); c.quadraticCurveTo(bx + 8 * U, (by + cp.y) / 2, cp.x + ox * 0.3 * U, cp.y - 50 * U); c.stroke();
+    c.fillStyle = col; c.beginPath(); c.ellipse(bx, by, 17 * U, 22 * U, 0, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.45)'; c.beginPath(); c.ellipse(bx - 6 * U, by - 8 * U, 4 * U, 7 * U, -0.4, 0, TAU); c.fill();
+  });
+  if (!st || st.eaten) return;
+  // Cake: two layers with cream and sprinkles.
+  c.save(); c.translate(cp.x, cp.y); c.scale(1.25, 1.25);
+  c.fillStyle = '#f8bbd0'; c.fillRect(-46 * U, -22 * U, 92 * U, 22 * U);
+  c.fillStyle = '#fff3e0'; c.fillRect(-36 * U, -42 * U, 72 * U, 20 * U);
+  c.fillStyle = '#ffffff';
+  for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(-36 * U + i * 14.4 * U, -42 * U, 7 * U, 0, Math.PI); c.fill(); c.beginPath(); c.arc(-46 * U + i * 18.4 * U, -22 * U, 8 * U, 0, Math.PI); c.fill(); }
+  ['#e53935', '#43a047', '#1e88e5', '#ffca28'].forEach((col, i) => { c.fillStyle = col; for (let k = 0; k < 3; k++) c.fillRect((-30 + k * 26 + i * 6) * U, (-14 + (i % 2) * 6) * U, 4 * U, 2 * U); });
+  c.restore();
+  const n = Math.min(b.candles, 12);
+  for (let i = 0; i < n; i++) {
+    const p = candlePos(i, n);
+    c.fillStyle = ['#42a5f5', '#ff7096', '#66bb6a', '#ffca28'][i % 4]; c.fillRect(p.x - 2.5 * U, p.y, 5 * U, 14 * U);
+    if (i >= st.out) {   // flame
+      const f = 1 + Math.sin(time * 14 + i) * 0.15;
+      c.fillStyle = 'rgba(255,200,60,0.35)'; c.beginPath(); c.arc(p.x, p.y - 6 * U, 9 * U, 0, TAU); c.fill();
+      c.fillStyle = '#ffb300'; c.beginPath(); c.ellipse(p.x, p.y - 6 * U, 3.5 * U, 6 * U * f, 0, 0, TAU); c.fill();
+      c.fillStyle = '#fff59d'; c.beginPath(); c.ellipse(p.x, p.y - 5 * U, 1.6 * U, 3 * U * f, 0, 0, TAU); c.fill();
+    }
+  }
+}
+
+/* ---------- good night ---------- */
+
+let wasAsleep = false;
+/** Called every frame in the game: notices him falling asleep in front of the child. */
+function updateGoodnight(dt) {
+  const asleep = asleepNow(), inGame = game.screen === 'game' && game.trans >= 1;
+  if (asleep && !wasAsleep && inGame) {
+    game.goodnight = { t: 0 };
+    const d = dayIndex(now());
+    if (S.lullabyDay !== d) { S.lullabyDay = d; sound('lullaby'); save(); }
+  }
+  if (!asleep) game.goodnight = null;
+  if (game.goodnight) game.goodnight.t += dt;
+  wasAsleep = asleep;
+}
+
+/** Extra darkness while he falls asleep: grows over 5 s to 0.22 and stays while he sleeps. */
+function goodnightDim() { return game.goodnight ? Math.min(0.22, game.goodnight.t / 5 * 0.22) : 0; }
+
+/** A small pink cuddly dino lying next to his head while he sleeps. */
+function drawTeddy(c) {
+  const h = game.stegoInfo && game.stegoInfo.head;
+  if (!h) return;
+  const x = h.x + 34 * U, y = standY - 6 * U, s = U;
+  c.save(); c.translate(x, y);
+  c.fillStyle = '#f48fb1'; c.strokeStyle = '#ad5a78'; c.lineWidth = 1.5 * s;
+  c.beginPath(); c.ellipse(0, -10 * s, 18 * s, 11 * s, 0, 0, TAU); c.fill(); c.stroke();
+  c.beginPath(); c.arc(18 * s, -16 * s, 9 * s, 0, TAU); c.fill(); c.stroke();
+  c.fillStyle = '#ffd1e0'; for (const ox of [-8, 0, 8]) { c.beginPath(); c.moveTo(ox * s - 4 * s, -20 * s); c.lineTo(ox * s, -27 * s); c.lineTo(ox * s + 4 * s, -20 * s); c.fill(); }
+  c.fillStyle = '#5d2c3c'; c.beginPath(); c.arc(21 * s, -18 * s, 1.6 * s, 0, TAU); c.fill();
+  c.restore();
+}
 
 /* ===== 99-debug.js ===== */
 /* 99-debug.js – window.__st: hooks for the tests (tests/*.js). The game itself never uses them.
@@ -5088,6 +5275,7 @@ window.__st = {
   IDLE_KINDS, FOREGROUND, stegoLook, get groundY() { return groundY; },
   easterSunday, seasonAt, seasonNow, holidayTap, treeHere, holidayHere, xmasState, easterState, xmasBoxPos, eggPos, bunnyPos, devGoHoliday, WEAR_EXTRA,
   TRICKS, startTrain, pickTrick, trainBackToPick, finishTrace, judgeTrace, trickGuide, trainBoard, startTrick, learnedTricks, trickOpen,
+  birthdayAt, birthdayNow, bdayState, cakeTap, cakePos, candlePos, goodnightDim, devGoBirthday, shapeUnit,
   startWalk, arrive, goPlace, openPlaces, closePlaces, foundToday, walkLimitReached, firefliesNow, placePicture, walkFx,
   enterGame, showMenu, startMode, endMode, goToBed, offerFood, removePoop, tapStego, strokeStego, throwBall,
   eggPhase, eggProgress, eggRub, stageAt: () => stageAt(now()), growth: () => growthAt(now()), lifeDay: () => lifeDay(now()),

@@ -153,14 +153,14 @@ svg { display: block; width: 100%; height: 100%; }
 #dv-day { flex: 1; max-width: none; }
 #dv-dayval { min-width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; }
 /* Training (0.8): choice of tricks in the upper half, back button on the board. */
-#trainpick { position: absolute; left: 14px; right: 66px; top: calc(max(10px, env(safe-area-inset-top)) + 70px); display: flex; gap: 10px; justify-content: center; }
-.ttile { flex: 1 1 0; max-width: 110px; aspect-ratio: 3 / 4; border-radius: 18px; background: rgba(255, 255, 255, .92); padding: 6px;
+#trainpick { position: absolute; left: 14px; right: 66px; top: calc(max(10px, env(safe-area-inset-top)) + 70px); display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.ttile { flex: 0 0 calc(25% - 6px); max-width: 84px; aspect-ratio: 3 / 4; border-radius: 18px; background: rgba(255, 255, 255, .92); padding: 6px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 4px 0 rgba(0, 0, 0, .12); }
 .ttile canvas { width: 100%; aspect-ratio: 1; }
-.ttile .stars { color: #ffca28; font-size: 20px; letter-spacing: 1px; }
+.ttile .stars { color: #ffca28; font-size: 14px; letter-spacing: 0; }
 .ttile .stars i { font-style: normal; color: rgba(0, 0, 0, .15); }
 .ttile.locked { background: rgba(225, 232, 240, .92); }
-.ttile.locked b { font-family: 'Lilita One', 'Nunito', sans-serif; font-weight: 400; font-size: 48px; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .15); }
+.ttile.locked b { font-family: 'Lilita One', 'Nunito', sans-serif; font-weight: 400; font-size: 36px; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .15); }
 .ttile.nope { animation: wobble .4s; }
 #train-back { position: absolute; left: 20px; top: calc(max(10px, env(safe-area-inset-top)) + 80px); font-size: 20px; color: #4a7bd0; padding: 0; }
 [hidden] { display: none !important; }

@@ -126,6 +126,10 @@ const SOUNDS = {
   // 0.8 training: applause after a trick, a soft belly flop.
   applause: () => { for (let i = 0; i < 14; i++) noise(0.05, { at: i * 0.05 + Math.random() * 0.03, freq: 2200 + Math.random() * 1500, q: 1.2, vol: 0.12 }); tone(784, 0.2, { vol: 0.08, type: 'triangle' }); tone(1047, 0.35, { at: 0.18, vol: 0.08, type: 'triangle' }); },
   flop: () => { noise(0.25, { freq: 160, q: 1, vol: 0.4, type: 'lowpass' }); tone(140, 0.2, { f2: 70, vol: 0.18, type: 'triangle' }); tone(600, 0.25, { at: 0.35, f2: 380, vol: 0.06, vib: 10 }); },
+  // 0.9: lullaby (music box, soft and slow) and a short birthday tune.
+  lullaby: () => { [[64, 0], [64, 0.5], [67, 1.0], [64, 2.0], [64, 2.5], [67, 3.0], [64, 4.0], [67, 4.5], [72, 5.0], [71, 6.0], [69, 6.5], [69, 7.0], [67, 8.0]]
+    .forEach(([n, at]) => tone(midi(n), 1.4, { at, vol: 0.07 })); },
+  bday: () => { [[60, 0], [60, 0.3], [62, 0.45], [60, 0.9], [65, 1.35], [64, 1.8]].forEach(([n, at]) => tone(midi(n), 0.5, { at, vol: 0.1, type: 'triangle' })); },
   // Camera click.
   shutter: () => { noise(0.05, { freq: 4000, q: 1, vol: 0.3 }); noise(0.07, { at: 0.08, freq: 3000, q: 1, vol: 0.25 }); },
   // Wrong hiding place: a soft "boing".

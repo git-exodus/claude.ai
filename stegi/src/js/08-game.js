@@ -257,6 +257,7 @@ function startParty() {
 
 function update(dt) {
   updateDev(dt);   // test mode: fast time (19-dev.js)
+  if (hatched()) { updateBirthday(); updateGoodnight(dt); }   // 0.9 (23-celebrate.js)
   const t = now();
   game.t += dt;
   tick(t);
@@ -552,6 +553,8 @@ function drawWorld() {
     game.stegoInfo = drawStego(ctx, sx, sy, ss, look);
     if (hd && hd.phase !== 'found') drawHideSpots(ctx);
     if (game.visit) drawVisitor(ctx, game.visit, game.t);   // 0.8.1: every visitor in front of him
+    if (holidayHere()) drawBirthday(ctx, game.t);   // 0.9: cake and balloons
+    if (asleepNow() && game.goodnight) drawTeddy(ctx);
     if (holidayHere() && season.easter) drawEaster(ctx, game.t);
     if (treeHere() && season.gifts) drawXmasBoxes(ctx, game.t);
     drawForeground(ctx, placeId, game.t, sky.light, placeId === 'travel' ? walkFx.scroll : 0);   // grass, flowers ... in front of him (0.6; scrolls on the way since 0.6.1)
@@ -565,6 +568,8 @@ function drawWorld() {
   }
   drawWeather(ctx, weather, game.t);
   drawNightShade(ctx, sky);
+  const gd = goodnightDim();   // 0.9: slowly darker while he falls asleep
+  if (gd > 0) { ctx.fillStyle = 'rgba(8,10,30,' + gd.toFixed(3) + ')'; ctx.fillRect(-W, -H, W * 3, H * 3); }
   if (firefliesNow(t, placeId === 'travel' ? 'meadow' : placeId, weather)) drawFireflies(ctx, game.t);
   drawParts(ctx);
 

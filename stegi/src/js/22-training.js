@@ -15,22 +15,30 @@ function trainBoard() {
   return { x, y, w, h: Math.max(170 * U, groundY - y + 6 * U) };
 }
 
-/** The dotted line to trace for a shape, as screen points (dense enough to measure against). */
-function trickGuide(shape) {
-  const b = trainBoard(), p = 30 * U, cx = b.x + b.w / 2, cy = b.y + b.h / 2 + 8 * U, pts = [];
-  if (shape === 'circle') {
-    const r = Math.min(b.w, b.h - 16 * U) / 2 - p;
-    for (let i = 0; i <= 64; i++) { const a = -Math.PI / 2 + i / 64 * TAU; pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r }); }
-  } else if (shape === 'zigzag') {
-    const top = b.y + p + 14 * U, bot = b.y + b.h - p, dx = Math.min(b.w * 0.2, 54 * U), n = 5;
-    const corners = Array.from({ length: n + 1 }, (_, i) => ({ x: cx + (i % 2 ? dx : -dx), y: lerp(top, bot, i / n) }));
-    for (let i = 0; i < n; i++) for (let k = 0; k < 12; k++) pts.push({ x: lerp(corners[i].x, corners[i + 1].x, k / 12), y: lerp(corners[i].y, corners[i + 1].y, k / 12) });
-    pts.push(corners[n]);
-  } else {   // wave: one and a half waves from left to right
-    const left = b.x + p, right = b.x + b.w - p, amp = (b.h / 2 - p) * 0.75;
-    for (let i = 0; i <= 64; i++) { const k = i / 64; pts.push({ x: lerp(left, right, k), y: cy - Math.sin(k * TAU * 1.5) * amp }); }
-  }
+/** Shapes whose line ends where it starts (the order check wraps around for them). */
+const CLOSED_SHAPES = ['circle', 'triangle', 'heart', 'star'];
+
+/** A shape as points in a box from -1 to 1 (y down). Lines with corners are filled in every 1/12 of a side. */
+function shapeUnit(shape) {
+  const pts = [], fill = corners => { for (let i = 0; i + 1 < corners.length; i++) for (let k = 0; k < 12; k++) pts.push({ x: lerp(corners[i].x, corners[i + 1].x, k / 12), y: lerp(corners[i].y, corners[i + 1].y, k / 12) }); pts.push(corners[corners.length - 1]); };
+  if (shape === 'circle') for (let i = 0; i <= 64; i++) { const a = -Math.PI / 2 + i / 64 * TAU; pts.push({ x: Math.cos(a), y: Math.sin(a) }); }
+  else if (shape === 'zigzag') fill(Array.from({ length: 6 }, (_, i) => ({ x: i % 2 ? 1 : -1, y: lerp(-1, 1, i / 5) })));
+  else if (shape === 'wave') for (let i = 0; i <= 64; i++) { const k = i / 64; pts.push({ x: lerp(-1, 1, k), y: -Math.sin(k * TAU * 1.5) }); }
+  else if (shape === 'triangle') fill([{ x: 0, y: -1 }, { x: 0.95, y: 0.8 }, { x: -0.95, y: 0.8 }, { x: 0, y: -1 }]);
+  else if (shape === 'spiral') for (let i = 0; i <= 80; i++) { const k = i / 80, r = 0.14 + 0.86 * k, a = k * TAU * 2; pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r }); }
+  else if (shape === 'heart') for (let i = 0; i <= 64; i++) { const t = i / 64 * TAU; pts.push({ x: 16 * Math.sin(t) ** 3 / 17, y: -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) / 17 + 0.1 }); }
+  else if (shape === 'star') fill(Array.from({ length: 11 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 0.42 : 1; return { x: Math.cos(a) * r, y: Math.sin(a) * r * 0.95 + 0.05 }; }));
   return pts;
+}
+
+/** The dotted line to trace for a shape, as screen points on the board. Round shapes keep their
+ *  proportions; the zigzag is narrow and tall, the wave wide and flat. */
+function trickGuide(shape) {
+  const b = trainBoard(), p = 30 * U, cx = b.x + b.w / 2, cy = b.y + b.h / 2 + 8 * U;
+  const hx = b.w / 2 - p, hy = (b.h - 16 * U) / 2 - p, s = Math.min(hx, hy);
+  const sx = shape === 'zigzag' ? Math.min(b.w * 0.2, 54 * U) : shape === 'wave' ? hx : s;
+  const sy = shape === 'zigzag' ? hy - 7 * U : shape === 'wave' ? hy * 0.75 : s;
+  return shapeUnit(shape).map(q => ({ x: cx + q.x * sx, y: cy + q.y * sy }));
 }
 
 /** Points along a finger line every ~4 U (so that fast and slow drawing count the same). */
@@ -69,13 +77,19 @@ function judgeTrace(shape, stroke) {
   let fwd = 0, back = 0;
   for (let i = 1; i < idx.length; i++) {
     let dlt = idx[i] - idx[i - 1];
-    if (shape === 'circle') { if (dlt > n / 2) dlt -= n; if (dlt < -n / 2) dlt += n; }
+    if (CLOSED_SHAPES.includes(shape)) { if (dlt > n / 2) dlt -= n; if (dlt < -n / 2) dlt += n; }
     if (Math.abs(dlt) > n / 4) { back++; continue; }   // a jump across the shape counts against it
     if (dlt > 0) fwd++; else if (dlt < 0) back++;
   }
   const steps = fwd + back, order = steps ? Math.max(fwd, back) / steps : 0;
-  const ok = cover >= TRACE_COVER && onLine >= TRACE_ON_LINE && order >= TRACE_ORDER && len >= TRACE_LEN[0] && len <= TRACE_LEN[1];
-  return { ok, cover, onLine, order, len };
+  // 0.9: how far apart the two lines are on average (both ways) – tells similar shapes apart.
+  const nearest = (p, list) => { let m = Infinity; for (const q of list) m = Math.min(m, d2(p, q)); return Math.sqrt(m); };
+  const g2s = guide.map(g => nearest(g, pts)), s2g = pts.map(p => nearest(p, guide));
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length / U;
+  const meanG = mean(g2s), meanS = mean(s2g), p90 = s2g.slice().sort((x, y) => x - y)[Math.floor(s2g.length * 0.9)] / U;
+  const ok = cover >= TRACE_COVER && onLine >= TRACE_ON_LINE && order >= TRACE_ORDER && len >= TRACE_LEN[0] && len <= TRACE_LEN[1]
+    && meanG <= TRACE_MEAN && meanS <= TRACE_MEAN && p90 <= TRACE_P90;
+  return { ok, cover, onLine, order, len, meanG, meanS, p90 };
 }
 
 /* ---------- flow ---------- */
@@ -133,6 +147,9 @@ function updateTrick(dt) {
   const prev = tr.t;
   tr.t += dt;
   const at = s => prev < s && tr.t >= s;
+  // 0.9: hearts for the kiss, sparkles for the pirouette.
+  if (tr.ok && tr.kind === 'kiss' && at(tr.dur * 0.45)) { const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U }; for (let i = 0; i < 6; i++) addPart('heart', h.x + rnd(-20, 40) * U, h.y - 10 * U, { size: 9, vy: -70 * U }); sound('happy'); }
+  if (tr.ok && tr.kind === 'pirouette' && at(tr.dur * 0.4)) { const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U }; for (let i = 0; i < 14; i++) addPart('sparkle', h.x + rnd(-120, 60) * U, h.y + rnd(-60, 60) * U, { size: 9 }); }
   if (tr.ok && at(tr.dur * 0.6)) { sound(tr.idle ? 'giggle' : 'applause'); const h = game.stegoInfo ? game.stegoInfo.head : { x: W / 2, y: standY - 100 * U }; for (let i = 0; i < 8; i++) addPart('star', h.x + rnd(-60, 60) * U, h.y + rnd(-40, 40) * U, { size: 8 }); }
   if (!tr.ok && at(0.55)) {
     sound('flop');
@@ -154,15 +171,20 @@ function applyTrickLook(o) {
   const tr = pet.trick, q = tr.t / tr.dur;
   const hold = smooth(Math.min(q, 1 - q) / 0.25);   // up, hold, back down
   const pivotFor = (kind, k) => kind === 'roll' ? { x: 0, y: null, a: TAU * k }
-    : kind === 'stand' ? { x: -34, y: 0, a: -0.85 * k } : { x: 34, y: 0, a: 0.55 * k };
+    : kind === 'stand' ? { x: -34, y: 0, a: -0.85 * k } : kind === 'hand' ? { x: 34, y: 0, a: 0.55 * k }
+    : kind === 'sit' ? { x: -34, y: 0, a: -0.35 * k } : kind === 'kiss' ? { x: 34, y: 0, a: 0.16 * k } : { x: 0, y: null, a: 0.12 * k };
   // Lift (px) so that no part of him goes into the ground: half his length while rolling, a little for the handstand.
   const len = game.stegoInfo ? game.stegoInfo.box.w : 200 * U;
   o.headDown = 0;
   if (tr.ok) {
-    if (tr.kind === 'roll') { const k = smooth(clamp((q - 0.1) / 0.75, 0, 1)); o.pivot = pivotFor('roll', k); o.jump = Math.sin(Math.PI * clamp((q - 0.1) / 0.75, 0, 1)) * len * 0.42; }
-    else { o.pivot = pivotFor(tr.kind, hold); o.jump = hold * len * (tr.kind === 'hand' ? 0.1 : 0.04); }
     o.eyes = 'happy'; o.mouth = 'open'; o.brow = 'happy'; o.wag = 1; o.wiggle = q > 0.5 ? 1 : 0;
     o.squash = 0;
+    if (tr.kind === 'roll') { const k = smooth(clamp((q - 0.1) / 0.75, 0, 1)); o.pivot = pivotFor('roll', k); o.jump = Math.sin(Math.PI * clamp((q - 0.1) / 0.75, 0, 1)) * len * 0.42; }
+    else if (tr.kind === 'sit') { o.pivot = pivotFor('sit', hold); o.squash = hold * 0.25; o.jump = 0; o.mouth = 'smile'; }
+    else if (tr.kind === 'spin') { o.dir = Math.floor(q * 8) % 2 ? -1 : 1; o.jump = Math.abs(Math.sin(q * Math.PI * 4)) * len * 0.05; }
+    else if (tr.kind === 'kiss') { o.pivot = pivotFor('kiss', hold); o.eyes = 'closed'; o.mouth = 'closed'; o.blush = true; o.jump = 0; }
+    else if (tr.kind === 'pirouette') { o.dir = Math.floor(q * 12) % 2 ? -1 : 1; o.jump = Math.sin(Math.PI * q) * len * 0.3; o.squash = -Math.sin(Math.PI * q) * 0.5; }
+    else { o.pivot = pivotFor(tr.kind, hold); o.jump = hold * len * (tr.kind === 'hand' ? 0.1 : 0.04); }
     return;
   }
   // Not good enough: a start of the trick (first 0.5 s), then plop on the belly, lie there, get up.
@@ -219,10 +241,9 @@ function drawTrainBoard(c) {
 /** Small picture of a shape for the trick tiles. */
 function drawShapeIcon(c, shape, w, h) {
   c.strokeStyle = '#4a7bd0'; c.lineWidth = 6; c.lineCap = 'round'; c.lineJoin = 'round';
+  const r = Math.min(w, h) * 0.34, sx = shape === 'zigzag' ? r * 0.45 : r, sy = shape === 'wave' ? r * 0.55 : r;
   c.beginPath();
-  if (shape === 'circle') c.arc(w / 2, h / 2, Math.min(w, h) * 0.32, 0, TAU);
-  else if (shape === 'zigzag') { for (let i = 0; i <= 5; i++) { const x = w / 2 + (i % 2 ? 16 : -16), y = lerp(h * 0.15, h * 0.85, i / 5); i ? c.lineTo(x, y) : c.moveTo(x, y); } }
-  else for (let i = 0; i <= 40; i++) { const k = i / 40, x = lerp(w * 0.1, w * 0.9, k), y = h / 2 - Math.sin(k * TAU * 1.5) * h * 0.22; i ? c.lineTo(x, y) : c.moveTo(x, y); }
+  shapeUnit(shape).forEach((q, i) => { const x = w / 2 + q.x * sx, y = h / 2 + q.y * sy; i ? c.lineTo(x, y) : c.moveTo(x, y); });
   c.stroke();
 }
 

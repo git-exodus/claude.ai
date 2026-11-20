@@ -18,27 +18,28 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   // ---------- the drawing check ----------
   let g = await ev(() => {
     const U = __st.pos().U, out = [];
-    for (const shape of ['circle', 'zigzag', 'wave']) {
+    const all = __st.TRICKS.map(t => t.shape);
+    for (const shape of all) {
       const gd = __st.trickGuide(shape), bd = __st.trainBoard();
       let seed = 3; const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
       const good = { sauber: gd, kinderhand: gd.map((p, i) => ({ x: p.x + Math.sin(i / 5) * 14 * U, y: p.y + Math.cos(i / 7) * 14 * U })), rueckwaerts: gd.slice().reverse(),
-        dreiViertel: gd.slice(0, Math.floor(gd.length * 0.8)), versetzt: gd.map(p => ({ x: p.x + 20 * U, y: p.y + 10 * U })) };
+        dreiViertel: gd.slice(0, Math.floor(gd.length * 0.8)), versetzt: gd.map(p => ({ x: p.x + 12 * U, y: p.y + 6 * U })) };
       const bad = { haelfte: gd.slice(0, Math.floor(gd.length * 0.5)), gekritzel: Array.from({ length: 60 }, () => ({ x: bd.x + rand() * bd.w, y: bd.y + rand() * bd.h })),
         strich: [{ x: bd.x + 30, y: bd.y + bd.h / 2 }, { x: bd.x + bd.w - 30, y: bd.y + bd.h / 2 }] };
-      for (const o of ['circle', 'zigzag', 'wave']) if (o !== shape) bad['falsch:' + o] = __st.trickGuide(o);
+      for (const o of all) if (o !== shape) bad['falsch:' + o] = __st.trickGuide(o);
       for (const [k, p] of Object.entries(good)) if (!__st.judgeTrace(shape, p).ok) out.push(shape + ' ' + k + ' abgelehnt');
       for (const [k, p] of Object.entries(bad)) if (__st.judgeTrace(shape, p).ok) out.push(shape + ' ' + k + ' angenommen');
     }
     return out;
   });
-  R.ok(g.length === 0, 'Bewertung: sauber, wackelig, rückwärts, 3/4, versetzt = ja; Hälfte, Gekritzel, Strich, falsches Symbol = nein (alle 3 Formen)', g.join('; '));
+  R.ok(g.length === 0, 'Bewertung: sauber, wackelig, rückwärts, 3/4, leicht versetzt = ja; Hälfte, Gekritzel, Strich, jedes der 6 anderen Symbole = nein (alle 7 Formen)', g.join('; '));
 
   // ---------- choosing a trick ----------
   await page.click('#act-play');
   R.ok(await ev(() => !document.getElementById('play-train').hidden), 'Spielen-Menü hat den Trainings-Knopf');
   await page.click('#play-train');
   g = await ev(() => ({ mode: __st.game.mode, pick: __st.visible().trainpick, tiles: [...document.querySelectorAll('#trainpick .ttile')].map(t => t.classList.contains('locked') ? '?' : 'offen').join() }));
-  R.ok(g.mode === 'train' && g.pick && g.tiles === 'offen,?,?', 'Training: Rolle offen, Hinterbeine und Vorderbeine mit Fragezeichen', JSON.stringify(g));
+  R.ok(g.mode === 'train' && g.pick && g.tiles === 'offen,?,?,?,?,?,?', 'Training: Rolle offen, die 6 anderen Tricks mit Fragezeichen', JSON.stringify(g));
   await page.screenshot({ path: 'training-pick.png' });
   await page.click('#tt-stand');
   R.ok(await ev(() => __st.game.train.phase === 'pick'), 'Fragezeichen antippen: geht noch nicht');
@@ -86,7 +87,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   R.ok(g.roll === 3 && g.learned === 'roll' && g.fanfare, '3-mal geschafft: Rolle gelernt (Fanfare)', JSON.stringify(g));
   await page.click('#train-back');
   g = await ev(() => [...document.querySelectorAll('#trainpick .ttile')].map(t => t.classList.contains('locked') ? '?' : 'offen').join());
-  R.ok(g === 'offen,offen,?', 'Jetzt sind die Hinterbeine offen, die Vorderbeine noch nicht', g);
+  R.ok(g === 'offen,offen,?,?,?,?,?', 'Jetzt sind die Hinterbeine offen, die Vorderbeine noch nicht', g);
   await page.click('#tt-stand'); await ev(() => __st.step(0.3));
   await trace('zigzag');
   g = await ev(() => __st.pet.trick && __st.pet.trick.kind + ':' + __st.pet.trick.ok);
@@ -95,7 +96,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   await page.screenshot({ path: 'training-stand.png' });
   await ev(() => __st.step(1.2));
   g = await ev(() => { __st.S.tricks.stand = 3; __st.trainBackToPick(); return [...document.querySelectorAll('#trainpick .ttile')].map(t => t.classList.contains('locked') ? '?' : 'offen').join(); });
-  R.ok(g === 'offen,offen,offen', 'Hinterbeine gelernt: Vorderbeine offen', g);
+  R.ok(g === 'offen,offen,offen,?,?,?,?', 'Hinterbeine gelernt: Vorderbeine offen', g);
   await page.click('#tt-hand'); await ev(() => __st.step(0.3));
   await trace('wave');
   g = await ev(() => __st.pet.trick && __st.pet.trick.kind + ':' + __st.pet.trick.ok);
@@ -127,7 +128,7 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   await page.addInitScript(o => { window.__stOffset = o; }, offset);
   await page.goto(GAME_URL);
   g = await ev(() => { __st.pause(true); return JSON.stringify(__st.S.tricks); });
-  R.ok(g === '{"roll":3,"stand":3,"hand":0}', 'Gelernte Tricks werden gespeichert', g);
+  R.ok(g === '{"roll":3,"stand":3,"hand":0,"sit":0,"spin":0,"kiss":0,"pirouette":0}', 'Gelernte Tricks werden gespeichert', g);
 
   R.ok(errors.length === 0, 'Keine Fehler in der Konsole', errors.join(' | '));
   await browser.close();
