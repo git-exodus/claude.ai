@@ -5,6 +5,7 @@ den kompletten Spielordner (`burgwacht/` bzw. `stegi/`) zum Zeitpunkt der Sicher
 
 | Ordner | Version | Gesichert vor |
 |---|---|---|
+| `stegi-v0.7` | Stegi 0.7 | Training: Tricks durch Nachmalen (Rolle, Hinterbeine, Vorderbeine) |
 | `stegi-v0.6.1` | Stegi 0.6.1 | 1 Geschenk pro Tag, Ball-Flackern, Weihnachten, Ostern, Silvester |
 | `stegi-v0.5.1` | Stegi 0.5.1 | neues Design: Stego mit Licht und Schatten, Gesichter und Bewegungen, höherer Horizont, Vordergrund, Tiere |
 | `stegi-v0.4` | Stegi 0.4 | Fototagebuch (2 eigene Fotos pro Tag), Meilensteine, Foto-Fehler bei fehlendem Speicher |
