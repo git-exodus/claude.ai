@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.12.4.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.12.5.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -151,9 +151,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12.4';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12.4` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 20`, `versionName '0.12.4'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12.5';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12.5` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 21`, `versionName '0.12.5'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -518,6 +518,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.12.5 | Weicher Hals (Vorschlag 1): Hals mit Licht und Schatten wie der Körper, keine Ecke mehr im Bauch; Halslinien nur außerhalb des Körpers (auch beim Trinken); gilt auch fürs Geschwisterchen |
 | 0.12.4 | Zuhause: Spielzeugkiste und Blumentopf stehen vor dem Dino, alles andere dahinter |
 | 0.12.3 | Melodie-Knopf über der großen Trommel, große Trommel 50 % lauter, Melodie nachspielen beginnt mit 3 Tönen |
 | 0.12.2 | Nest geschlossen: kein grüner Spalt mehr zwischen hinterer und vorderer Nesthälfte (beide Nester) |
@@ -543,7 +544,7 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Gebaut bis 0.12.4. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
+Gebaut bis 0.12.5. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):
 - Fotos aufs Handy speichern (heute nur im Spiel ansehen).

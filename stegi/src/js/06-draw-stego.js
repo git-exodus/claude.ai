@@ -168,19 +168,29 @@ function drawStego(c, x, y, size, o) {
   c.translate(nbx, nby);
   c.rotate((o.headDown || 0) * 0.55);
   c.translate(-nbx, -nby);
-  c.fillStyle = C.body;
+  // 0.12.5: the neck has the same light and shadow as the body (gradient bg) and its lower edge meets the body
+  // above the belly. Before it was a flat grey wedge whose corner cut into the light belly.
+  c.fillStyle = bg;
   c.beginPath();
-  c.moveTo(cx + rx * 0.55, cy - ry * 0.6);
+  c.moveTo(cx + rx * 0.5, cy - ry * 0.72);
   c.quadraticCurveTo(hx - 18 * hs, hy - 22 * hs, hx - 6 * hs, hy - 18 * hs);
   c.lineTo(hx - 6 * hs, hy + 16 * hs);
-  c.quadraticCurveTo(hx - 18 * hs, hy + 18 * hs, cx + rx * 0.6, cy + ry * 0.55);
+  c.quadraticCurveTo(hx - 16 * hs, hy + 20 * hs, cx + rx * 0.97, cy + ry * 0.2);
   c.closePath(); c.fill();
+  // The neck lines are only drawn outside the body (clip in the body's own, unturned frame), so no piece
+  // sticks out over the back when the head is lowered to drink.
+  const na = (o.headDown || 0) * 0.55;
+  c.save();
+  c.translate(nbx, nby); c.rotate(-na); c.translate(-nbx, -nby);
+  c.beginPath(); c.rect(-400, -400, 800, 800); c.ellipse(cx, cy, rx, ry, 0, 0, TAU); c.clip('evenodd');
+  c.translate(nbx, nby); c.rotate(na); c.translate(-nbx, -nby);
   c.beginPath();
-  c.moveTo(cx + rx * 0.62, cy - ry * 0.68);
+  c.moveTo(cx + rx * 0.4, cy - ry * 0.6);
   c.quadraticCurveTo(hx - 18 * hs, hy - 22 * hs, hx - 6 * hs, hy - 18 * hs);
-  c.moveTo(cx + rx * 0.78, cy + ry * 0.55);
-  c.quadraticCurveTo(hx - 18 * hs, hy + 18 * hs, hx - 6 * hs, hy + 16 * hs);
+  c.moveTo(cx + rx * 0.9, cy + ry * 0.2);
+  c.quadraticCurveTo(hx - 16 * hs, hy + 20 * hs, hx - 6 * hs, hy + 16 * hs);
   c.stroke();
+  c.restore();
 
   // Head = round skull + snout, outlined together.
   const skull = () => { c.beginPath(); c.ellipse(hx, hy, 25 * hs, 21 * hs, 0, 0, TAU); };
