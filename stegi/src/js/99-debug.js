@@ -25,6 +25,7 @@ window.__st = {
   birthdayAt, birthdayNow, bdayState, cakeTap, cakePos, candlePos, goodnightDim, devGoBirthday, shapeUnit,
   seasonKind, weatherGame, weatherGameTap, puddlePos, leafPos, snowPos, snowmanState, startToy, toyTap, kiteDrag, kiteOk, castleOk, startMelody, melodyKey, wishEat, updateWish, FOOD_COLOR,
   earn, FURNITURE, buyFurniture, homeTap, spotPos, atHome, friendVisited, friendArrives, STICKERS, checkStickers, openStickers, openShop, closeShop, closeStickers, realFound,
+  sib, blankSib, devSib, sibEggThere, sibHatched, sibGrowth, sibStage, sibNestPos, sibEggHit, familyTap, SIB_EGG_DAY, SIB_SIZE,
   startWalk, arrive, goPlace, openPlaces, closePlaces, foundToday, walkLimitReached, firefliesNow, placePicture, walkFx,
   enterGame, showMenu, startMode, endMode, goToBed, offerFood, removePoop, tapStego, strokeStego, throwBall,
   eggPhase, eggProgress, eggRub, stageAt: () => stageAt(now()), growth: () => growthAt(now()), lifeDay: () => lifeDay(now()),

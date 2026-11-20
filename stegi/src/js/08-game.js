@@ -49,16 +49,17 @@ const asleepNow = () => hatched() && isAsleep(now());
 
 /* ---------- egg ---------- */
 
-/** 'growing' (cracks to come), 'done' (today's stroking done), 'hatchday' (ready to hatch). */
-function eggPhase() {
-  const e = S.egg, d = today();
+/** 'growing' (cracks to come), 'done' (today's stroking done), 'hatchday' (ready to hatch).
+ *  0.12: e can also be the sibling's egg (S.sib.egg, 26-family.js). */
+function eggPhase(e = S.egg) {
+  const d = today();
   if (e.cracks >= EGG.cracks) return d > e.crackDay ? 'hatchday' : 'done';
   return e.crackDay === d ? 'done' : 'growing';
 }
 
 /** 0..1 progress shown as hearts above the egg. */
-function eggProgress() {
-  const e = S.egg, ph = eggPhase();
+function eggProgress(e = S.egg) {
+  const ph = eggPhase(e);
   if (ph === 'done') return 1;
   if (ph === 'hatchday') return clamp(e.hatchSec / EGG.hatchSeconds, 0, 1);
   return e.petDay === today() ? clamp(e.petSec / EGG.petSeconds, 0, 1) : 0;
@@ -370,6 +371,7 @@ function updatePet(dt, sleeping) {
   if (game.mode === 'ball') updateBall(dt);
   if (game.mode === 'hide') updateHide(dt);
   updateVisit(dt, sleeping);
+  updateFamily(dt, sleeping);   // 0.12: sibling egg and little sibling (26-family.js)
   if (game.mode === 'party' && game.modeT > 3) { game.mode = 'idle'; refreshUI(); }
   if (Math.floor(game.t / 2) !== Math.floor((game.t - dt) / 2)) checkStickers();   // 0.11 (25-home.js)
   if (game.mode === 'party' && pet.jump === 0 && game.modeT < 2.4) { pet.jumpV = 200 * U; }
@@ -564,6 +566,7 @@ function drawWorld() {
     // The present waits where he stops: not shown on the way (it would stand still on the moving ground, 0.6.1).
     if (giftWaiting() && game.mode === 'idle' && !asleepNow() && !S.walk) { const gp = giftPos(); drawGift(ctx, gp.x, gp.y, U, game.t); }
     game.stegoInfo = drawStego(ctx, sx, sy, ss, look);
+    drawFamily(ctx, sky);   // 0.12: the little sibling (in front of him)
     if (hd && hd.phase !== 'found') drawHideSpots(ctx);
     if (game.visit) drawVisitor(ctx, game.visit, game.t);   // 0.8.1: every visitor in front of him
     if (holidayHere()) drawBirthday(ctx, game.t);   // 0.9: cake and balloons
@@ -573,6 +576,7 @@ function drawWorld() {
     drawToys(ctx, game.t);   // 0.10: bubbles, kite, sandcastle
     drawForeground(ctx, placeId, game.t, sky.light, placeId === 'travel' ? walkFx.scroll : 0);
     drawSeasonAir(ctx, placeId, game.t, sky.light);   // grass, flowers ... in front of him (0.6; scrolls on the way since 0.6.1)
+    drawFamilyEgg(ctx, sky);   // 0.12: the sibling egg in front of the grass
     drawGroundLife(ctx, placeId, game.t, sky, weather);
     if (game.mode === 'bath') {
       drawTub(ctx, W / 2 + 6 * U, standY + 6 * U, tubW, 'front');

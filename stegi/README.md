@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.11.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.12.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **327 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 20, suite-celebrate 17, suite-fun 25, suite-home 19).
+Erwartet: **352 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 20, suite-celebrate 17, suite-fun 25, suite-home 19, suite-family 25).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -75,6 +75,7 @@ stegi/
     ├── suite-celebrate.js 0.9: 7 Tricks nacheinander, Geburtstag (Daten, Kuchen, Kerzen, Hut), Gute-Nacht-Ritual
     ├── suite-fun.js       0.10: Jahreszeiten, Pfützen, Schneemann, Laubhaufen, Seifenblasen, Drachen, Sandburg, Melodie, Wünsche
     ├── suite-home.js      0.11: Sterne, Sticker-Heft, Zuhause, Laden, Möbel umstellen, Freundschaft, Speichern
+    ├── suite-family.js    0.12: Geschwister-Ei ab Tag 32, Streicheln, Schlüpfen, Geschwisterchen folgt/hüpft/kichert/schläft/wächst, Testmodus
     ├── suite-dev.js       0.4: Testmodus (eigener Spielstand, Stufen, Zeitraffer, Sprünge, Helfer, echter Stand bleibt unberührt)
     └── make-icon.js       kein Test: zeichnet das App-Symbol mit dem Spielcode neu
 ```
@@ -150,9 +151,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.11';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.11` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 15`, `versionName '0.11'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 16`, `versionName '0.12'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -185,6 +186,7 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 | `23-celebrate.js` | 0.9: monatlicher Geburtstag (Kuchen, Kerzen, Luftballons) und Gute-Nacht-Ritual (Schlaflied, Kuscheltier, dunkler) |
 | `24-fun.js` | 0.10: Jahreszeiten, Wetter-Spiele, Spielzeug (Seifenblasen, Drachen, Sandburg), Melodie nachspielen, Wünsche |
 | `25-home.js` | 0.11: Sterne (`earn`), Zuhause mit Möbeln, Laden, Sticker-Heft, Freundschaft und Freundes-Geschenke |
+| `26-family.js` | 0.12: Familie: Geschwister-Ei im Nest, Schlüpfen, kleines Geschwisterchen ohne eigene Bedürfnisse |
 | `19-dev.js` | Testmodus für Eltern: Wechsel auf den Test-Spielstand, Zeitraffer, Stufen, Helfer, Test-Fenster |
 | `11-main.js` | `resize`, Bildschleife, Speichern alle 5 s und beim Verlassen, `start()` |
 | `99-debug.js` | `window.__st` für die Tests (wird vom Spiel nicht benutzt), ruft `start()` auf |
@@ -451,6 +453,21 @@ Test-Werkzeuge: Knöpfe „18.12.“, „24.12.“, „31.12.“, „Ostern“ s
   (T-Rex-Kuscheltier, Feder-Mobile, Blumenkranz, Muschellampe, Schmetterlingsbild), nur einmal.
 - Testmodus: „+50 Sterne“ und „Beste Freunde“ (alle 5 Herzen und Geschenke).
 
+### 6.20 Familie (seit 0.12)
+
+- **Geschwister-Ei:** am Lebenstag 32 (2 Tage nachdem er „Ganz groß“ ist) liegt ein kleineres Ei in einem Nest vor
+  seinen Füßen (etwas links der Mitte). Beim ersten Sehen glitzert es und piepst. Unterwegs ist es nicht zu sehen.
+- **Streicheln wie beim eigenen Ei:** 2 Minuten am Tag = ein Riss (höchstens einer pro Tag), nach 3 Rissen am
+  nächsten Tag 15 Sekunden = es schlüpft (Fest, Konfetti, Meilenstein-Foto „Geschwisterchen“). 5 kleine Herzen
+  zeigen den Fortschritt, nachts schläft das Ei. Übers Ei streicheln streichelt nicht den Großen.
+- **Geschwisterchen:** minzgrün mit hellblauen Platten, **keine eigenen Bedürfnisse**. Steht vor seinem Schwanz
+  und schaut ihn an, läuft ihm hinterher, wandert mit, hüpft kurz nach ihm mit, hüpft ab und zu von selbst
+  (alle 7–14 s), schaut beim Ballspiel dem Ball nach, tanzt bei Musik und Festen, schläft nachts neben ihm.
+  Antippen = kichern, hüpfen, Herz, der Große freut sich.
+- **Wachsen:** wie er (Stufen nach Tagen, ganz groß an Tag 30), aber höchstens **75 %** seiner Größe.
+- Beim Antippen haben Pfützen, Kuchen und Feiertags-Sachen Vorrang vor dem Ei, das Ei vor den Möbeln.
+- Testmodus: „Geschwister-Ei“, „Ei Schlüpftag“, „Geschwister da“, „Geschwister +5 Tage“.
+
 ---
 
 ## 7. Spielstand
@@ -499,6 +516,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.12 | Familie: Geschwister-Ei zwei Tage nach „Ganz groß“, streicheln wie das eigene Ei, kleines Geschwisterchen ohne eigene Bedürfnisse (folgt, wandert mit, hüpft, kichert, schläft, wächst bis 75 %) |
 | 0.11 | Sterne, Zuhause (Höhle) in der Orte-Liste, Laden mit 12 Möbeln, Sticker-Heft mit 24 Stickern, Freundschaft mit Herzen und Geschenken fürs Zuhause |
 | 0.10 | Jahreszeiten, Wetter-Spiele (Pfützen, Schneemann, Laubhaufen), Seifenblasen, Drachen, Sandburg, Melodie nachspielen, Wünsche (Zählen und Farben) |
 | 0.9 | 4 neue Tricks (Sitz, Drehen, Küsschen, Pirouette), genauere Malprüfung für 7 Symbole, monatlicher Geburtstag mit Kuchen und Kerzen, Gute-Nacht-Ritual |
@@ -519,10 +537,8 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Gebaut bis 0.11. Vereinbart und noch offen: 0.12 Familie (Geschwister ohne eigene
-Bedürfnisse). Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
+Gebaut bis 0.12. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):
-- Benachrichtigungen am Handy („Stegi hat Hunger“, „Stegi ist angekommen“) – braucht Android-Code.
 - Fotos aufs Handy speichern (heute nur im Spiel ansehen).
 - Signierter Release-Build für den Play Store.

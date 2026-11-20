@@ -43,6 +43,8 @@ function onMove(e) {
   game.rubX = e.clientX; game.rubY = e.clientY;
   if (!hatched()) { if (eggHit(e.clientX, e.clientY)) game.rubbing = 0.25; return; }
   if (asleepNow()) return;
+  // 0.12: stroking the sibling egg (before stroking him: the nest stands in front of his tail).
+  if (['idle', 'eat', 'play'].includes(game.mode) && sibEggHit(e.clientX, e.clientY)) { sib.rub = 0.25; return; }
   if (game.mode === 'brush' && game.brush && !game.brush.done) { game.brush.x = e.clientX; game.brush.y = e.clientY; game.rubbing = 0.25; return; }
   if (game.mode === 'bath') { game.rubbing = 0.25; return; }
   if (game.mode === 'kite') { kiteDrag(e.clientX, e.clientY); return; }
@@ -83,7 +85,7 @@ function onUp(e) {
     const p = poopPos(i);
     if (dist(x, y, p.x, p.y - 15 * U) < 38 * U) { removePoop(i); return; }
   }
-  if (game.mode === 'idle' && (weatherGameTap(x, y) || cakeTap(x, y) || holidayTap(x, y) || homeTap(x, y))) return;   // 0.9 cake, 0.7 holidays   // 0.7: Christmas boxes, Easter eggs, chocolate bunny
+  if (game.mode === 'idle' && (weatherGameTap(x, y) || cakeTap(x, y) || holidayTap(x, y) || familyTap(x, y) || homeTap(x, y))) return;   // 0.9 cake, 0.7 holidays   // 0.7: Christmas boxes, Easter eggs, chocolate bunny
   if (giftWaiting() && game.mode === 'idle' && !asleepNow() && !S.walk) {
     const gp = giftPos();
     if (dist(x, y, gp.x, gp.y - 25 * U) < 45 * U) { openGift(); return; }

@@ -38,6 +38,7 @@ function resetScreenState() {
   game.mode = 'idle'; game.visit = null; game.flying = null; game.held = null; game.autoPhotoAt = 0;
   parts.length = 0;
   Object.assign(pet, { x: 0, tx: 0, jump: 0, jumpV: 0, depth: 0, danceT: 0, eatT: 0, refuseT: 0, giggleT: 0, happyT: 0 });
+  Object.assign(sib, { x: null, jump: 0, jumpV: 0, hatchT: -1, hopAt: 0, giggleT: 0 });   // 0.12
   game.sky = skyAt(now());
 }
 
@@ -77,6 +78,19 @@ function devDay(d) {
   resetScreenState(); save(); refreshUI();
 }
 const devStage = i => devDay(STAGES[i].day);
+
+/** 0.12 sibling: 'egg' = new sibling egg (he becomes grown if he is not), 'hatchday' = egg ready to hatch,
+ *  'born' = sibling hatched today, 'older' = sibling 5 days older. */
+function devSib(what) {
+  if (!hatched() || stageAt(now()) < STAGES.length - 1) devDay(GROWN_DAY);
+  const d = today0();
+  if (what === 'egg' || !S.sib) S.sib = blankSib();
+  if (what === 'hatchday') { S.sib.hatchDay = null; S.sib.egg.cracks = EGG.cracks; S.sib.egg.crackDay = d - 1; S.sib.egg.hatchSec = 0; }
+  if (what === 'born') S.sib.hatchDay = d;
+  if (what === 'older') S.sib.hatchDay = (S.sib.hatchDay === null ? d : S.sib.hatchDay) - 5;
+  S.sib.seen = what !== 'egg';
+  resetScreenState(); save(); refreshUI();
+}
 
 /** Time: jump forward h hours, or forward to the next hh:mm. */
 function devJump(h) { clock.offset += h * 3600e3; saveTestClock(); refreshUI(); }
@@ -126,6 +140,8 @@ function buildDev() {
     '<h3>Helfer</h3><div class="chips">' +
       b('dv-full', 'Alles voll') + b('dv-low', 'Fast leer') + b('dv-arrive', 'Sofort ankommen') + b('dv-places', 'Alle Orte') +
       b('dv-gifts', 'Alle Geschenke') + b('dv-visit', 'Besuch jetzt') + b('dv-stars', '+50 Sterne') + b('dv-friends', 'Beste Freunde') + '</div>' +
+    '<h3>Geschwister</h3><div class="chips">' + b('dv-sib-egg', 'Geschwister-Ei') + b('dv-sib-hd', 'Ei Schlüpftag') +
+      b('dv-sib-born', 'Geschwister da') + b('dv-sib-5', 'Geschwister +5 Tage') + '</div>' +
     '<h3>Wetter</h3><div class="chips">' + DEV_WEATHER.map(([w, t]) => b('dv-w-' + w, t)).join('') + '</div>' +
     b('dv-reset', 'Test-Spielstand zurücksetzen', ' danger wide');
   const on = (id, f) => $(id).addEventListener('click', () => { sound('tap'); f(); fillDev(); });
@@ -143,6 +159,8 @@ function buildDev() {
   on('dv-full', () => devNeeds(100)); on('dv-low', () => devNeeds(15));
   on('dv-arrive', devArrive); on('dv-stars', () => { S.stars += 50; save(); refreshUI(); }); on('dv-friends', () => { for (const k of VISITORS) S.friends[k] = 5; save(); }); on('dv-places', devAllPlaces); on('dv-gifts', devAllGifts); on('dv-visit', devVisit);
   DEV_WEATHER.forEach(([w]) => on('dv-w-' + w, () => devWeather(w)));
+  on('dv-sib-egg', () => devSib('egg')); on('dv-sib-hd', () => devSib('hatchday'));
+  on('dv-sib-born', () => devSib('born')); on('dv-sib-5', () => devSib('older'));
   $('dv-reset').addEventListener('click', () => { $('dev-confirm').hidden = false; });
   $('dvc-no').addEventListener('click', () => { $('dev-confirm').hidden = true; });
   $('dvc-yes').addEventListener('click', () => { $('dev-confirm').hidden = true; devResetTest(); });

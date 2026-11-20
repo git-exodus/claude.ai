@@ -43,6 +43,7 @@ function blankSave(t) {
     stars: 0, stats: {}, stickers: [],
     home: { owned: [], placed: {} },
     friends: {},
+    sib: null,               // 0.12: sibling { egg (like egg above), hatchDay (null = still an egg), seen } (26-family.js)
           // 0.9: day the lullaby was played last (once a night)
     tricks: Object.fromEntries(TRICKS.map(t => [t.id, 0])),   // 0.8: successful tries per trick (TRICK_LEARN = learned)
   };
@@ -119,6 +120,12 @@ function sanitizeSave(o, t) {
     for (const id of b.home.owned) { const f = furn(id); const want = o.home.placed && o.home.placed[f.spot]; b.home.placed[f.spot] = b.home.owned.includes(want) && furn(want).spot === f.spot ? want : (b.home.placed[f.spot] || id); }
   }
   for (const k of VISITORS) if (o.friends && typeof o.friends[k] === 'number') b.friends[k] = Math.round(num(o.friends[k], 0, 5, 0));
+  if (o.sib && typeof o.sib === 'object') {   // 0.12
+    const se = o.sib.egg || {};
+    b.sib = { egg: { petDay: num(se.petDay, -1, 1e6, -1), petSec: num(se.petSec, 0, 1e5, 0), cracks: Math.round(num(se.cracks, 0, EGG.cracks, 0)),
+      crackDay: num(se.crackDay, -1, 1e6, -1), hatchSec: num(se.hatchSec, 0, 1e5, 0) },
+      hatchDay: typeof o.sib.hatchDay === 'number' && isFinite(o.sib.hatchDay) ? o.sib.hatchDay : null, seen: o.sib.seen === true };
+  }
   b.snowman = o.snowman && typeof o.snowman.day === 'number' ? { day: o.snowman.day, stage: Math.round(num(o.snowman.stage, 0, 3, 0)) } : null;
   for (const tr of TRICKS) b.tricks[tr.id] = Math.round(num(o.tricks && o.tricks[tr.id], 0, 999, 0));
   const bools = (a, n) => Array.from({ length: n }, (_, i) => !!(Array.isArray(a) && a[i]));
