@@ -123,7 +123,8 @@ function drawNest(c, x, y, w, part) {
   c.lineCap = 'round';
   if (part === 'back') {
     c.fillStyle = '#9b6a3a';
-    c.beginPath(); c.ellipse(x, y - w * 0.08, w * 0.5, w * 0.16, 0, Math.PI, TAU); c.fill();
+    // 0.12.2: same centre as the front half (was 0.02 w higher), so no green gap shows between the halves.
+    c.beginPath(); c.ellipse(x, y - w * 0.06, w * 0.52, w * 0.16, 0, Math.PI, TAU); c.fill();
   } else {
     c.fillStyle = '#b07a43';
     c.beginPath(); c.ellipse(x, y - w * 0.06, w * 0.52, w * 0.15, 0, 0, Math.PI); c.lineTo(x - w * 0.52, y - w * 0.06); c.fill();

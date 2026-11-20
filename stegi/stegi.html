@@ -243,7 +243,7 @@ svg { display: block; width: 100%; height: 100%; }
       <button class="big alt" id="s-devopen" type="button" hidden>Test-Werkzeuge öffnen</button>
       <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
       <button class="big" id="s-close" type="button">Schließen</button>
-      <p id="credit">@made by Brownii (Claude.ai) · v0.12.1</p>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.12.2</p>
     </div>
   </div>
   <div id="confirm" class="ov" hidden>
@@ -368,7 +368,7 @@ function mix(c1, c2, k) {
 /* 02-config.js – every game value in one place (no side effects).
  * Change numbers here, then update README section 7 and the tests that check them. */
 
-const VERSION = '0.12.1';
+const VERSION = '0.12.2';
 const SAVE_KEY = 'stegi-v1';
 /** Test mode (0.4) keeps its own game, photos and clock here, so the child's Stegi is never touched. */
 const TEST_KEYS = { save: 'stegi-test-v1', photos: 'stegi-test-photos-v1', clock: 'stegi-test-clock' };
@@ -1741,7 +1741,8 @@ function drawNest(c, x, y, w, part) {
   c.lineCap = 'round';
   if (part === 'back') {
     c.fillStyle = '#9b6a3a';
-    c.beginPath(); c.ellipse(x, y - w * 0.08, w * 0.5, w * 0.16, 0, Math.PI, TAU); c.fill();
+    // 0.12.2: same centre as the front half (was 0.02 w higher), so no green gap shows between the halves.
+    c.beginPath(); c.ellipse(x, y - w * 0.06, w * 0.52, w * 0.16, 0, Math.PI, TAU); c.fill();
   } else {
     c.fillStyle = '#b07a43';
     c.beginPath(); c.ellipse(x, y - w * 0.06, w * 0.52, w * 0.15, 0, 0, Math.PI); c.lineTo(x - w * 0.52, y - w * 0.06); c.fill();
