@@ -551,7 +551,7 @@ function drawWorld() {
   } else {
     drawSeasonGround(ctx, placeId, sky.light);   // 0.10: golden autumn, frosty winter
     drawWeatherGame(ctx, game.t);                 // 0.10: puddles, leaf piles, snowman
-    drawHome(ctx, game.t, sky.light);             // 0.11: furniture at home
+    drawHome(ctx, game.t, sky.light, 'back');     // 0.11: furniture at home (0.12.4: only what stands behind him)
     S.poops.forEach((p, i) => { const pp = poopPos(i); drawPoop(ctx, pp.x, pp.y, 1.1 * U, game.t + i); });
     const sx = W / 2 + pet.x, look = stegoLook();
     const tubW = game.stegoInfo ? game.stegoInfo.box.w * 0.8 : stegoSize * 0.6;
@@ -569,6 +569,7 @@ function drawWorld() {
     drawFamily(ctx, sky);   // 0.12: the little sibling (in front of him)
     if (hd && hd.phase !== 'found') drawHideSpots(ctx);
     if (game.visit) drawVisitor(ctx, game.visit, game.t);   // 0.8.1: every visitor in front of him
+    drawHome(ctx, game.t, sky.light, 'front');   // 0.12.4: toy box and plant stand in front of him
     if (holidayHere()) drawBirthday(ctx, game.t);   // 0.9: cake and balloons
     if (asleepNow() && game.goodnight) drawTeddy(ctx);
     if (holidayHere() && season.easter) drawEaster(ctx, game.t);

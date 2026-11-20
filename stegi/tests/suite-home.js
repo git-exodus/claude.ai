@@ -56,6 +56,15 @@ const { chromium, createReport, openPage, loadClean, hatchQuick, at, GAME_URL } 
   await page.mouse.click(bed.x, bed.y); await ev(() => __st.step(0.2));
   R.ok((await ev(() => __st.S.home.placed.bed)) === 'bed_leaves', 'Bett antippen: wechselt zum anderen gekauften Bett');
   await page.screenshot({ path: 'home-furnished.png' });
+  // 0.12.4: the toy box stands in front of him (grown, his front feet over it), the bed behind him.
+  g = await ev(() => {
+    __st.devDay(30); __st.S.stageSeen = 4; __st.buyFurniture('toybox'); __st.pet.tx = 40; __st.step(2.5);
+    const p = __st.spotPos('toys'), U = __st.pos().U, cv = document.querySelector('canvas'), k = cv.width / window.innerWidth;
+    const px = cv.getContext('2d').getImageData(Math.round(p.x * k), Math.round((p.y - 12 * U) * k), 1, 1).data;
+    const b = __st.game.stegoInfo.box, over = p.x > b.x && p.x < b.x + b.w;
+    return { over, rgb: [px[0], px[1], px[2]], front: __st.HOME_FRONT.join() };
+  });
+  R.ok(g.over && g.rgb[0] - g.rgb[2] > 80 && g.front === 'plant,toys', 'Spielzeugkiste und Blumentopf stehen vor ihm, der Rest hinter ihm', JSON.stringify(g));
 
   // ---------- friendship ----------
   g = await ev(() => {

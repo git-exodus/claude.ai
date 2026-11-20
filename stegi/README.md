@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.12.3.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.12.4.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **352 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 20, suite-celebrate 17, suite-fun 25, suite-home 19, suite-family 25).
+Erwartet: **354 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 20, suite-celebrate 17, suite-fun 26, suite-home 20, suite-family 25).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -151,9 +151,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12.3';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12.3` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 19`, `versionName '0.12.3'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12.4';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12.4` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 20`, `versionName '0.12.4'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -447,6 +447,8 @@ Test-Werkzeuge: Knöpfe „18.12.“, „24.12.“, „31.12.“, „Ostern“ s
   Glühwürmchenglas 10, Pilzlampe 14, Sonnenbild 6, Eierbild 6, Farn 5, Blumentopf 7, Spielzeugkiste 10, Regal 12.
   Zu teure sind blass (Tippen = „mm-mm“). Gekauftes steht sofort am festen Platz; Möbel antippen wechselt zwischen
   gekauften Sachen für denselben Platz. Lampen leuchten nachts.
+  Ebenen (seit 0.12.4) wie in einem echten Zimmer: Wandsachen, Teppich, Bett und Lampe stehen hinter ihm,
+  Spielzeugkiste und Blumentopf weiter vorn und damit vor ihm (verdecken höchstens seine Beine).
 - **Sticker-Heft** (Knopf ★-Heft): 24 Sticker für Meilensteine (Schlüpfen, Füttern, Tricks, Orte, Feste, Besuche …),
   noch nicht verdiente sind grau. Geprüft alle 2 s.
 - **Freundschaft:** Jeder Besuch gibt diesem Freund ein Herz (bis 5). Beim 5. Herz bringt er ein Geschenk fürs Zuhause
@@ -516,6 +518,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.12.4 | Zuhause: Spielzeugkiste und Blumentopf stehen vor dem Dino, alles andere dahinter |
 | 0.12.3 | Melodie-Knopf über der großen Trommel, große Trommel 50 % lauter, Melodie nachspielen beginnt mit 3 Tönen |
 | 0.12.2 | Nest geschlossen: kein grüner Spalt mehr zwischen hinterer und vorderer Nesthälfte (beide Nester) |
 | 0.12.1 | Risse im Ei (eigenes und Geschwister-Ei) etwas tiefer und weiter innen, ragen nicht mehr über den Rand |
@@ -540,7 +543,7 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Gebaut bis 0.12.3. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
+Gebaut bis 0.12.4. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):
 - Fotos aufs Handy speichern (heute nur im Spiel ansehen).

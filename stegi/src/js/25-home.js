@@ -205,10 +205,18 @@ function drawFurniture(c, id, x, y, s, t = 0, L = 1) {
 }
 
 /** The home's furniture (everything owned and placed), drawn behind him; the rug under him. */
-function drawHome(c, time, L) {
+/** 0.12.4: furniture is layered by where it stands, like in a real room. Things on the wall and things whose foot
+ *  is level with his feet or further back (rug, bed, lamp) are drawn behind him (layer 'back'); the toy box and
+ *  the plant stand further to the front (lower on screen than his feet) and are drawn in front of him and the
+ *  sibling (layer 'front'). They can cover his legs, never his face. */
+const HOME_FRONT = ['plant', 'toys'];
+
+function drawHome(c, time, L, layer = 'back') {
   if (!atHome()) return;
   const pl = S.home.placed;
-  for (const spot of ['rug', 'pic', 'shelf', 'f_trex', 'f_turtle', 'f_trike', 'f_butterflies', 'f_ptero', 'bed', 'lamp', 'plant', 'toys']) {
+  const spots = ['rug', 'pic', 'shelf', 'f_trex', 'f_turtle', 'f_trike', 'f_butterflies', 'f_ptero', 'bed', 'lamp', 'plant', 'toys']
+    .filter(sp => HOME_FRONT.includes(sp) === (layer === 'front'));
+  for (const spot of spots) {
     const id = pl[spot]; if (!id) continue;
     const p = spotPos(spot);
     drawFurniture(c, id, p.x, p.y, ['pic', 'shelf', 'f_trex', 'f_turtle', 'f_trike', 'f_butterflies', 'f_ptero'].includes(spot) ? 1.25 : 1.4, time, L);   // bigger than in the shop
