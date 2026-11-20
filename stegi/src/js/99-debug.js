@@ -23,7 +23,7 @@ window.__st = {
   easterSunday, seasonAt, seasonNow, holidayTap, treeHere, holidayHere, xmasState, easterState, xmasBoxPos, eggPos, bunnyPos, devGoHoliday, WEAR_EXTRA,
   TRICKS, startTrain, pickTrick, trainBackToPick, finishTrace, judgeTrace, trickGuide, trainBoard, startTrick, learnedTricks, trickOpen,
   birthdayAt, birthdayNow, bdayState, cakeTap, cakePos, candlePos, goodnightDim, devGoBirthday, shapeUnit,
-  seasonKind, weatherGame, weatherGameTap, puddlePos, leafPos, snowPos, snowmanState, startToy, toyTap, kiteDrag, kiteOk, castleOk, startMelody, melodyKey, wishEat, updateWish, FOOD_COLOR,
+  seasonKind, weatherGame, weatherGameTap, puddlePos, leafPos, snowPos, snowmanState, startToy, toyTap, kiteDrag, kiteOk, castleOk, startMelody, melodyKey, wishEat, updateWish,
   earn, FURNITURE, buyFurniture, homeTap, spotPos, atHome, friendVisited, friendArrives, STICKERS, checkStickers, openStickers, openShop, closeShop, closeStickers, realFound,
   trainTired,
   HOME_FRONT,

@@ -108,7 +108,11 @@ const { chromium, createReport, openPage, loadClean, hatchQuick } = require('./l
 
   // ---------- wishes ----------
   g = await ev(() => { __st.S.needs.food = 40; __st.game.nextWish = 0; __st.step(0.2); return __st.S.wish; });
-  R.ok(g && (g.type === 'count' || g.type === 'color'), 'Er wünscht sich etwas (Gedankenblase)', JSON.stringify(g));
+  R.ok(g && g.type === 'count' && g.n >= 2, 'Er wünscht sich etwas (Gedankenblase mit z. B. 3 Beeren)', JSON.stringify(g));
+  g = await ev(() => { const k = {}; for (let i = 0; i < 200; i++) { __st.S.wish = null; __st.S.needs.food = 40; __st.game.nextWish = 0; __st.step(0.05); k[__st.S.wish ? __st.S.wish.type : 'none'] = 1; } __st.S.wish = null; return Object.keys(k).join(); });
+  R.ok(g === 'count', '200 Wünsche: nie mehr ein Farb-Wunsch (seit 0.12.7)', g);
+  g = await ev(() => { __st.S.wish = null; __st.S.needs.food = 79; __st.game.nextWish = 0; __st.step(0.05); return __st.S.wish; });
+  R.ok(g === null, 'Fast satt (kein Platz für 2 Stück): diesmal kein Wunsch', JSON.stringify(g));
   g = await ev(() => {
     __st.S.wish = { type: 'count', food: 'berry', n: 3, got: 0, until: 1e9 }; __st.S.needs.food = 30; __st.S.needs.love = 50;
     __st.startMode('eat'); __st.step(0.2);
@@ -118,8 +122,6 @@ const { chromium, createReport, openPage, loadClean, hatchQuick } = require('./l
   });
   R.ok(g.out === '0,1,2,erfüllt' && near(g.love, 50 + 4 + 10, 0.5), '„3 Beeren“: Apfel zählt nicht, nach der 3. Beere freut er sich (Liebe +10)', JSON.stringify(g));
   await page.screenshot({ path: 'fun-wish-done.png' });
-  g = await ev(() => { __st.S.wish = { type: 'color', color: 'red', until: 1e9 }; __st.S.needs.food = 30; __st.step(0.5); __st.offerFood('fern', 100, 600); __st.step(1.8); const a = !!__st.S.wish; __st.offerFood('melon', 100, 600); __st.step(1.8); return [a, !!__st.S.wish]; });
-  R.ok(g.join() === 'true,false', '„Was Rotes“: Farn nicht, Melone ja', g.join());
   await ev(() => __st.endMode());
 
   R.ok(errors.length === 0, 'Keine Fehler in der Konsole', errors.join(' | '));

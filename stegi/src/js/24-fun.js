@@ -282,10 +282,9 @@ function melodyKey(i) {
 
 /* ---------- wishes ---------- */
 
-const FOOD_COLOR = { fern: 'green', leaf: 'green', berry: 'purple', apple: 'red', melon: 'red' };
-const WISH_COLORS = { green: '#4caf50', purple: '#7b3fb0', red: '#e53935' };
-
-/** Now and then (every 10–20 minutes of playing, when he is not full) a wish appears; it goes after 8 minutes. */
+/** Now and then (every 10–20 minutes of playing, when he is not full) a wish appears; it goes after 8 minutes.
+ *  The wish is always "n times this food" (0.12.7: the colour wish was removed, children did not get it).
+ *  If there is no room for at least 2 pieces, no wish this time. */
 function updateWish() {
   if (!hatched() || asleepNow()) { S.wish = null; return; }
   if (S.wish && game.t > S.wish.until) S.wish = null;
@@ -294,16 +293,15 @@ function updateWish() {
   if (game.t < game.nextWish || S.needs.food >= 80) return;
   game.nextWish = game.t + rnd(600, 1200);
   const f = FOODS[Math.floor(Math.random() * FOODS.length)], room = Math.floor((100 - S.needs.food) / f.value);
-  if (Math.random() < 0.5 && room >= 2) S.wish = { type: 'count', food: f.id, n: Math.min(4, room), got: 0, until: game.t + 480 };
-  else S.wish = { type: 'color', color: Object.keys(WISH_COLORS)[Math.floor(Math.random() * 3)], until: game.t + 480 };
+  if (room >= 2) S.wish = { type: 'count', food: f.id, n: Math.min(4, room), got: 0, until: game.t + 480 };
 }
 
 /** Called when he eats something (from eat()): does it fulfil the wish? */
 function wishEat(id) {
   const w = S.wish;
   if (!w) return;
-  if (w.type === 'count' && id === w.food) w.got++;
-  if ((w.type === 'count' && w.got >= w.n) || (w.type === 'color' && FOOD_COLOR[id] === w.color)) {
+  if (id === w.food) w.got++;
+  if (w.got >= w.n) {
     S.wish = null;
     earn('wish');
     addNeed('love', 10); addNeed('fun', 5);
@@ -313,20 +311,13 @@ function wishEat(id) {
   }
 }
 
-/** Thought bubble content: the wished food n times (eaten ones faded), or a coloured blob. */
+/** Thought bubble content: the wished food n times (eaten ones faded). */
 function wishBubbleIcon(c, x, y, r) {
-  const w = S.wish;
-  if (w.type === 'count') {
-    const n = w.n, s = r * (n > 3 ? 0.62 : 0.85);
-    for (let i = 0; i < n; i++) {
-      const ox = (i - (n - 1) / 2) * s * 0.85;
-      c.globalAlpha = i < w.got ? 0.25 : 1;
-      drawFood(c, w.food, x + ox, y, s);
-    }
-    c.globalAlpha = 1;
-  } else {
-    c.fillStyle = WISH_COLORS[w.color];
-    c.beginPath(); for (let i = 0; i < 12; i++) { const a = i * TAU / 12, rr = r * (0.5 + (i % 2) * 0.08); c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.fill();
-    c.fillStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.arc(x - r * 0.18, y - r * 0.18, r * 0.12, 0, TAU); c.fill();
+  const w = S.wish, n = w.n, s = r * (n > 3 ? 0.62 : 0.85);
+  for (let i = 0; i < n; i++) {
+    const ox = (i - (n - 1) / 2) * s * 0.85;
+    c.globalAlpha = i < w.got ? 0.25 : 1;
+    drawFood(c, w.food, x + ox, y, s);
   }
+  c.globalAlpha = 1;
 }

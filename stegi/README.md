@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.12.6.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.12.7.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **360 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 26, suite-celebrate 17, suite-fun 26, suite-home 20, suite-family 25).
+Erwartet: **361 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 26, suite-celebrate 17, suite-fun 27, suite-home 20, suite-family 25).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -151,9 +151,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12.6';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12.6` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 22`, `versionName '0.12.6'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12.7';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12.7` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 23`, `versionName '0.12.7'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -438,7 +438,7 @@ Test-Werkzeuge: Knöpfe „18.12.“, „24.12.“, „31.12.“, „Ostern“ s
 - **Melodie nachspielen** (Knopf über der großen Trommel, seit 0.12.3): er spielt 3 Töne vor (seit 0.12.3, vorher 2), man spielt sie nach; richtig = Applaus,
   Spaß +5, nächste Melodie einen Ton länger (bis 6); falsch = „mm-mm“ und er spielt sie nochmal vor.
 - **Wünsche** (alle 10–20 Spielminuten, wenn Essen unter 80): Gedankenblase mit z. B. 3 Beeren (gegessene werden
-  blass) oder einem Farbklecks (Rot = Apfel/Melone, Lila = Beeren, Grün = Farn/Blatt). Erfüllt = Tanz, Sterne,
+  blass; seit 0.12.7 nur noch diese Art, der Farb-Wunsch wurde nicht verstanden). Erfüllt = Tanz, Sterne,
   Liebe +10, Spaß +5. Verschwindet nach 8 Minuten.
 
 ### 6.19 Sterne, Zuhause, Laden, Sticker, Freundschaft (seit 0.11)
@@ -523,6 +523,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.12.7 | Farb-Wunsch entfernt (nur noch „n-mal dieses Essen“); fast satt = kein Wunsch |
 | 0.12.6 | Schwanzstand (Pfeil) statt Küsschen, Fortschritt bleibt erhalten; Training-Müdigkeit: nach 2 neuen Sternen 1 Stunde Pause (unsichtbar, er gähnt) |
 | 0.12.5 | Weicher Hals (Vorschlag 1): Hals mit Licht und Schatten wie der Körper, keine Ecke mehr im Bauch; Halslinien nur außerhalb des Körpers (auch beim Trinken); gilt auch fürs Geschwisterchen |
 | 0.12.4 | Zuhause: Spielzeugkiste und Blumentopf stehen vor dem Dino, alles andere dahinter |
@@ -550,7 +551,7 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Gebaut bis 0.12.6. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
+Gebaut bis 0.12.7. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):
 - Fotos aufs Handy speichern (heute nur im Spiel ansehen).
