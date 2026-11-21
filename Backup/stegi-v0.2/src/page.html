@@ -1,0 +1,56 @@
+<div id="game">
+  <canvas id="c"></canvas>
+  <div id="needs" hidden></div>
+  <button id="gear" type="button" aria-label="Einstellungen für Eltern (3 Sekunden gedrückt halten)"><span class="ring"></span></button>
+  <div id="side" hidden>
+    <button id="b-map" class="mini" type="button" aria-label="Orte"></button>
+  </div>
+  <div id="walkbar" hidden><span class="foot"></span><i><b></b></i><span class="flag"></span></div>
+  <div id="banner" hidden><canvas width="240" height="135"></canvas><b></b></div>
+  <div id="actions" hidden></div>
+  <div id="tray" hidden></div>
+  <button id="close" class="round" type="button" aria-label="Fertig" hidden></button>
+  <div id="menu">
+    <h1 id="m-title">Stegi</h1>
+    <button class="big" id="m-exit" type="button" hidden>Beenden</button>
+  </div>
+  <div id="settings" class="ov" hidden>
+    <div class="card" role="dialog" aria-labelledby="s-title">
+      <h2 id="s-title">Einstellungen</h2>
+      <p id="s-info" class="info"></p>
+      <label class="row">Name <input id="s-name" type="text" maxlength="12" autocomplete="off"></label>
+      <div class="row">Geräusche <button id="s-sound" class="toggle" type="button"></button></div>
+      <div class="row">Musik <button id="s-music" class="toggle" type="button"></button></div>
+      <label class="row">Schlafenszeit <select id="s-sleep"></select></label>
+      <label class="row">Aufstehen <select id="s-wake"></select></label>
+      <label class="row">Spielzeit pro Tag <select id="s-limit"></select></label>
+      <button class="big danger" id="s-reset" type="button">Alles zurücksetzen</button>
+      <button class="big" id="s-close" type="button">Schließen</button>
+      <p id="credit">@made by Brownii (Claude.ai) · v0.2</p>
+    </div>
+  </div>
+  <div id="confirm" class="ov" hidden>
+    <div class="card" role="dialog" aria-labelledby="c-title">
+      <h2 id="c-title">Wirklich alles löschen?</h2>
+      <p class="info">Stegi wird wieder ein Ei. Alle Tage und Einstellungen sind dann weg. Das kann man nicht rückgängig machen.</p>
+      <button class="big danger" id="c-yes" type="button">Ja, alles löschen</button>
+      <button class="big" id="c-no" type="button">Abbrechen</button>
+    </div>
+  </div>
+  <div id="places" class="ov" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="pl-title">
+      <h2 id="pl-title">Orte</h2>
+      <p id="placecount" class="info"></p>
+      <div id="placelist"></div>
+      <button class="big" id="pl-close" type="button">Schließen</button>
+    </div>
+  </div>
+  <div id="rest" class="ov" hidden>
+    <div class="card" role="dialog" aria-labelledby="r-title">
+      <div id="r-icon"></div>
+      <h2 id="r-title">Pause</h2>
+      <p class="info">Die Spielzeit für heute ist um. Morgen geht es weiter!</p>
+      <button class="big" id="r-ok" type="button">OK</button>
+    </div>
+  </div>
+</div>

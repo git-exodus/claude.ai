@@ -1,7 +1,8 @@
 # CLAUDE.md
 
 Dieses Repository enthält das Handyspiel **Burgwacht** (Ordner `burgwacht/`) und Sicherungskopien
-früherer Versionen (Ordner `Backup/`).
+früherer Versionen (Ordner `Backup/`). Daneben gibt es den Stego-Tamagotchi **Stegi** (Ordner `stegi/`,
+eigene `stegi/README.md`, eigener Artefakt-Link dort in 4.2; die Regeln unten gelten sinngemäß).
 
 **Lies vor jeder Arbeit `burgwacht/README.md` vollständig.** Dort stehen Aufbau, Bauen, Ausliefern,
 alle Spielwerte, Tests und Fallstricke. Diese Datei fasst nur die Regeln zusammen, die nie vergessen

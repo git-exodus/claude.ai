@@ -1,11 +1,22 @@
 # Backups
 
-Unveränderte Kopien früherer Spielstände des Codes von Burgwacht. Jeder Unterordner enthält
-den kompletten Ordner `burgwacht/` zum Zeitpunkt der Sicherung, inklusive fertiger APK.
+Unveränderte Kopien früherer Stände des Codes von Burgwacht und Stegi. Jeder Unterordner enthält
+den kompletten Spielordner (`burgwacht/` bzw. `stegi/`) zum Zeitpunkt der Sicherung, inklusive fertiger APK.
 
 | Ordner | Version | Gesichert vor |
 |---|---|---|
+| `stegi-v0.11` | Stegi 0.11 | Familie: Geschwister-Ei, kleines Geschwisterchen |
+| `stegi-v0.10` | Stegi 0.10 | Sterne, Zuhause (Höhle), Laden, Sticker-Heft, Freundschaft |
+| `stegi-v0.9` | Stegi 0.9 | Wetter-Spiele, Jahreszeiten, Spielzeug, Melodie nachspielen, Zähl-/Farbspiele |
+| `stegi-v0.8.2` | Stegi 0.8.2 | 4 neue Tricks, Geburtstag, Gute-Nacht-Ritual |
+| `stegi-v0.7` | Stegi 0.7 | Training: Tricks durch Nachmalen (Rolle, Hinterbeine, Vorderbeine) |
+| `stegi-v0.6.1` | Stegi 0.6.1 | 1 Geschenk pro Tag, Ball-Flackern, Weihnachten, Ostern, Silvester |
+| `stegi-v0.5.1` | Stegi 0.5.1 | neues Design: Stego mit Licht und Schatten, Gesichter und Bewegungen, höherer Horizont, Vordergrund, Tiere |
+| `stegi-v0.4` | Stegi 0.4 | Fototagebuch (2 eigene Fotos pro Tag), Meilensteine, Foto-Fehler bei fehlendem Speicher |
+| `stegi-v0.3` | Stegi 0.3 | Testmodus mit eigenem Spielstand, Zeitraffer, Stufen und Helfern |
+| `stegi-v0.2` | Stegi 0.2 | Verstecken, Musik mit Tanzen, Verkleiden, Fotoalbum, Besuch, Wetter |
+| `stegi-v0.1` | Stegi 0.1 | graue Farbe, kleineres Baby, längere Platten, Wandern mit 30 Orten, Glühwürmchen |
 | `burgwacht-v0.7` | 0.7 | Dolch als Startwaffe, Ritter, neue Gegner, Musik, Truhen-Animation |
 | `burgwacht-v0.6.3` | 0.6.3 | mehr Soldaten und Bogenschützen, neue Goldregel, Neustart auf derselben Welle, +30 % XP |
 
-Zum Spielen `burgwacht.html` im Browser öffnen oder `Burgwacht.apk` auf dem Handy installieren.
+Zum Spielen `burgwacht.html` bzw. `stegi.html` im Browser öffnen oder die APK auf dem Handy installieren.
