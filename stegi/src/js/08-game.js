@@ -184,7 +184,7 @@ function eat(id) {
   earn('feed');   // 0.11 stars
   pet.eatT = 1.3;
   sound('munch');
-  const m = game.stegoInfo.mouth;
+  const m = game.stegoInfo ? game.stegoInfo.mouth : { x: W / 2, y: standY - 100 * U };   // 0.12.8: not drawn yet
   const col = { fern: '#4caf50', leaf: '#7cc957', berry: '#7b3fb0', apple: '#e53935', melon: '#ef5350' }[id];
   for (let i = 0; i < 6; i++) addPart('crumb', m.x, m.y, { vx: rnd(-60, 60) * U, vy: rnd(-80, -20) * U, g: 400, color: col, size: 4, max: 0.8 });
   save();
@@ -381,7 +381,8 @@ function updatePet(dt, sleeping) {
   const a = game.amb;
   if (sleeping) {
     if (game.t > (a.snore || 0)) { a.snore = game.t + 3.4; sound('snore'); }
-    if (game.t > (a.zzz || 0)) { a.zzz = game.t + 1.3; const h = game.stegoInfo.head; addPart('zzz', h.x + 20 * U, h.y - 20 * U, { vx: 15 * U, vy: -35 * U, size: 10 + Math.random() * 6, max: 2.4 }); }
+    // 0.12.8: only once he has been drawn (switching from the egg straight to a stage at night froze the game).
+    if (game.t > (a.zzz || 0) && game.stegoInfo) { a.zzz = game.t + 1.3; const h = game.stegoInfo.head; addPart('zzz', h.x + 20 * U, h.y - 20 * U, { vx: 15 * U, vy: -35 * U, size: 10 + Math.random() * 6, max: 2.4 }); }
     return;
   }
   if (game.mode !== 'idle') return;

@@ -7,7 +7,7 @@ bekommt Geschenke zum Verkleiden, Besuch von Freunden, erlebt Wetter, und man ka
 Bilder, Farben und Geräusche. **Der Stego stirbt nie** und wird nie krank. Vergisst man ihn, ist er
 nur hungrig oder traurig.
 
-**Stand: Version 0.12.7.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
+**Stand: Version 0.12.8.** Eine einzige HTML-Seite ohne externe Bilder oder Töne
 (alles wird per Code gezeichnet und erzeugt), zusätzlich als Android-APK.
 
 Diese Datei soll jeder späteren Sitzung reichen, um ohne Vorwissen weiterzuarbeiten.
@@ -31,7 +31,7 @@ cd "$(mktemp -d)" && /pfad/zum/repo/stegi/tests/run.sh   # alle Tests, Bilder la
 cd stegi && ./build-apk.sh            # baut zusätzlich Stegi.apk (Android-SDK nötig, siehe Burgwacht-README 4.3)
 ```
 
-Erwartet: **361 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 26, suite-celebrate 17, suite-fun 27, suite-home 20, suite-family 25).
+Erwartet: **381 Prüfungen, 0 Fehler** (suite-core 52, suite-ui 40, suite-places 19, suite-extras 39, suite-dev 26, suite-photos 19, suite-apk 17, suite-design 12, suite-holidays 22, suite-training 26, suite-celebrate 17, suite-fun 27, suite-home 20, suite-family 25, suite-check 20).
 
 Nach jeder fertigen Änderungsrunde:
 
@@ -76,6 +76,7 @@ stegi/
     ├── suite-fun.js       0.10: Jahreszeiten, Pfützen, Schneemann, Laubhaufen, Seifenblasen, Drachen, Sandburg, Melodie, Wünsche
     ├── suite-home.js      0.11: Sterne, Sticker-Heft, Zuhause, Laden, Möbel umstellen, Freundschaft, Speichern
     ├── suite-family.js    0.12: Geschwister-Ei ab Tag 32, Streicheln, Schlüpfen, Geschwisterchen folgt/hüpft/kichert/schläft/wächst, Testmodus
+    ├── suite-check.js     0.12.8: Gesamtprüfung mit laufendem Spiel (alle Testmodus-Knöpfe Tag/Nacht, frisch geöffnet nachts, 150 Zufallsschritte, alles was ein Kind tut)
     ├── suite-dev.js       0.4: Testmodus (eigener Spielstand, Stufen, Zeitraffer, Sprünge, Helfer, echter Stand bleibt unberührt)
     └── make-icon.js       kein Test: zeichnet das App-Symbol mit dem Spielcode neu
 ```
@@ -151,9 +152,9 @@ keine Module). Die APK braucht das Android-SDK in `/opt/android-sdk` (Burgwacht-
 
 | Stelle | Beispiel |
 |---|---|
-| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12.7';` |
-| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12.7` |
-| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 23`, `versionName '0.12.7'` |
+| `src/js/02-config.js` → `VERSION` | `const VERSION = '0.12.8';` |
+| `src/page.html` → `#credit` (wird zusätzlich aus `VERSION` gesetzt) | `@made by Brownii (Claude.ai) · v0.12.8` |
+| `android/app/build.gradle` → `versionCode` (+1) und `versionName` | `versionCode 24`, `versionName '0.12.8'` |
 
 `suite-ui.js` prüft die Fußzeile in den Einstellungen.
 
@@ -493,6 +494,15 @@ stoppen die Echtzeit-Schleife (`__st.pause(true)`) und bewegen das Spiel mit `__
 Zeitreise: `__st.setTime('2026-11-20T10:00')`, `__st.travel(stunden)`, in lib.js `at(page, h, m)`.
 `hatchQuick(page)` bringt ein neues Spiel in vier Spieltagen zum geschlüpften Baby.
 `window.__stQuiet = true` (in lib.js gesetzt) schaltet die Musik aus.
+
+**Prüfprotokoll / Gesamtprüfung (seit 0.12.8, `suite-check.js`):** läuft als Einzige mit der echten Bildschleife
+(nicht angehalten, wie am Handy) und prüft nach jedem Schritt, dass weiter Bilder kommen und kein Fehler auftrat:
+1. alle Testmodus-Knöpfe am Tag und in der Nacht, alle Zeitraffer-Stufen;
+2. frisch geöffnet als Ei, nachts direkt jede Stufe wählen (hier fror 0.12.7 ein);
+3. 150 zufällige Schritte aus Testmodus-Knöpfen, Spielen und Ortswechseln (fester Zufallswert);
+4. was ein Kind tut: Füttern, Trinken, Baden, Zähne, alle Spiele (mit Melodie), Wandern, Orte, Zuhause, Laden,
+   Sticker, Kleiderschrank, Kamera und Album, Besuch, Geschwisterchen, Schlafenszeit, Menü und zurück.
+Nach jeder Änderung mindestens diese Reihe laufen lassen.
 `loadClean` schaltet außerdem den Besuch aus (`__st.debugFlags.visit = false`), weil er zu einer
 zufälligen Uhrzeit kommt und sonst Werte und Hüpfer in anderen Prüfungen verändert; nur suite-extras
 ruft `hatchQuick(page, { visits: true })` auf und prüft den Besuch gezielt.
@@ -511,6 +521,9 @@ Fallstricke:
 - **Hauptmenü im Spiel:** Es muss unsichtbar *und* untastbar sein (`#menu.gone`, `pointer-events: none`). Bis 0.5
   war es nur durchsichtig, und der Beenden-Knopf (gibt es nur in der APK) schloss die App. Im Browser fiel
   das nicht auf; `suite-apk.js` testet deshalb mit nachgebautem `window.Android`.
+- **Bildschleife (0.12.8):** `frame()` fordert das nächste Bild zuerst an und fängt Fehler ab. Vorher hielt ein
+  einziger Fehler das ganze Spiel an. `game.stegoInfo` ist `null`, bis der Stego einmal gezeichnet wurde – immer
+  prüfen, bevor man `.head`, `.box` oder `.mouth` liest.
 - **Nur im Emulator getestet** (Chromium, 360×740). Auf einem echten Handy noch nicht ausprobiert.
   Wie die Geräusche und die Musik klingen, ist ungeprüft.
 - Keine Benachrichtigungen, wenn die App zu ist (bewusst nicht in Runde 1).
@@ -523,6 +536,7 @@ Fallstricke:
 
 | Version | Inhalt |
 |---|---|
+| 0.12.8 | Freeze behoben (Testmodus: vom Ei nachts direkt zu einer Stufe); Bildschleife läuft nach einem Fehler weiter; neue Gesamtprüfung `suite-check` |
 | 0.12.7 | Farb-Wunsch entfernt (nur noch „n-mal dieses Essen“); fast satt = kein Wunsch |
 | 0.12.6 | Schwanzstand (Pfeil) statt Küsschen, Fortschritt bleibt erhalten; Training-Müdigkeit: nach 2 neuen Sternen 1 Stunde Pause (unsichtbar, er gähnt) |
 | 0.12.5 | Weicher Hals (Vorschlag 1): Hals mit Licht und Schatten wie der Körper, keine Ecke mehr im Bauch; Halslinien nur außerhalb des Körpers (auch beim Trinken); gilt auch fürs Geschwisterchen |
@@ -551,7 +565,7 @@ Fallstricke:
 
 ## 11. Offene Punkte
 
-Gebaut bis 0.12.7. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
+Gebaut bis 0.12.8. Alles Vereinbarte ist gebaut. Nicht gewünscht: Ausmalen, Eltern-Übersicht, Benachrichtigungen. Ausdrücklich **nicht** gewünscht: Garten, Sprachausgabe.
 
 Mögliche nächste Schritte (noch nicht besprochen):
 - Fotos aufs Handy speichern (heute nur im Spiel ansehen).

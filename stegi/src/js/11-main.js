@@ -17,16 +17,20 @@ let lastFrame = 0, uiTimer = 0, saveTimer = 0;
 let paused = false;
 
 function frame(ts) {
+  // 0.12.8: the next frame is asked for first, and an error in one frame is caught. Before, a single error
+  // (e.g. something not drawn yet) stopped the loop and the game froze for good.
+  requestAnimationFrame(frame);
   const dt = Math.min(0.05, Math.max(0, (ts - lastFrame) / 1000));
   lastFrame = ts;
-  if (!paused) {
-    update(dt);
-    uiTimer -= dt; saveTimer -= dt;
-    if (uiTimer <= 0) { uiTimer = 0.5; refreshUI(); }
-    if (saveTimer <= 0) { saveTimer = 5; save(); }
-  }
-  drawWorld();
-  requestAnimationFrame(frame);
+  try {
+    if (!paused) {
+      update(dt);
+      uiTimer -= dt; saveTimer -= dt;
+      if (uiTimer <= 0) { uiTimer = 0.5; refreshUI(); }
+      if (saveTimer <= 0) { saveTimer = 5; save(); }
+    }
+  } catch (e) { console.error(e); }
+  try { drawWorld(); } catch (e) { console.error(e); try { ctx.restore(); } catch (e2) { /* nothing to restore */ } }
 }
 
 function start() {
